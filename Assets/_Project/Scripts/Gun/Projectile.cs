@@ -33,7 +33,14 @@ namespace VRShootingGallery.Gun
 
         void FixedUpdate()
         {
-            if (m_Live && Time.time >= m_ReleaseTime)
+            if (!m_Live)
+                return;
+
+            // Point the nose along the current velocity so darts follow their arc.
+            if (m_Rb.linearVelocity.sqrMagnitude > 0.01f)
+                m_Rb.MoveRotation(Quaternion.LookRotation(m_Rb.linearVelocity));
+
+            if (Time.time >= m_ReleaseTime)
                 Release();
         }
 

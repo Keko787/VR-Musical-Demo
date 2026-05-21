@@ -14,6 +14,7 @@ namespace VRShootingGallery.Gun
         [SerializeField] int m_MaxSize = 50;
 
         ObjectPool<Projectile> m_Pool;
+        Transform m_Container;
 
         ObjectPool<Projectile> Pool => m_Pool ??= new ObjectPool<Projectile>(
             createFunc: CreateInstance,
@@ -24,9 +25,15 @@ namespace VRShootingGallery.Gun
             defaultCapacity: m_DefaultCapacity,
             maxSize: m_MaxSize);
 
+        // A world-space root that never moves. Projectiles must NOT be parented to the gun
+        // (which rides the controller) or the moving parent drags in-flight darts.
+        Transform Container => m_Container != null
+            ? m_Container
+            : m_Container = new GameObject($"{name} (Projectiles)").transform;
+
         Projectile CreateInstance()
         {
-            var p = Instantiate(m_Prefab, transform);
+            var p = Instantiate(m_Prefab, Container);
             p.SetPool(this);
             return p;
         }
