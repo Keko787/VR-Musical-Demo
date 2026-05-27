@@ -24,9 +24,9 @@ namespace VRShootingGallery.Gun
 
         public void Launch(Vector3 velocity)
         {
-            m_Rb.linearVelocity = Vector3.zero;
+            m_Rb.velocity = Vector3.zero;
             m_Rb.angularVelocity = Vector3.zero;
-            m_Rb.linearVelocity = velocity;
+            m_Rb.velocity = velocity;
             m_ReleaseTime = Time.time + m_Lifetime;
             m_Live = true;
         }
@@ -37,8 +37,8 @@ namespace VRShootingGallery.Gun
                 return;
 
             // Point the nose along the current velocity so darts follow their arc.
-            if (m_Rb.linearVelocity.sqrMagnitude > 0.01f)
-                m_Rb.MoveRotation(Quaternion.LookRotation(m_Rb.linearVelocity));
+            if (m_Rb.velocity.sqrMagnitude > 0.01f)
+                m_Rb.MoveRotation(Quaternion.LookRotation(m_Rb.velocity));
 
             if (Time.time >= m_ReleaseTime)
                 Release();
