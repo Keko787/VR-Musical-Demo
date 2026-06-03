@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "com.middlevr": "file:C:/Program Files/MiddleVR2/unity_packages/com.middlevr.tgz",
+    "com.middlevr.urp": "file:C:/Program Files/MiddleVR2/unity_packages/com.middlevr.urp.tgz",
     "com.unity.feature.development": "1.0.2",
     "com.unity.ide.rider": "3.0.40",
     "com.unity.inputsystem": "1.19.0",

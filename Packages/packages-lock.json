@@ -1,5 +1,20 @@
 {
   "dependencies": {
+    "com.middlevr": {
+      "version": "file:C:/Program Files/MiddleVR2/unity_packages/com.middlevr.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {}
+    },
+    "com.middlevr.urp": {
+      "version": "file:C:/Program Files/MiddleVR2/unity_packages/com.middlevr.urp.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.middlevr": "2.4.0",
+        "com.unity.render-pipelines.universal": "7.3.1"
+      }
+    },
     "com.unity.burst": {
       "version": "1.8.8",
       "depth": 1,
