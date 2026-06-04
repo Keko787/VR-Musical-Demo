@@ -524,7 +524,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &885275604
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1423,6 +1423,10 @@ PrefabInstance:
     - target: {fileID: 2484563502659235148, guid: 61017496bfba7624aaac854ca9da502f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2484563502659235151, guid: 61017496bfba7624aaac854ca9da502f, type: 3}
+      propertyPath: EditorConfigFile
+      value: C:\Users\Exx\KostageProjects\VR-Demo\Assets\_Project\Config\MVR.vrx
       objectReference: {fileID: 0}
     - target: {fileID: 2484563502659235151, guid: 61017496bfba7624aaac854ca9da502f, type: 3}
       propertyPath: advancedProperties.TemplateCamera
