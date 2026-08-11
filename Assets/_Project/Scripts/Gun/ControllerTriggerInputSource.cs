@@ -16,7 +16,15 @@ namespace VRShootingGallery.Gun
         [SerializeField, Range(0f, 1f), Tooltip("Trigger pull fraction that counts as 'held'.")]
         float m_PressPoint = 0.5f;
 
+        [SerializeField, Range(0f, 1f), Tooltip("Trigger must fall back below this before it can fire " +
+            "again. Keeps a trigger resting near the press point from stuttering out extra rounds.")]
+        float m_ReleasePoint = 0.35f;
+
         InputAction m_Action;
+        int m_PolledFrame = -1;
+        bool m_Held;
+        bool m_Pressed;
+        bool m_Primed;
 
         void Awake()
         {
@@ -27,6 +35,42 @@ namespace VRShootingGallery.Gun
         void OnDisable() => m_Action?.Disable();
         void OnDestroy() => m_Action?.Dispose();
 
-        public bool FireHeld => m_Action != null && m_Action.ReadValue<float>() >= m_PressPoint;
+        public bool FireHeld
+        {
+            get
+            {
+                Poll();
+                return m_Held;
+            }
+        }
+
+        public bool FirePressedThisFrame
+        {
+            get
+            {
+                Poll();
+                return m_Pressed;
+            }
+        }
+
+        /// <summary>
+        /// Schmitt trigger on the analog pull, latched once per frame. An analog trigger resting
+        /// right on the press point would otherwise chatter across the threshold and fire repeatedly
+        /// from one pull.
+        /// </summary>
+        void Poll()
+        {
+            if (m_PolledFrame == Time.frameCount)
+                return;
+
+            m_PolledFrame = Time.frameCount;
+
+            float pull = m_Action != null ? m_Action.ReadValue<float>() : 0f;
+            bool wasHeld = m_Held;
+            m_Held = wasHeld ? pull > Mathf.Min(m_ReleasePoint, m_PressPoint) : pull >= m_PressPoint;
+
+            m_Pressed = m_Primed && m_Held && !wasHeld;
+            m_Primed = true;
+        }
     }
 }

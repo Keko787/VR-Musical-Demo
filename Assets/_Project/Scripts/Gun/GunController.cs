@@ -16,8 +16,12 @@ namespace VRShootingGallery.Gun
         [SerializeField, Tooltip("Projectile launch speed (m/s).")]
         float m_LaunchSpeed = 25f;
 
-        [SerializeField, Tooltip("Minimum seconds between shots.")]
-        float m_FireCooldown = 0.08f;
+        [SerializeField, Tooltip("One round per trigger pull. Turn off for full auto while the trigger is held.")]
+        bool m_SemiAuto = true;
+
+        [SerializeField, Tooltip("Minimum seconds between shots. In semi-auto this is only a debounce, " +
+            "so keep it short — it is not the thing that limits the rate of fire.")]
+        float m_FireCooldown = 0.05f;
 
         [SerializeField, Tooltip("Max raycast distance for the aim point.")]
         float m_AimMaxDistance = 50f;
@@ -53,7 +57,15 @@ namespace VRShootingGallery.Gun
         {
             UpdateAim();
 
-            if (m_Input != null && m_Input.FireHeld && Time.time >= m_NextFireTime)
+            if (m_Input == null)
+                return;
+
+            // Semi-auto reads the press edge, not the held state. That is what makes releasing the
+            // trigger stop the gun on the same frame: there is no "still held" state left over to
+            // let another round through once the player has let go.
+            bool wantsToFire = m_SemiAuto ? m_Input.FirePressedThisFrame : m_Input.FireHeld;
+
+            if (wantsToFire && Time.time >= m_NextFireTime)
                 Fire();
         }
 

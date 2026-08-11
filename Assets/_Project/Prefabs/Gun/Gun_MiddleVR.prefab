@@ -222,8 +222,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::VRShootingGallery.Gun.GunController
   m_Muzzle: {fileID: 751056524488606680}
   m_Pool: {fileID: 5937762727113347158}
-  m_LaunchSpeed: 25
-  m_FireCooldown: 0.08
+  m_LaunchSpeed: 18
+  m_FireCooldown: 0.05
   m_AimMaxDistance: 50
   m_AimMask:
     serializedVersion: 2
