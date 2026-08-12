@@ -142,25 +142,32 @@ y 0.5 the tip sat at *exactly* y 0, so both console positions were dead for the 
 It is now a `SphereCollider` of radius 0.02, matching the dart you can see. If you ever swap the
 projectile prefab, check that its collider matches its mesh and is not axis-elongated.
 
-## Physics note — why small things are hittable
+## Physics note — hits are resolved by sweep, not by contact
 
-Collision events only fire when a round happens to *end* a physics step inside a collider. At 14 m/s
-it covers ~0.28 m per step, so anything shallower than that gets stepped straight over. A 1 m target
-sphere is fine; a button plate is not. Two defences, both on `Projectile`:
+A collision event only fires when a round happens to *end* a physics step inside a collider. At
+18 m/s it covers 0.36 m per step, so anything shallower gets stepped straight over — a 0.14 m ball is
+missed roughly six times in ten, and a button plate essentially always. A 1 m target sphere is the
+only thing big enough for contacts to be reliable, which is why targets appeared to work while
+nothing else did.
 
-- `m_ContinuousCollision` — asks PhysX for `ContinuousSpeculative`, the one mode that also catches the
-  kinematic bodies moving targets use.
-- `m_SweepForHits` — traces the segment actually travelled each step and reports the first
-  `IShootable` on it. This is the one that actually guarantees it. Only the *first* collider on the
-  segment counts, so it cannot shoot a target through a wall; non-shootable geometry is left to the
-  normal collision response.
+`Projectile.m_SweepForHits` (on by default) therefore makes the swept ray **authoritative for every
+hit**, not just shootable ones:
 
-`FixedUpdate` runs *before* the physics step and `OnCollisionEnter` *after* it, so the sweep in
-`FixedUpdate` is always one step stale and can never see the segment that ends in a collision — the
-exact case it exists for. `OnCollisionEnter` therefore runs the sweep itself before releasing on a
-non-shootable hit. It also checks for `IShootable` before releasing at all: when a round ends a step
-touching two colliders Unity delivers one callback per collider in arbitrary order, and releasing on
-the first would drop the shot whenever scenery arrived before the target.
+- The segment spans the gap since the last step *and* the step about to be taken, so nothing slips
+  between steps and nothing is reported after the round has already flown past.
+- It stops at the **first** collider, so a round cannot pass through a wall — and, being an exact
+  line, a round threaded past one object really does carry on to whatever is behind it.
+- `IShootable` gets `OnShot`. Any non-kinematic `Rigidbody` gets the round's momentum applied by hand
+  (`mass × speed`), because the sweep retires the round before PhysX would have delivered that
+  impulse itself. That is what makes loose scene objects such as the tethered balls react.
+
+With the sweep on, the round uses **Discrete** collision detection. Speculative CCD is worse than
+useless here: its contacts are approximate, so a round can be stopped by something it visibly flew
+past. With the sweep off it falls back to `ContinuousSpeculative`, the best available contact mode.
+
+`OnCollisionEnter` survives as a backstop for the sweep-off case. It checks for `IShootable` before
+releasing, since when a round ends a step touching two colliders Unity delivers one callback per
+collider in arbitrary order and releasing on the first would drop the shot.
 
 ## Backdrop placement
 

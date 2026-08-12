@@ -6,13 +6,64 @@ it about.
 
 ## Build it
 
-Open `Assets/_Project/Scenes/Physics MiddleVR.unity`, then run:
+Open `Assets/_Project/Scenes/Physics MiddleVR.unity`, then run either of:
 
-**VR Shooting Gallery ▸ Physics ▸ Build Tethered Ball**
+| Menu item | What it does |
+| --- | --- |
+| **VR Shooting Gallery ▸ Physics ▸ Build Tethered Ball** | Rebuilds every rig, each keeping its own geometry |
+| **VR Shooting Gallery ▸ Physics ▸ Rebuild Tethered Balls From Placeholder** | Re-reads the placeholder sphere and gives every rig that same geometry |
 
-The rig is torn down and rebuilt on every run. The chain length is baked into the joint anchors, so
-patching an existing chain in place would be more fragile than making a fresh one — meaning any
-hand-tuning inside `Tether_Rig` is lost on rebuild. Tune on the components listed below instead.
+Both act on **every** `Tether_Rig*` in the room, so a grid of duplicates stays consistent. Each rig's
+own position and rotation are left alone — only its contents are rebuilt, because the chain length is
+baked into the joint anchors and patching one in place would be more fragile than making a fresh one.
+Scale is forced back to one, since the cord visuals are sized in the rig's own space.
+
+Any hand-tuning *inside* a rig is lost on rebuild. Tune on the components listed below instead.
+
+## Swing and bounce
+
+Damping is deliberately near zero. Every one of the twelve links rotates as the pendulum swings, so
+angular drag on the links is multiplied twelve times over — at the original 0.5 it quietly ate the
+arc, and it was the single biggest thing stopping the ball swinging far. Links are now `drag 0`,
+`angularDrag 0.05`; the ball is `drag 0.01`, `angularDrag 0.05`.
+
+Bounce lives on the ball, in `PM_TetherBall.physicMaterial`. Nothing in the room carries a physic
+material of its own, so the ball's restitution only survives a contact because `bounceCombine` is
+**Maximum**. `frictionCombine` is **Minimum** so the ball glances off a wall instead of gripping it
+and killing the swing. The room walls are zero-thickness boxes, which is why the ball uses
+`ContinuousSpeculative` — without it a fast swing passes straight through one.
+
+### What it can and cannot reach
+
+A pendulum can never get farther from its anchor than `cord + ball diameter`. With the 1.12 m cord
+that is 1.26 m, measured from the anchor at (0.025, 2.196, −0.118):
+
+| Wall | Distance | Reached? |
+| --- | --- | --- |
+| `Front_Wall` | 1.23 m | yes — contact at 76.5° from vertical |
+| `Back_Wall` | 0.99 m | yes, but that wall is switched off in the scene |
+| `Right_Wall` | 1.75 m | no |
+| `Left_Wall` | 1.80 m | no |
+
+Reaching the front wall needs 4.24 m/s at the bottom of the swing. A square dart hit delivers
+0.02 kg × 18 m/s ÷ 0.06 kg = 6.0 m/s, so a good shot gets there with room to spare and a glancing one
+does not — which makes hitting the wall a reward rather than a given.
+
+### Shooting the ball
+
+The ball has no script on it and is not `IShootable`. It reacts because `Projectile`'s swept ray
+hands its momentum to any non-kinematic `Rigidbody` it hits. That matters when several rigs are in
+the scene: the sweep is an exact line stopping at the first collider, so a shot threaded past one
+ball genuinely carries on to the one behind it. Relying on PhysX contacts instead — as this did
+originally — meant a 0.14 m ball was missed roughly six times in ten, and speculative contacts could
+stop a round on something it had visibly flown past. See the physics note in
+`ShootingGallery_Game.md`.
+
+The cord has no colliders, so shots pass through it. Only the ball can be hit.
+
+Reaching the **side** walls would need a 1.66 m cord, which drops the ball from y 1.00 to y 0.46 —
+knee height, a wrecking ball rather than a garage guide ball. That trade-off is why the cord is where
+it is; change `k_FallbackBallHeight`/the placeholder height and rebuild if you want the other one.
 
 ## Where it hangs
 
@@ -25,8 +76,16 @@ The builder reads the scene rather than hard-coding a spot:
   placeholder.
 - The placeholder is switched **off**, not deleted — the new ball now occupies that space.
 
-"Placeholder" means any active child of `CAVE_User_Room` named `Sphere*` that has a `SphereCollider`
-and no `Rigidbody`. Move that sphere and rebuild to move the ball.
+"Placeholder" means any child of `CAVE_User_Room` named `Sphere*` with a `SphereCollider` and no
+`Rigidbody`. An **active** one wins outright; otherwise the one nearest to directly under the
+ceiling's centre does. That second rule matters because the first build switches the marker off, and
+because the room contains other stray spheres — of the four in this scene the marker sits 0.11 m from
+the ceiling centre and the rest are 1.7–2.0 m away, so it is picked unambiguously.
+
+Plain **Build** does not re-measure. It reuses each rig's existing geometry — the anchor from its own
+transform, the cord length from `TetheredBall.m_CordLength`, which the builder records for exactly
+this reason — so rebuilding never silently moves a ball. Use **Rebuild From Placeholder** when you
+have moved the marker and want every rig to follow it.
 
 ## How it is put together
 

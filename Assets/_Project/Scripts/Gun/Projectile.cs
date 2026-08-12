@@ -13,11 +13,9 @@ namespace VRShootingGallery.Gun
         [SerializeField, Tooltip("Seconds before an un-collided projectile returns to the pool.")]
         float m_Lifetime = 3f;
 
-        [SerializeField, Tooltip("Ask PhysX to sweep for contacts between steps as well.")]
-        bool m_ContinuousCollision = true;
-
-        [SerializeField, Tooltip("Also trace the path travelled each step and report the first shootable on it. " +
-                                 "This is what makes small targets and thin buttons reliably hittable.")]
+        [SerializeField, Tooltip("Resolve every hit by tracing the round's path instead of waiting for a PhysX " +
+                                 "contact. Exact at any speed, and the only thing that makes small targets " +
+                                 "reliably hittable. Turning this off falls back to speculative contacts.")]
         bool m_SweepForHits = true;
 
         Rigidbody m_Rb;
@@ -30,10 +28,13 @@ namespace VRShootingGallery.Gun
         {
             m_Rb = GetComponent<Rigidbody>();
 
-            // Speculative CCD is the one mode that also catches kinematic bodies, which is what
-            // moving targets use.
-            if (m_ContinuousCollision)
-                m_Rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            // When the sweep is authoritative, PhysX contacts are only a backstop, and speculative
+            // CCD actively gets in the way: its contacts are approximate, so a round can be stopped
+            // by something it visibly flew past. Otherwise speculative is the best available mode,
+            // being the only one that also catches the kinematic bodies moving targets use.
+            m_Rb.collisionDetectionMode = m_SweepForHits
+                ? CollisionDetectionMode.Discrete
+                : CollisionDetectionMode.ContinuousSpeculative;
         }
 
         public void SetPool(ProjectilePool pool) => m_Pool = pool;
@@ -62,7 +63,7 @@ namespace VRShootingGallery.Gun
                 m_Rb.MoveRotation(Quaternion.LookRotation(heading, up));
             }
 
-            if (m_SweepForHits && SweepHitShootable())
+            if (m_SweepForHits && SweepForHit())
                 return;
 
             m_LastPos = transform.position;
@@ -72,32 +73,46 @@ namespace VRShootingGallery.Gun
         }
 
         /// <summary>
-        /// Collision events only fire when the round happens to *end* a physics step inside a
-        /// collider. At 14 m/s it moves ~0.28 m per step, so anything shallower than that — a
-        /// button plate, a small target — is usually stepped straight over. Tracing the segment
-        /// actually travelled closes that gap. Non-shootable geometry is left to the normal
-        /// collision response, but it still blocks: only the *first* thing on the segment counts,
-        /// so this cannot shoot a target through a wall.
+        /// Resolves the hit geometrically instead of waiting for a contact. A collision event only
+        /// fires when the round happens to *end* a step inside a collider, and at 18 m/s it covers
+        /// 0.36 m per step — so a 0.14 m ball is stepped straight over roughly six times in ten. The
+        /// swept ray has no such blind spot, and being an exact line it also means a round threaded
+        /// past one object really does carry on to whatever is behind it.
         /// </summary>
-        bool SweepHitShootable()
+        /// <remarks>
+        /// The segment spans the gap since the last step *and* the step about to be taken, so nothing
+        /// slips between steps and nothing is reported after the round has already flown past. It
+        /// stops at the first collider either way: this cannot shoot through a wall.
+        /// </remarks>
+        bool SweepForHit()
         {
-            var travel = transform.position - m_LastPos;
-            float distance = travel.magnitude;
+            var position = transform.position;
+            var velocity = m_Rb.velocity;
+
+            var segment = position + velocity * Time.fixedDeltaTime - m_LastPos;
+            float distance = segment.magnitude;
             if (distance < 1e-4f)
                 return false;
 
-            var direction = travel / distance;
+            var direction = segment / distance;
 
-            // Everything except our own layer — the segment ends at this projectile's centre, so
-            // without the mask the ray's last few centimetres are inside its own collider.
+            // Everything but our own layer, or the ray would end inside this projectile's collider.
             int mask = ~(1 << gameObject.layer);
             if (!Physics.Raycast(m_LastPos, direction, out var hit, distance, mask, QueryTriggerInteraction.Ignore))
                 return false;
 
-            if (hit.collider.GetComponentInParent<IShootable>() is not { } shootable)
-                return false;
+            if (hit.collider.GetComponentInParent<IShootable>() is { } shootable)
+                shootable.OnShot(new ShotInfo(hit.point, hit.normal, direction, gameObject));
 
-            shootable.OnShot(new ShotInfo(hit.point, hit.normal, direction, gameObject));
+            // Hand over the round's momentum. PhysX would have done this for us on a real contact,
+            // but the sweep gets there first and retires the round — so anything loose in the scene
+            // (the tethered balls) needs the impulse applying by hand to react at all.
+            if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
+            {
+                hit.rigidbody.AddForceAtPosition(direction * (m_Rb.mass * velocity.magnitude),
+                    hit.point, ForceMode.Impulse);
+            }
+
             Release();
             return true;
         }
@@ -118,10 +133,9 @@ namespace VRShootingGallery.Gun
                 return;
             }
 
-            // FixedUpdate runs before the physics step and this callback after it, so the one
-            // segment the sweep never gets to see is the step that ends in a collision. Trace it
-            // here, or a round that clips the floor short of a floor-mounted button dies unreported.
-            if (m_SweepForHits && SweepHitShootable())
+            // Only a backstop now: the sweep runs ahead of the step and normally retires the round
+            // before PhysX ever reports a contact. It still matters if the sweep is switched off.
+            if (m_SweepForHits && SweepForHit())
                 return;
 
             Release();

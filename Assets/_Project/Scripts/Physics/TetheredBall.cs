@@ -24,6 +24,11 @@ namespace VRShootingGallery.PhysicsDemo
         [SerializeField, Tooltip("Cord diameter in metres.")]
         float m_Thickness = 0.015f;
 
+        [SerializeField, Tooltip("Length the rig was built with. Recorded so a rebuild can hang the ball " +
+            "in the same place — the placeholder sphere that originally defined it gets switched off by " +
+            "the first build, so it cannot be measured a second time.")]
+        float m_CordLength;
+
         [SerializeField, Tooltip("Wand button that re-hangs the ball. Negative disables it.")]
         int m_ResetButton = 4;
 
@@ -33,6 +38,9 @@ namespace VRShootingGallery.PhysicsDemo
         int m_SolverIterations = 20;
 
         Vector3[] m_RestLocal;
+
+        /// <summary>Cord length this rig was built with, so a rebuild can reproduce it exactly.</summary>
+        public float CordLength => m_CordLength;
 
         void Awake()
         {
