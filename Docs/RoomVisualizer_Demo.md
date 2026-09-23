@@ -174,8 +174,10 @@ mode after the tubes fade out — the rave part of the show is on the walls in b
 **Layout.** The front and the floor mirror the spectrum about their centre, so the bass sits in the
 middle of the room; the sides run it back to front, the right wall reversed, so the treble on all
 four screens meets at the front corners. `m_Layout` per panel: Ascending, Descending, Mirrored.
-The palette (`m_Palette`, a Gradient) runs navy at the bass end to aqua-white at the treble; leave
-it empty for that default or paint your own.
+The palette (`m_Palette`, a Gradient) runs navy at the bass end to aqua-white at the treble. Unity
+saves an unassigned Gradient as plain white, so plain white means "use the default"; paint any
+colour into it and yours is used instead (`Palettes.IsUnset`). The same holds for every palette
+in the project.
 
 ## The lasers and the ribbons
 

@@ -74,7 +74,7 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Tooltip("Metres of sideways shimmer a point has at full level.")]
         float m_Shimmer = 0.02f;
 
-        [SerializeField, Tooltip("Point colour by band, bass at 0 and treble at 1. Left empty for the builder's default.")]
+        [SerializeField, Tooltip("Point colour by band, bass at 0 and treble at 1. Left plain white for the builder's default.")]
         Gradient m_FieldPalette;
 
         [Header("Astral body")]
@@ -87,7 +87,7 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Tooltip("How far the sun's surface rises at full level, as a fraction of its radius.")]
         float m_CoreBulge = 0.4f;
 
-        [SerializeField, Tooltip("Sun colour by level, 0 quiet to 1 loud. Left empty for the builder's default.")]
+        [SerializeField, Tooltip("Sun colour by level, 0 quiet to 1 loud. Left plain white for the builder's default.")]
         Gradient m_CorePalette;
 
         [SerializeField, Tooltip("Radii of the celestial spheres as multiples of the core radius. Just intonation: major third, " +
@@ -111,7 +111,7 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Tooltip("Revolutions per second the whole body turns about the vertical, so it moves for a viewer standing still.")]
         float m_Precession = 0.012f;
 
-        [SerializeField, Tooltip("Sphere and planet colour by band, bass at 0 and treble at 1. Left empty for the builder's default.")]
+        [SerializeField, Tooltip("Sphere and planet colour by band, bass at 0 and treble at 1. Left plain white for the builder's default.")]
         Gradient m_SpherePalette;
 
         [Header("Fireflies")]
@@ -144,7 +144,7 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Range(0f, 1f), Tooltip("How hard a beat flashes the whole swarm at once, like synchronous fireflies.")]
         float m_Synchrony = 0.8f;
 
-        [SerializeField, Tooltip("Firefly colour by band, bass at 0 and treble at 1. Left empty for the builder's default.")]
+        [SerializeField, Tooltip("Firefly colour by band, bass at 0 and treble at 1. Left plain white for the builder's default.")]
         Gradient m_FireflyPalette;
 
         [SerializeField] int m_Seed = 11;
@@ -207,7 +207,7 @@ namespace VRShootingGallery.Visualizer
                 m_System.Play();
         }
 
-        static bool Empty(Gradient gradient) => gradient == null || gradient.colorKeys == null || gradient.colorKeys.Length == 0;
+        static bool Empty(Gradient gradient) => Palettes.IsUnset(gradient);
 
         /// <summary>Deep blue at the bass end to white at the treble, for points that also carry level as brightness.</summary>
         public static Gradient DefaultFieldPalette() => Make(

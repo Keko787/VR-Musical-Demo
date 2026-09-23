@@ -59,7 +59,7 @@ namespace VRShootingGallery.Visualizer
         float m_SweepSeconds = 0.35f;
 
         [Header("Look")]
-        [SerializeField, Tooltip("Beam colour by band, bass at 0 and treble at 1. Left empty for the builder's rave palette.")]
+        [SerializeField, Tooltip("Beam colour by band, bass at 0 and treble at 1. Left plain white for the builder's rave palette.")]
         Gradient m_Palette;
 
         [SerializeField] float m_CoreWidth = 0.008f;
@@ -110,7 +110,7 @@ namespace VRShootingGallery.Visualizer
             m_Block = new MaterialPropertyBlock();
             m_Random = new System.Random(m_Seed);
 
-            if (m_Palette == null || m_Palette.colorKeys == null || m_Palette.colorKeys.Length == 0)
+            if (Palettes.IsUnset(m_Palette))
                 m_Palette = DefaultPalette();
 
             if (m_Analyser != null)

@@ -72,7 +72,7 @@ namespace VRShootingGallery.Visualizer
         float m_IdleLevel = 0.18f;
 
         [Header("Look")]
-        [SerializeField, Tooltip("Water colour by band, bass at 0 and treble at 1. Left empty for the builder's blues.")]
+        [SerializeField, Tooltip("Water colour by band, bass at 0 and treble at 1. Left plain white for the builder's blues.")]
         Gradient m_Palette;
 
         [SerializeField, Tooltip("The wash behind the tubes cycles between these two over the wash period.")]
@@ -134,7 +134,7 @@ namespace VRShootingGallery.Visualizer
             m_Renderer = GetComponent<MeshRenderer>();
             m_Block = new MaterialPropertyBlock();
 
-            if (m_Palette == null || m_Palette.colorKeys == null || m_Palette.colorKeys.Length == 0)
+            if (Palettes.IsUnset(m_Palette))
                 m_Palette = DefaultPalette();
 
             for (int i = 0; i < MaxTubes; i++)
