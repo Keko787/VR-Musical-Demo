@@ -107,6 +107,11 @@ new wand/config.
   position/rotation but not scale. At CAVE aim distances the default 3 cm was invisible — bumped
   to **0.15 m and defaulted on** in `Gun_MiddleVR.prefab`. (A constant-apparent-size option
   scaling by camera distance is a one-liner in `Tracer.Update` if needed.)
+- **The tracer beam is a held laser sight, not a muzzle flash.** `Tracer.m_LineMode` defaults to
+  `Always`: while the line is on it is redrawn from the muzzle to the aim point every frame, in
+  `LateUpdate` so it uses the same frame's wand pose rather than trailing one behind. Set the mode to
+  `OnShot` for the original brief-beam-per-shot behaviour, which is the only thing `m_LineLifetime`
+  still applies to. Either way the line only shows when `m_LineEnabled` is on (wand button 2).
 - **`Camera.main` may be null/untagged under MiddleVR** (it disables the template camera and
   builds its own). Code that caches `Camera.main` must null-guard — the dot's billboard rotation
   does; visibility is unaffected.

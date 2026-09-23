@@ -3,6 +3,8 @@
     "rootNamespace": "VRShootingGallery.EditorTools",
     "references": [
         "Project.Runtime",
+        "MiddleVR.Unity.Scripts",
+        "Unity.InputSystem",
         "Unity.TextMeshPro"
     ],
     "includePlatforms": [

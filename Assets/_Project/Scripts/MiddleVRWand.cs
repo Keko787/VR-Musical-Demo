@@ -14,6 +14,19 @@ namespace VRShootingGallery
     /// </summary>
     public static class MiddleVRWand
     {
+        /// <summary>
+        /// True once MiddleVR's kernel is up and there is a device manager to ask. False at a desk,
+        /// which is the difference between "the wand says no" and "there is no wand".
+        /// </summary>
+        public static bool Available
+        {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
+            get => MVR.DeviceMgr != null;
+#else
+            get => false;
+#endif
+        }
+
         /// <summary>True while the wand button is held (MiddleVR maps the analog trigger to a button).</summary>
         public static bool Held(int button)
         {
