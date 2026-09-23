@@ -105,3 +105,18 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# ---------------------------------------------------------------- this project
+
+# The music the visualizer plays is not distributed with the project: the tracks are
+# commercial recordings, and 20+ MB of audio would sit in every clone forever. Drop
+# your own files into Assets/_Project/Audio/Music — the visualizer reads the folder
+# when play starts and again at build time, so nothing needs rebuilding. See that
+# folder's README.
+/[Aa]ssets/_[Pp]roject/[Aa]udio/[Mm]usic/*
+!/[Aa]ssets/_[Pp]roject/[Aa]udio/[Mm]usic/README.md
+!/[Aa]ssets/_[Pp]roject/[Aa]udio/[Mm]usic/README.md.meta
+
+# Backups left by hand-editing settings and the package manifest.
+*.bak
+_xr_settings_bak/
