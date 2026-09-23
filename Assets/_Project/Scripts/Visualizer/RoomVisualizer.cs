@@ -115,7 +115,7 @@ namespace VRShootingGallery.Visualizer
         bool m_KeyboardControl = true;
 
         /// <summary>Where tracks go. Every clip in here, by name, is the playlist.</summary>
-        public const string MusicFolder = "Assets/_Project/Audio/Music";
+        public const string MusicFolder = MusicDeck.MusicFolder;
 
         static readonly VisualizerMode[] k_Cycle =
         {
@@ -143,26 +143,8 @@ namespace VRShootingGallery.Visualizer
         public AudioClip[] Playlist { get => m_Playlist; set => m_Playlist = value; }
 
 #if UNITY_EDITOR
-        /// <summary>
-        /// Every audio clip in <see cref="MusicFolder"/>, sorted by name. Editor only — the asset
-        /// database does not exist in a player, which is why builds carry the list serialized.
-        /// </summary>
-        public static AudioClip[] ClipsInMusicFolder()
-        {
-            var clips = new System.Collections.Generic.List<AudioClip>();
-            if (!UnityEditor.AssetDatabase.IsValidFolder(MusicFolder))
-                return clips.ToArray();
-
-            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:AudioClip", new[] { MusicFolder }))
-            {
-                var clip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>(UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
-                if (clip != null)
-                    clips.Add(clip);
-            }
-
-            clips.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
-            return clips.ToArray();
-        }
+        /// <summary>Every audio clip in <see cref="MusicFolder"/>, sorted by name. See <see cref="MusicDeck.ClipsInMusicFolder"/>.</summary>
+        public static AudioClip[] ClipsInMusicFolder() => MusicDeck.ClipsInMusicFolder();
 #endif
 
         void Start()

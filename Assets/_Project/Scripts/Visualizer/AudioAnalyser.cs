@@ -111,6 +111,13 @@ namespace VRShootingGallery.Visualizer
         /// <summary>Overall level, 0–1, from the RMS of the output against a slow peak.</summary>
         public float Loudness { get; private set; }
 
+        /// <summary>
+        /// The same RMS before any normalising, as a linear amplitude. For a reader that needs to
+        /// know the difference between a quiet passage and a loud one over minutes, which the
+        /// auto-gained levels deliberately hide.
+        /// </summary>
+        public float Rms { get; private set; }
+
         /// <summary>True on the frame a beat fires.</summary>
         public bool Beat { get; private set; }
 
@@ -143,6 +150,16 @@ namespace VRShootingGallery.Visualizer
 
         public int BandCount => m_BandCount;
         public AudioSource Source { get => m_Source; set => m_Source = value; }
+
+        /// <summary>
+        /// This frame's raw magnitude spectrum, <see cref="BinHz"/> apart from 0 Hz. Not normalised:
+        /// for a reader that needs finer resolution than the bands, like the self-playing piano,
+        /// which looks up each key's own frequency. Read only; it is overwritten every frame.
+        /// </summary>
+        public float[] Spectrum => m_Spectrum;
+
+        /// <summary>Width of one spectrum bin in Hz.</summary>
+        public float BinHz => AudioSettings.outputSampleRate / (2f * Mathf.Max(1, m_FftSize));
 
         public float MaxBeatsPerSecond
         {
@@ -290,7 +307,8 @@ namespace VRShootingGallery.Visualizer
             Mid = Follow(Mid, Normalise(Mean(m_Spectrum, m_MidLo, m_MidHi) * 2f, ref m_MidPeak, halfLifeDecay), attack, release);
             High = Follow(High, Normalise(Mean(m_Spectrum, m_HighLo, m_HighHi) * 6f, ref m_HighPeak, halfLifeDecay), attack, release);
 
-            float rms = Rms(m_Samples);
+            float rms = RootMeanSquare(m_Samples);
+            Rms = rms;
             Loudness = Follow(Loudness, Normalise(rms, ref m_LoudPeak, halfLifeDecay, 0.01f), attack, release);
 
             UpdateHistory(dt);
@@ -328,7 +346,7 @@ namespace VRShootingGallery.Visualizer
             return sum / (hi - lo);
         }
 
-        static float Rms(float[] samples)
+        static float RootMeanSquare(float[] samples)
         {
             if (samples.Length == 0)
                 return 0f;

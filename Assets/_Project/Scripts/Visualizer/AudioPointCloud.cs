@@ -156,7 +156,7 @@ namespace VRShootingGallery.Visualizer
         public AudioAnalyser Analyser { get => m_Analyser; set => m_Analyser = value; }
 
         static readonly int k_Color = Shader.PropertyToID("_Color");
-        const float k_Lifetime = 1e6f;
+        const float k_Lifetime = ManualParticles.Lifetime;
 
         ParticleSystem m_System;
         ParticleSystemRenderer m_Renderer;
@@ -242,36 +242,7 @@ namespace VRShootingGallery.Visualizer
 
         // ---------------------------------------------------------------- allocation
 
-        /// <summary>
-        /// Nothing emits and nothing simulates: the particles are written every frame. Their
-        /// lifetime is set huge and reset each frame so the system's own ageing never removes one.
-        /// </summary>
-        void ConfigureSystem()
-        {
-            var main = m_System.main;
-            main.playOnAwake = false;
-            main.loop = true;
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.scalingMode = ParticleSystemScalingMode.Local;
-            main.startLifetime = k_Lifetime;
-            main.startSpeed = 0f;
-            main.gravityModifier = 0f;
-            main.maxParticles = Mathf.Max(main.maxParticles, 1);
-
-            var emission = m_System.emission;
-            emission.enabled = false;
-
-            var shape = m_System.shape;
-            shape.enabled = false;
-
-            m_Renderer.renderMode = ParticleSystemRenderMode.Billboard;
-            m_Renderer.alignment = ParticleSystemRenderSpace.View;
-            m_Renderer.sortMode = ParticleSystemSortMode.None;
-            m_Renderer.minParticleSize = 0f;
-            m_Renderer.maxParticleSize = 1f;
-            m_Renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            m_Renderer.receiveShadows = false;
-        }
+        void ConfigureSystem() => ManualParticles.Configure(m_System, m_Renderer);
 
         int Spheres => Mathf.Min(m_SphereRatios != null ? m_SphereRatios.Length : 0,
             m_Inclinations != null ? m_Inclinations.Length : 0);
