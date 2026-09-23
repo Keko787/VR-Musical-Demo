@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/_Project/Scenes/Demos/Visualizer MiddleVR.unity
     guid: 2b7a314e2a2a9e646a80e2b2916b31b2
+  - enabled: 0
+    path: Assets/_Project/Scenes/Demos/HauntedRoom MiddleVR.unity
+    guid: 5600e3b8c03c65640ad3fa578c1f4333
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

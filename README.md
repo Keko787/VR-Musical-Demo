@@ -22,6 +22,7 @@ under **VR Shooting Gallery ▸ …** that generates the scene from a template, 
 | Scene | What it is | Doc |
 | --- | --- | --- |
 | `Visualizer MiddleVR` | Room audio visualizer — five modes: water tubes on the walls, lasers, point cloud, an astral body, fireflies | [RoomVisualizer_Demo.md](Docs/RoomVisualizer_Demo.md) |
+| `HauntedRoom MiddleVR` | Ghost in the machine: a Victorian parlour on the CAVE walls, possessed by the music, and the ghost doing it | [HauntedRoom_Demo.md](Docs/HauntedRoom_Demo.md) |
 | `HarpRoom` | Holographic harp the wand plucks | [HolographicHarp_Demo.md](Docs/HolographicHarp_Demo.md) |
 | `GuitarRoom` | Holographic guitar the wand strums, with chord shapes on wand buttons | [HolographicGuitar_Demo.md](Docs/HolographicGuitar_Demo.md) |
 | `ShootingGallery MiddleVR` | The original shooting gallery round | [ShootingGallery_Game.md](Docs/ShootingGallery_Game.md) |
@@ -49,12 +50,13 @@ render nodes.
 
 ```
 Assets/_Project/
-├─ Art/            Materials, meshes and the visualizer's shaders
+├─ Art/            Materials, meshes and the visualizer's shaders; Haunted/ holds the parlour's painted textures
 ├─ Audio/Music/    Playlist folder — tracks are gitignored, see its README
 ├─ Scenes/         Boot/ and Demos/
 └─ Scripts/
    ├─ Editor/      Scene builders — each demo is generated, not hand-placed
-   ├─ Visualizer/  Audio analysis and the five visualizer modes
+   ├─ Visualizer/  Audio analysis, playback, and the five visualizer modes
+   ├─ Haunted/     The haunted room: the director, the possessed furniture, the ghost
    ├─ Guitar/  Harp/  Strings/   The instruments
    ├─ Gun/  Targets/  Core/  UI/ The shooting gallery
    └─ Physics/     Marble run, slot cars, tethered ball

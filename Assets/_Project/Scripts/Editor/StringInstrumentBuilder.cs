@@ -614,6 +614,27 @@ namespace VRShootingGallery.EditorTools
                 property.colorValue = value;
         }
 
+        public static void SetBool(string tag, SerializedObject so, string path, bool value)
+        {
+            var property = Property(tag, so, path);
+            if (property != null)
+                property.boolValue = value;
+        }
+
+        public static void SetEnum(string tag, SerializedObject so, string path, int value)
+        {
+            var property = Property(tag, so, path);
+            if (property != null)
+                property.enumValueIndex = value;
+        }
+
+        public static void SetVector3(string tag, SerializedObject so, string path, Vector3 value)
+        {
+            var property = Property(tag, so, path);
+            if (property != null)
+                property.vector3Value = value;
+        }
+
         public static void SetRef(string tag, SerializedObject so, string path, Object value)
         {
             var property = Property(tag, so, path);
