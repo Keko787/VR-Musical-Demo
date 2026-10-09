@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Glass_Headland
+  m_Shader: {fileID: 4800000, guid: 1c1bb9b93fb515340ab0a2ff64442a10, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _BandGlow: 0
+    - _CelSoft: 0.14
+    - _Detail: 0.25
+    - _DetailScale: 25
+    - _FogScale: 1
+    - _Rim: 0.35
+    - _Rings: 0
+    - _Snow: 0
+    - _SnowLine: 250
+    - _Strata: 1
+    - _StrataBands: 1
+    - _StrataGlow: 0
+    - _StrataScale: 9
+    - _Sway: 0
+    - _TopAmount: 1
+    - _WetBand: 0.4
+    - _WetDarken: 0
+    - _WetLevel: 0
+    m_Colors:
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 1, g: 0.75, b: 0.4, a: 1}
+    - _SnowColor: {r: 0.9, g: 0.94, b: 1, a: 1}
+    - _StrataA: {r: 0.5, g: 0.45, b: 0.4, a: 1}
+    - _StrataB: {r: 0.4, g: 0.36, b: 0.33, a: 1}
+    - _StrataC: {r: 0.62, g: 0.56, b: 0.48, a: 1}
+    - _StrataD: {r: 0.46, g: 0.4, b: 0.36, a: 1}
+    - _SwayWind: {r: 0, g: 0, b: -1, a: 0}
+    - _TopColor: {r: 0.32, g: 0.5, b: 0.24, a: 1}
+  m_BuildTextureStacks: []

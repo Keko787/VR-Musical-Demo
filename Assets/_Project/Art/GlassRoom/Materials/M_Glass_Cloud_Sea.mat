@@ -31,8 +31,12 @@ Material:
     - _CrestGlow: 0.45
     - _Detail: 0.35
     - _FogScale: 1
+    - _Hollows: 0.6
+    - _PuffHeight: 6
+    - _PuffScale: 30
     m_Colors:
     - _CrestColor: {r: 1, g: 0.82, b: 0.9, a: 1}
+    - _HollowColor: {r: 0.72, g: 0.74, b: 0.92, a: 1}
     - _LitColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowColor: {r: 0.7, g: 0.74, b: 0.95, a: 1}
   m_BuildTextureStacks: []

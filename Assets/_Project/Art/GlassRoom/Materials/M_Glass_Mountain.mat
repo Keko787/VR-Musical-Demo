@@ -38,7 +38,11 @@ Material:
     - _StrataBands: 1
     - _StrataGlow: 0
     - _StrataScale: 14
+    - _Sway: 0
     - _TopAmount: 1
+    - _WetBand: 0.4
+    - _WetDarken: 0
+    - _WetLevel: 0
     m_Colors:
     - _BaseColor: {r: 0.16, g: 0.18, b: 0.24, a: 1}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
@@ -48,5 +52,6 @@ Material:
     - _StrataB: {r: 0.47999996, g: 0.17999998, b: 0.11999995, a: 1}
     - _StrataC: {r: 0.82, g: 0.6, b: 0.42999998, a: 1}
     - _StrataD: {r: 0.72, g: 0.37999994, b: 0.24999997, a: 1}
+    - _SwayWind: {r: 0, g: 0, b: -1, a: 0}
     - _TopColor: {r: 0.78, g: 0.54999995, b: 0.39999998, a: 1}
   m_BuildTextureStacks: []
