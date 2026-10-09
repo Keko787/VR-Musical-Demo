@@ -64,6 +64,7 @@ Glass_Room                 Simulation — worlds, transitions, music globals, ro
 │  ├─ Sky                  SkyDome: one dome, painted by whichever world is awake
 │  ├─ World_RedRock        SimWorld + its land, pillar, voxels, motes
 │  ├─ World_CloudSea       SimWorld + cloud sea, cumulus towers, pillars, sparks
+│  ├─ World_Beach          SimWorld + sand, sea (SimOcean), deck, palms, pier and its lamps, headlands, islands, fireworks
 │  └─ World_Aurora         SimWorld + lake, mountains, island, curtains (and reflections), snow
 ├─ Floorboards, Rug
 ├─ Frame                   iron posts, rails, sills, corner braces
@@ -138,6 +139,36 @@ above a sea of cloud.
 - **Three distant pillars of light**, one each for bass, mids and treble.
 - **Sparks** lift off the sea with the treble.
 
+### Sunset Beach
+
+Sunset on a sandy bay. The room stands on a low wooden deck at the top of the beach, with the sea
+7 m in front and the sun going down over it, slightly right of centre. Palms line the shore both
+ways, a pier runs out to sea on the right, there are rocky headlands at the two ends of the bay,
+and islands sit on the horizon. The stars come out overhead, but not over the sunset.
+
+- **The bass swells the sea.** Swells roll in parallel to the curved shore, grow toward the sand,
+  break in the last few metres, and run up the beach as each one arrives. The more bass, the bigger
+  the sea.
+- **The beat breaks on the shore.** On every beat the surf surges up the whole beach at once, with
+  foam at its leading edge. It happens right on the beat, not a wave-travel time later, so it
+  stays legible.
+- **The pier's lamps are an equaliser.** There are 24 pairs of lamps, one band each, with the bass
+  at the shore end and the treble far out. They brighten and dim like a meter laid out in
+  perspective, and each lamp's reflection quivers on the water beneath it.
+- **The mids wave the palms.** The fronds sway in the sea wind, harder with the mids.
+- **The treble sets the sun's glitter path dancing** across the water toward the sun.
+- **Strong beats burst fireworks over the sea.** A shell bursts on the beat itself, with no launch
+  first, so the bang and the light land together. Its colour shows which part of the music made
+  it: reds and golds when the bass leads, greens when the mids do, blues and violets for the
+  treble. The bursts are mirrored in the water. No two bursts come within 0.6 s of each other
+  (1.4 s in low intensity), and each one is a small patch of sky, not a flash of the whole wall.
+
+The sea's shader decides its own height, and it knows where the sand is from the beach's own
+formula. That formula is a plain slope near the waterline, with the beach's `SimSurface` as the one
+source, handed over by `SimOcean`. That is how the water can run up the sand and foam exactly at the
+waterline. Like the lake, the sea marks itself in the stencil buffer, so the lamps' and the
+fireworks' mirrored glows are drawn on the water and nowhere else.
+
 ### Aurora
 
 Night on a lake ringed by snowy mountains, with a low moon on the left and snow drifting past the
@@ -199,6 +230,10 @@ glass. The room's lamps burn at full brightness.
 | `SimButte` | Tiered rock formations: buttes, mesas, spires, the room's pedestal |
 | `SimPuffs` | Trees and cumulus built from balls, optionally lit by a band |
 | `SkyDome`, `AuroraCurtain` | The sky's sphere; a curtain's strip |
+| `SimOcean` | Hands the sea its beach's waterline |
+| `SimPalms` | Palm trees, curved trunks and folded fronds, with sway weights for the shader |
+| `SimPier` | The pier's mesh, and its lamps and their reflections as an equaliser |
+| `SimFireworks` | Bursts on strong beats, coloured by the leading part of the music, mirrored in the sea |
 | `LightPillar`, `VoxelMesa`, `SimMotes` | The pillar, the cubes, the motes |
 | `SimMeshes` | Noise and mesh helpers |
 | `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards |
@@ -210,6 +245,8 @@ glass. The room's lamps burn at full brightness.
 | `VRMusic/SimLand` | Rock, ground, trees, snow, cumulus, voxels: cel-lit with violet shadows, strata, rim light, band glow, beat rings, haze |
 | `VRMusic/SimCloudSea` | The cloud sea lifted by the spectrogram |
 | `VRMusic/SimWater` | Sky-reflecting water that marks the stencil buffer |
+| `VRMusic/SimOcean` | The beach's sea: swells, run-up, the surge, glitter, foam; marks the stencil buffer |
+| `VRMusic/SimGlint` | Additive glows (lamps, sparks) that can also be drawn as stencil-clipped reflections |
 | `VRMusic/SimAurora` | Curtains and their stencil-clipped reflections |
 | `VRMusic/SimPillar` | The camera-facing light pillar |
 
@@ -220,7 +257,9 @@ water reflects the same sky function that the dome draws.
 cube that breaks free has particle alpha 0. It is this way round because a mesh with no colour
 channel reads as opaque white, and it must still be painted. For the same reason, any mesh the
 land shader draws must fill its second UV channel (the band glow). A missing channel is not read as
-zero, and the first canyon floor had one sector glowing white.
+zero, and the first canyon floor had one sector glowing white. The third UV channel holds sway
+(weight, phase). It is read only by a material with `_Sway` above 0 (the palms), so other meshes can
+leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel`, the waterline.
 
 ## Tuning
 
@@ -241,6 +280,14 @@ zero, and the first canyon floor had one sector glowing white.
 | `VoxelMesa` | `m_Columns` × `m_Rows` × `m_Layers`, `m_Cube` | 24 × 4 × 4, 8.5 m | The cube crown |
 | | `m_Lift` / `m_BeatKick` | 55 m / 14 m/s | How far cubes float, how hard a beat throws them |
 | `LightPillar` | `m_Width` / `m_Swell` / `m_Listen` | per pillar | Size, bass swell, which band it follows |
+| `SimSurface` (beach) | `m_ShoreDistance` / `m_BeachSlope` / `m_BayRadius` | 7 m / 0.05 / 900 m | Where the waterline is, how steep the beach, how the bay curves |
+| `M_Glass_Ocean` | `_Swell` / `_SwellByBass` | 0.3 / 0.9 m | The sea at rest, and what the bass adds |
+| | `_Surge` / `_SurgeReach` | 0.3 m / 30 m | How far a beat lifts the surf, and how far out |
+| | `_Glitter` / `_Wavelength` / `_Speed` | 1.5 / 26 m / 6 m/s | Sun path sparkle; the swells |
+| `SimPier` | `m_LampPairs` / `m_Rest` | 24 / 0.12 | Lamps (one band a pair); brightness with nothing in a band |
+| `SimFireworks` | `m_MinStrength` / `m_MinInterval` | 0.4 / 0.6 s | What beat sets a shell off, and how often at most |
+| | `m_Sparks` / `m_Life` / `m_Speed` | 140 / 2.4 s / 38 m/s | A burst's size and length |
+| `M_Glass_Palm` | `_Sway` | 0.6 m | Frond tip sway at full mids |
 | `PendantLamp` | `m_SwayDegrees` / `m_LightIntensity` | 2.5° / 0.9 | Swing and brightness |
 | `M_Glass_Canyon` | `_StrataGlow` / `_Rings` | 1.4 / 1.2 | Strata seams and beat rings on the rock |
 | `M_Glass_Window` | `_TintAmount` / `_Haze` / `_Streaks` / `_CellSize` | 0.12 / 0.06 / 0.05 / 0.11 m | The glass, and the dissolve's tile size |
@@ -254,5 +301,8 @@ zero, and the first canyon floor had one sector glowing white.
 - **Not tried in the CAVE yet:** in particular, whether MiddleVR leaves the three extra
   render-texture cameras alone (`WindowView` switches its camera back on if anything turns it off),
   and the frame rate with them.
+- **Sunset Beach** has been compiled and its shaders imported cleanly, but it has not yet been
+  rendered or played. It was written while the editor was open, so no batch preview ran. The
+  committed scene predates it: run **Rebuild Glass Room** in `GlassRoom MiddleVR` to add it.
 - **More worlds** are a `SimWorld` and some children away. The film's flower field and city would
   both suit: a skyline whose lit windows are an equaliser is an obvious next one.

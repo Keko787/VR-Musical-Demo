@@ -13,6 +13,13 @@ namespace VRShootingGallery.GlassRoom
 
         /// <summary>A lake bed rising at the shore into a ring of ridged mountains.</summary>
         MountainRing,
+
+        /// <summary>
+        /// A sandy bay: the sea in front, the shore curving seaward either side of the room, the beach
+        /// rising gently inland into dunes. Near the waterline it is a plain slope with no noise, so
+        /// the sea's shader can work out where the sand is and wash up it.
+        /// </summary>
+        Beach,
     }
 
     /// <summary>
@@ -57,6 +64,23 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField, Tooltip("Radius about the room kept level at the base height, under its pedestal.")]
         float m_LevelAround = 10f;
 
+        [Header("Beach")]
+        [SerializeField, Tooltip("Metres from the room to the waterline straight ahead. For a beach, the base height is the sea level " +
+            "and the rim height is the dunes'.")]
+        float m_ShoreDistance = 7f;
+
+        [SerializeField, Tooltip("Rise of the sand per metre inland, and the sea bed's fall per metre out, at the waterline.")]
+        float m_BeachSlope = 0.05f;
+
+        [SerializeField, Tooltip("Radius of the bay: the shore bends seaward either side of the room along a circle this big.")]
+        float m_BayRadius = 900f;
+
+        /// <summary>
+        /// The beach's waterline, for the sea's shader: (metres to the shore straight ahead, slope, bay
+        /// radius, sea level), in this object's space.
+        /// </summary>
+        public Vector4 ShoreParams => new(m_ShoreDistance, m_BeachSlope, m_BayRadius, m_Base);
+
         void Awake() => Generate();
 
         void OnDestroy()
@@ -87,8 +111,30 @@ namespace VRShootingGallery.GlassRoom
             {
                 case SurfaceProfile.DesertFloor: return Desert(x, z, r);
                 case SurfaceProfile.MountainRing: return Mountains(x, z, r);
+                case SurfaceProfile.Beach: return Beach(x, z);
                 default: return 0f;
             }
+        }
+
+        float Beach(float x, float z)
+        {
+            float shore = m_ShoreDistance + x * x / (2f * Mathf.Max(1f, m_BayRadius));
+            float d = z - shore;                    // metres out to sea; negative inland
+
+            // Under the sea the bed shelves away and levels off ten metres down, leaving the waterline
+            // at the same slope as the beach.
+            if (d >= 0f)
+                return m_Base - 10f * (1f - Mathf.Exp(-m_BeachSlope * d / 10f));
+
+            float h = m_Base - m_BeachSlope * d;
+
+            // Ripples and dunes, kept off the swash zone so the sea's shader knows exactly where the sand is.
+            float s = m_Seed * 5.3f;
+            float inland = SimMeshes.Smooth01((-d - 10f) / 30f);
+            h += inland * (SimMeshes.Fbm(x / 9f + s, z / 9f, 2) - 0.5f) * 0.3f;
+            float dunes = SimMeshes.Smooth01((-d - 30f) / 60f);
+            h += dunes * m_Rim * (0.4f + 0.8f * SimMeshes.Fbm(x / 120f, z / 120f + s, 3));
+            return h;
         }
 
         float Desert(float x, float z, float r)

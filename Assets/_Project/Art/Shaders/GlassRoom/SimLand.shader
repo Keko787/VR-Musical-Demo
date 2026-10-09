@@ -47,6 +47,15 @@ Shader "VRMusic/SimLand"
         _Rim ("Rim Light Toward The Sun", Range(0, 2)) = 0.25
         _Rings ("Beat Rings", Range(0, 4)) = 0
 
+        [Header(Shore)]
+        _WetDarken ("Wet Sand Darkening", Range(0, 1)) = 0
+        _WetLevel ("Wet Line Height (m)", Float) = 0
+        _WetBand ("Wet Band (m)", Float) = 0.4
+
+        [Header(Sway)]
+        _Sway ("Sway (m at full weight)", Float) = 0
+        _SwayWind ("Wind Direction", Vector) = (0, 0, -1, 0)
+
         _FogScale ("Fog", Range(0, 2)) = 1
     }
 
@@ -93,6 +102,11 @@ Shader "VRMusic/SimLand"
                 float4 _EmissionColor;
                 float _Rings;
                 float _Rim;
+                float _WetDarken;
+                float _WetLevel;
+                float _WetBand;
+                float _Sway;
+                float4 _SwayWind;
                 float _FogScale;
             CBUFFER_END
 
@@ -102,6 +116,7 @@ Shader "VRMusic/SimLand"
                 float3 normalOS : NORMAL;
                 float4 color : COLOR;
                 float2 uv2 : TEXCOORD1;
+                float2 uv3 : TEXCOORD2;     // sway: weight, phase. Read only when the material sways.
             };
 
             struct Varyings
@@ -117,6 +132,20 @@ Shader "VRMusic/SimLand"
             {
                 Varyings output;
                 output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+
+                // Fronds and the like swaying in the wind, harder with the mids. Weight 0 is rooted.
+                if (_Sway > 0.001)
+                {
+                    float weight = input.uv3.x;
+                    float phase = input.uv3.y;
+                    float3 wind = normalize(float3(_SwayWind.x, 0.0, _SwayWind.z) + 1e-4);
+                    float3 across = float3(-wind.z, 0.0, wind.x);
+                    float gust = 0.35 + 1.3 * _GR_Music.y;
+                    float along = sin(_GR_Clock * 1.7 + phase + weight * 1.3) * 0.6 + 0.4;
+                    float side = sin(_GR_Clock * 2.9 + phase * 1.7 + weight * 2.1);
+                    output.positionWS += (wind * along + across * side * 0.35) * (_Sway * gust * weight);
+                }
+
                 output.positionCS = TransformWorldToHClip(output.positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.color = input.color;
@@ -169,6 +198,13 @@ Shader "VRMusic/SimLand"
 
                 if (_Detail > 0.001)
                     albedo *= 1.0 - _Detail * 0.5 + _Detail * GR_Noise(p.xz / max(_DetailScale, 0.1) + p.y * 0.02);
+
+                // Sand the surf reaches is darker: a ragged band just above the waterline.
+                if (_WetDarken > 0.001)
+                {
+                    float reach = _WetLevel + _WetBand * (0.7 + 0.6 * GR_Noise(p.xz * 0.15));
+                    albedo *= 1.0 - _WetDarken * (1.0 - smoothstep(reach - 0.1, reach, p.y));
+                }
 
                 // Vertex colour tints; below full alpha it takes over — the colour becomes its own, and glows.
                 float own = 1.0 - input.color.a;

@@ -163,15 +163,17 @@ namespace VRShootingGallery.GlassRoom
             public readonly List<Color> Colours = new();
             public readonly List<Vector2> Uv = new();
             public readonly List<Vector2> Uv2 = new();
+            public readonly List<Vector2> Uv3 = new();
 
             public int Count => Vertices.Count;
 
-            public int Add(Vector3 position, Color colour, Vector2 uv = default, Vector2 uv2 = default)
+            public int Add(Vector3 position, Color colour, Vector2 uv = default, Vector2 uv2 = default, Vector2 uv3 = default)
             {
                 Vertices.Add(position);
                 Colours.Add(colour);
                 Uv.Add(uv);
                 Uv2.Add(uv2);
+                Uv3.Add(uv3);
                 return Vertices.Count - 1;
             }
 
@@ -203,6 +205,7 @@ namespace VRShootingGallery.GlassRoom
                 mesh.SetColors(Colours);
                 mesh.SetUVs(0, Uv);
                 mesh.SetUVs(1, Uv2);
+                mesh.SetUVs(2, Uv3);
                 mesh.SetTriangles(Triangles, 0);
                 if (recalculateNormals)
                     mesh.RecalculateNormals();
@@ -220,14 +223,14 @@ namespace VRShootingGallery.GlassRoom
         /// Adds a once-subdivided icosahedron, 42 vertices: round enough that cel shading reads it as
         /// a ball, cheap enough for a few thousand of them in one mesh.
         /// </summary>
-        public static void Icosphere(Builder builder, Vector3 centre, Vector3 radii, Color colour, Vector2 uv2)
+        public static void Icosphere(Builder builder, Vector3 centre, Vector3 radii, Color colour, Vector2 uv2, Vector2 uv3 = default)
         {
             if (s_IcoVertices == null)
                 BuildIcosphere();
 
             int start = builder.Count;
             foreach (var v in s_IcoVertices)
-                builder.Add(centre + Vector3.Scale(v, radii), colour, Vector2.zero, uv2);
+                builder.Add(centre + Vector3.Scale(v, radii), colour, Vector2.zero, uv2, uv3);
 
             for (int i = 0; i < s_IcoTriangles.Length; i += 3)
                 builder.Triangle(start + s_IcoTriangles[i], start + s_IcoTriangles[i + 1], start + s_IcoTriangles[i + 2]);
@@ -275,6 +278,32 @@ namespace VRShootingGallery.GlassRoom
 
             s_IcoVertices = vertices.ToArray();
             s_IcoTriangles = subdivided.ToArray();
+        }
+
+        static readonly Vector3[] s_BoxCorners =
+        {
+            new(-1, -1, -1), new(1, -1, -1), new(1, 1, -1), new(-1, 1, -1),
+            new(-1, -1, 1), new(1, -1, 1), new(1, 1, 1), new(-1, 1, 1),
+        };
+
+        static readonly int[][] s_BoxFaces =
+        {
+            new[] { 0, 3, 2, 1 }, new[] { 4, 5, 6, 7 }, new[] { 0, 1, 5, 4 },
+            new[] { 3, 7, 6, 2 }, new[] { 0, 4, 7, 3 }, new[] { 1, 2, 6, 5 },
+        };
+
+        /// <summary>Adds a box, each face its own four vertices so the edges stay sharp under cel shading.</summary>
+        public static void Box(Builder builder, Vector3 centre, Vector3 size, Color colour)
+        {
+            var half = size * 0.5f;
+            foreach (var face in s_BoxFaces)
+            {
+                int start = builder.Count;
+                foreach (int corner in face)
+                    builder.Add(centre + Vector3.Scale(s_BoxCorners[corner], half), colour);
+                builder.Triangle(start, start + 1, start + 2);
+                builder.Triangle(start, start + 2, start + 3);
+            }
         }
 
         /// <summary>A latitude-longitude sphere for the sky dome. Its winding does not matter; the sky draws both sides.</summary>

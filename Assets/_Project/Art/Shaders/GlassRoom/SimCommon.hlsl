@@ -44,6 +44,7 @@ float4 _GR_Ground;
 float4 _GR_Fog;                 // x: distance for 63% fog, y: most fog, z: how much the sun warms the haze toward it
 float4 _GR_Sky;                 // x: clouds, y: stars, z: milky way, w: cloud drift
 float4 _GR_Moon;                // xyz toward the moon; w = cos of its angular radius (0 = no moon)
+float4 _GR_CloudColor;          // what the cirrus is lit to: white by day, pink and orange at sunset
 
 // ------------------------------------------------------------------ noise
 
@@ -181,7 +182,9 @@ float3 GR_Sky(float3 dir, float sunGain)
         float twinkle = 0.6 + 0.4 * sin(_GR_Clock * (1.3 + 3.5 * h.x) + h.y * 6.283);
         twinkle = lerp(1.0, twinkle, 0.35 + 0.65 * saturate(_GR_Music.z));
         float bright = (0.35 + 1.3 * h.y * h.y) * (0.85 + 0.5 * _GR_Music.z);
-        col += star * star * bright * twinkle * smoothstep(-0.02, 0.12, y) * _GR_Sky.y;
+        // Only where the sky is dark enough: at dusk the stars come out overhead, not over the sunset.
+        float dark = saturate(1.0 - dot(col, float3(0.3, 0.59, 0.11)) * 3.0);
+        col += star * star * bright * twinkle * smoothstep(-0.02, 0.12, y) * dark * _GR_Sky.y;
 
         // The milky way: a soft band of light along a great circle.
         float3 axis = normalize(float3(0.32, 0.55, -0.77));
@@ -208,7 +211,7 @@ float3 GR_Sky(float3 dir, float sunGain)
         float c = GR_Fbm(uv * float2(0.6, 1.7) + 3.7);
         c += 0.35 * GR_Fbm(uv * 3.1 + 11.0) - 0.15;
         float cover = smoothstep(1.0 - _GR_Sky.x, 1.3 - _GR_Sky.x * 0.6, c) * smoothstep(0.0, 0.2, y);
-        float3 cloud = lerp(_GR_Horizon.rgb, float3(1.0, 1.0, 1.0), 0.8) * (0.8 + 0.2 * saturate(sd));
+        float3 cloud = lerp(_GR_Horizon.rgb, _GR_CloudColor.rgb, 0.8) * (0.8 + 0.2 * saturate(sd));
         cloud += _GR_SunColor.rgb * pow(saturate(sd), 4.0) * 0.3;
         col = lerp(col, cloud, cover * 0.8);
     }

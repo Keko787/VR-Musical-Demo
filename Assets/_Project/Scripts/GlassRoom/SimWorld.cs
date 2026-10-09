@@ -34,6 +34,9 @@ namespace VRShootingGallery.GlassRoom
 
         [SerializeField, Range(0f, 1f)] float m_Clouds = 0.5f;
         [SerializeField] float m_CloudDrift = 0.003f;
+
+        [SerializeField, Tooltip("What the cirrus is lit to. White by day; pink and orange for a sunset.")]
+        Color m_CloudColour = Color.white;
         [SerializeField, Range(0f, 2f)] float m_Stars;
         [SerializeField, Range(0f, 1f)] float m_MilkyWay;
         [SerializeField] Vector3 m_MoonDirection = new(-0.75f, 0.38f, 0.35f);
@@ -103,6 +106,7 @@ namespace VRShootingGallery.GlassRoom
         static readonly int k_Fog = Shader.PropertyToID("_GR_Fog");
         static readonly int k_Sky = Shader.PropertyToID("_GR_Sky");
         static readonly int k_Moon = Shader.PropertyToID("_GR_Moon");
+        static readonly int k_CloudColor = Shader.PropertyToID("_GR_CloudColor");
         static readonly int k_RingColor = Shader.PropertyToID("_GR_RingColor");
         static readonly int k_RingOrigin = Shader.PropertyToID("_GR_RingOrigin");
 
@@ -119,6 +123,7 @@ namespace VRShootingGallery.GlassRoom
             Shader.SetGlobalColor(k_Ground, m_Ground);
             Shader.SetGlobalVector(k_Fog, new Vector4(m_FogDistance, m_FogAmount, m_FogSunGlow, 0f));
             Shader.SetGlobalVector(k_Sky, new Vector4(m_Clouds, m_Stars, m_MilkyWay, m_CloudDrift));
+            Shader.SetGlobalColor(k_CloudColor, m_CloudColour);
 
             var moon = frame * (m_MoonDirection.sqrMagnitude > 1e-6f ? m_MoonDirection.normalized : Vector3.up);
             float moonDisc = m_MoonDegrees > 0f ? Mathf.Cos(m_MoonDegrees * Mathf.Deg2Rad) : 0f;

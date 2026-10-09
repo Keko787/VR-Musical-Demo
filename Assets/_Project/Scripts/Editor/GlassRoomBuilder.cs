@@ -25,9 +25,10 @@ namespace VRShootingGallery.EditorTools
     /// room far past the window cameras' — so neither ever draws the other.
     /// </para>
     /// <para>
-    /// Three worlds are built, all round the same point (the room's place outside), only one awake at
-    /// a time: <b>Red Rock</b>, the canyon and light pillar from the film's opening; <b>Above the
-    /// Clouds</b>, the sea of cloud the room floats over in the film; and <b>Aurora</b>, a night lake.
+    /// Four worlds are built, all round the same point (the room's place outside), only one awake at
+    /// a time, running from day to night: <b>Red Rock</b>, the canyon and light pillar from the film's
+    /// opening; <b>Above the Clouds</b>, the sea of cloud the room floats over in the film; <b>Sunset
+    /// Beach</b>, surf, palms, a lamp-lit pier and fireworks; and <b>Aurora</b>, a night lake.
     /// The land is generated at run time from the numbers here, so nothing large is saved.
     /// </para>
     /// <para>
@@ -72,6 +73,9 @@ namespace VRShootingGallery.EditorTools
         const float k_Perimeter = CaveScreens.SideWidth * 2f + CaveScreens.FrontWidth;
 
         static readonly Color k_SignColour = new(0.42f, 0.46f, 0.52f);
+
+        /// <summary>The beach's sea level, below the room's floor: the sand rises from it to the deck the room stands on.</summary>
+        const float k_SeaLevel = -1.2f;
 
         // ================================================================== menus
 
@@ -139,6 +143,7 @@ namespace VRShootingGallery.EditorTools
             {
                 BuildRedRock(outside, simulation, p),
                 BuildCloudSea(outside, simulation, p),
+                BuildBeach(outside, simulation, p),
                 BuildAurora(outside, simulation, p),
             };
 
@@ -805,6 +810,169 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>
+        /// Sunset on a sandy bay: the room on a low deck at the top of the beach, the sea in front with
+        /// the sun going down over it, palms along the shore, a pier running out to sea, headlands at
+        /// the ends of the bay and islands on the horizon. The bass swells the sea, a beat surges the
+        /// surf up the sand, the mids wave the palms, the treble sets the sun's glitter path dancing,
+        /// the pier's lamps are an equaliser, and strong beats burst fireworks over the water.
+        /// </summary>
+        static SimWorld BuildBeach(Transform outside, Simulation simulation, Palette p)
+        {
+            const float shore = 7f;
+            const float slope = 0.05f;
+            const float bay = 900f;
+            var world = NewChild(outside, "World_Beach");
+
+            var sandObject = MeshObject(world, "Sand", Vector3.zero, Quaternion.identity, p.Sand);
+            var sand = Undo.AddComponent<SimSurface>(sandObject);
+            var so = new SerializedObject(sand);
+            SetEnum(k_Tag, so, "m_Profile", (int)SurfaceProfile.Beach);
+            SetFloat(k_Tag, so, "m_InnerRadius", 1f);
+            SetFloat(k_Tag, so, "m_OuterRadius", 8200f);
+            SetInt(k_Tag, so, "m_Rings", 240);
+            SetInt(k_Tag, so, "m_Segments", 420);
+            SetInt(k_Tag, so, "m_Seed", 7);
+            SetFloat(k_Tag, so, "m_Base", k_SeaLevel);
+            SetFloat(k_Tag, so, "m_Rim", 6f);
+            SetFloat(k_Tag, so, "m_ShoreDistance", shore);
+            SetFloat(k_Tag, so, "m_BeachSlope", slope);
+            SetFloat(k_Tag, so, "m_BayRadius", bay);
+            so.ApplyModifiedProperties();
+
+            var seaObject = MeshObject(world, "Sea", new Vector3(0f, k_SeaLevel, 0f), Quaternion.identity, p.Ocean);
+            var sea = Undo.AddComponent<SimSurface>(seaObject);
+            so = new SerializedObject(sea);
+            SetEnum(k_Tag, so, "m_Profile", (int)SurfaceProfile.Flat);
+            SetFloat(k_Tag, so, "m_InnerRadius", 1f);
+            SetFloat(k_Tag, so, "m_OuterRadius", 8200f);
+            SetInt(k_Tag, so, "m_Rings", 240);
+            SetInt(k_Tag, so, "m_Segments", 420);
+            so.ApplyModifiedProperties();
+
+            var ocean = Undo.AddComponent<SimOcean>(seaObject);
+            so = new SerializedObject(ocean);
+            SetRef(k_Tag, so, "m_Beach", sand);
+            so.ApplyModifiedProperties();
+
+            // The deck the room stands on, at the top of the beach; its front edge shows under the front wall.
+            float sandAtRoom = k_SeaLevel + slope * shore;
+            var deck = NewChild(world, "Deck");
+            var boards = Primitive(deck, PrimitiveType.Cube, "Boards", p.Deck);
+            boards.localPosition = new Vector3(0f, -0.12f, -0.05f);
+            boards.localScale = new Vector3(4.6f, 0.22f, 3.3f);
+            Quiet(boards.GetComponent<Renderer>());
+            float postTop = -0.23f;
+            float postFoot = sandAtRoom - 0.5f;
+            foreach (float x in new[] { -2.1f, 2.1f })
+                foreach (float z in new[] { -1.5f, 1.4f })
+                {
+                    var post = Primitive(deck, PrimitiveType.Cube, "Post", p.Deck);
+                    post.localPosition = new Vector3(x, (postTop + postFoot) * 0.5f, z);
+                    post.localScale = new Vector3(0.2f, postTop - postFoot, 0.2f);
+                    Quiet(post.GetComponent<Renderer>());
+                }
+
+            // Palms: two beside the room, groves along the shore both ways, a few behind.
+            var palmObject = MeshObject(world, "Palms", Vector3.zero, Quaternion.identity, p.Palm);
+            var palms = Undo.AddComponent<SimPalms>(palmObject);
+            so = new SerializedObject(palms);
+            SetRef(k_Tag, so, "m_Ground", sand);
+            SetInt(k_Tag, so, "m_Seed", 11);
+            SetGroves(so, new[]
+            {
+                Grove(new Vector3(-9f, 0f, 2f), new Vector2(2.5f, 3f), 2, new Vector2(7f, 9.5f), 0f, 18f),
+                Grove(new Vector3(10f, 0f, -3f), new Vector2(2.5f, 3.5f), 2, new Vector2(8f, 10.5f), 15f, 14f),
+                Grove(new Vector3(-60f, 0f, -3f), new Vector2(40f, 7f), 10, new Vector2(8f, 13f), 5f, 20f),
+                Grove(new Vector3(-180f, 0f, 8f), new Vector2(60f, 8f), 12, new Vector2(8f, 13f), 0f, 18f),
+                Grove(new Vector3(85f, 0f, -6f), new Vector2(30f, 7f), 8, new Vector2(8f, 12f), 10f, 18f),
+                Grove(new Vector3(210f, 0f, 12f), new Vector2(70f, 9f), 12, new Vector2(8f, 13f), 0f, 18f),
+                Grove(new Vector3(-30f, 0f, -40f), new Vector2(25f, 15f), 6, new Vector2(9f, 13f), 0f, 10f),
+                Grove(new Vector3(40f, 0f, -45f), new Vector2(25f, 15f), 6, new Vector2(9f, 13f), 0f, 10f),
+            });
+            so.ApplyModifiedProperties();
+
+            // Headlands at the horns of the bay, islands on the horizon.
+            Butte(world, "Headland_Left", new Vector3(-480f, 0f, 190f), Yaw(-480f, 190f), p.Headland, 120f, new Vector2(1.6f, 0.8f), -6f,
+                new[] { 35f, 58f }, new[] { 1f, 0.7f }, 0.25f, 0.12f, 0f, 0.3f, 71);
+            Butte(world, "Headland_Right", new Vector3(520f, 0f, 230f), Yaw(520f, 230f), p.Headland, 140f, new Vector2(1.6f, 0.8f), -6f,
+                new[] { 45f, 75f }, new[] { 1f, 0.68f }, 0.25f, 0.12f, 0f, 0.3f, 73);
+            Butte(world, "Island_Left", new Vector3(-1100f, 0f, 3400f), Yaw(-1100f, 3400f), p.Headland, 420f, new Vector2(1.6f, 0.8f), -10f,
+                new[] { 60f, 140f }, new[] { 1f, 0.55f }, 0.3f, 0.1f, 0f, 0.2f, 79);
+            Butte(world, "Island_Right", new Vector3(1500f, 0f, 2800f), Yaw(1500f, 2800f), p.Headland, 260f, new Vector2(1.3f, 0.8f), -10f,
+                new[] { 50f, 95f }, new[] { 1f, 0.6f }, 0.3f, 0.1f, 0f, 0.2f, 83);
+            Butte(world, "Island_Far", new Vector3(250f, 0f, 4600f), Yaw(250f, 4600f), p.Headland, 700f, new Vector2(2f, 0.7f), -10f,
+                new[] { 40f, 90f }, new[] { 1f, 0.5f }, 0.3f, 0.1f, 0f, 0.2f, 89);
+
+            // Scrub on the dunes and green on the headlands.
+            var scrubObject = MeshObject(world, "Scrub", Vector3.zero, Quaternion.identity, p.Foliage);
+            var scrub = Undo.AddComponent<SimPuffs>(scrubObject);
+            so = new SerializedObject(scrub);
+            SetEnum(k_Tag, so, "m_Kind", (int)PuffKind.Trees);
+            SetInt(k_Tag, so, "m_Seed", 13);
+            SetRef(k_Tag, so, "m_Ground", sand);
+            var scrubGreen = new Color(0.22f, 0.38f, 0.16f);
+            SetClusters(so, new[]
+            {
+                Trees(new Vector3(0f, 0f, -70f), new Vector2(220f, 25f), 40, 1.6f, scrubGreen, true),
+                Trees(new Vector3(-250f, 0f, -40f), new Vector2(120f, 30f), 25, 1.8f, scrubGreen, true),
+                Trees(new Vector3(260f, 0f, -40f), new Vector2(120f, 30f), 25, 1.8f, scrubGreen, true),
+                Trees(new Vector3(-480f, 58f, 190f), new Vector2(70f, 40f), 12, 6f, new Color(0.18f, 0.34f, 0.15f), false),
+                Trees(new Vector3(520f, 75f, 230f), new Vector2(80f, 45f), 14, 6f, new Color(0.18f, 0.34f, 0.15f), false),
+            });
+            so.ApplyModifiedProperties();
+
+            // The pier, its lamps an equaliser running out to sea.
+            var pierAt = new Vector3(32f, k_SeaLevel, -12f);
+            var pierObject = MeshObject(world, "Pier", pierAt, Quaternion.identity, p.PierWood);
+            var glows = ParticleObject(pierObject.transform, "Lamp_Glows", Vector3.zero, Quaternion.identity, p.Glint, 128);
+            var lampReflections = ParticleObject(pierObject.transform, "Lamp_Reflections", Vector3.zero, Quaternion.identity,
+                p.GlintReflection, 128);
+            var pier = Undo.AddComponent<SimPier>(pierObject);
+            so = new SerializedObject(pier);
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            SetRef(k_Tag, so, "m_Glows", glows.GetComponent<ParticleSystem>());
+            SetRef(k_Tag, so, "m_Reflections", lampReflections.GetComponent<ParticleSystem>());
+            SetFloat(k_Tag, so, "m_Length", 260f);
+            SetFloat(k_Tag, so, "m_Deck", 1.6f);
+            SetFloat(k_Tag, so, "m_WaterFrom", shore + pierAt.x * pierAt.x / (2f * bay) - pierAt.z);
+            so.ApplyModifiedProperties();
+
+            // Fireworks out over the water, mirrored in it.
+            var fireworks = ParticleObject(world, "Fireworks", new Vector3(40f, k_SeaLevel, 650f), Quaternion.identity, p.Glint, 1024);
+            var fireworkReflections = ParticleObject(fireworks.transform, "Reflections", Vector3.zero, Quaternion.identity,
+                p.GlintReflection, 1024);
+            var bursts = Undo.AddComponent<SimFireworks>(fireworks);
+            so = new SerializedObject(bursts);
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            SetRef(k_Tag, so, "m_Reflections", fireworkReflections.GetComponent<ParticleSystem>());
+            so.ApplyModifiedProperties();
+
+            var sim = Undo.AddComponent<SimWorld>(world.gameObject);
+            so = new SerializedObject(sim);
+            SetString(k_Tag, so, "m_Title", "Sunset Beach");
+            SetColor(k_Tag, so, "m_Zenith", new Color(0.1f, 0.12f, 0.34f));
+            SetColor(k_Tag, so, "m_Horizon", new Color(1f, 0.56f, 0.34f));
+            SetColor(k_Tag, so, "m_Ground", new Color(0.25f, 0.2f, 0.25f));
+            SetVector3(k_Tag, so, "m_SunDirection", new Vector3(0.22f, 0.07f, 1f));
+            SetColor(k_Tag, so, "m_SunColour", new Color(1.5f, 0.8f, 0.42f));
+            SetFloat(k_Tag, so, "m_SunDegrees", 1.4f);
+            SetColor(k_Tag, so, "m_ShadowColour", new Color(0.3f, 0.22f, 0.42f));
+            SetFloat(k_Tag, so, "m_Clouds", 0.45f);
+            SetFloat(k_Tag, so, "m_CloudDrift", 0.002f);
+            SetColor(k_Tag, so, "m_CloudColour", new Color(1f, 0.6f, 0.55f));
+            SetFloat(k_Tag, so, "m_Stars", 0.4f);
+            SetFloat(k_Tag, so, "m_FogDistance", 4000f);
+            SetFloat(k_Tag, so, "m_FogAmount", 0.6f);
+            SetFloat(k_Tag, so, "m_FogSunGlow", 0.9f);
+            SetColor(k_Tag, so, "m_RoomAmbient", new Color(0.4f, 0.3f, 0.3f));
+            SetColor(k_Tag, so, "m_RoomLight", new Color(1f, 0.62f, 0.38f));
+            SetFloat(k_Tag, so, "m_RoomLightIntensity", 0.85f);
+            SetFloat(k_Tag, so, "m_LampLevel", 0.85f);
+            so.ApplyModifiedProperties();
+            return sim;
+        }
+
+        /// <summary>
         /// Night on a lake ringed by snowy mountains: three aurora curtains across the sky whose rays
         /// are the spectrum, mirrored in the water; stars that twinkle with the treble; a low moon off
         /// to the left; snow drifting past the glass. The room's lamps burn full.
@@ -905,6 +1073,11 @@ namespace VRShootingGallery.EditorTools
         static PuffCluster Trees(Vector3 centre, Vector2 spread, int count, float size, Color colour, bool onGround)
         {
             return new PuffCluster { Centre = centre, Spread = spread, Count = count, Size = size, Colour = colour, OnGround = onGround };
+        }
+
+        static PalmGrove Grove(Vector3 centre, Vector2 spread, int count, Vector2 height, float leanToward, float lean)
+        {
+            return new PalmGrove { Centre = centre, Spread = spread, Count = count, Height = height, LeanToward = leanToward, Lean = lean };
         }
 
         static LightPillar Pillar(Transform parent, string name, Vector3 foot, Simulation simulation, Palette p, float width, float height,
@@ -1085,6 +1258,7 @@ namespace VRShootingGallery.EditorTools
             // Outside.
             public Material Sky, Canyon, Foliage, Voxel, Pool, Pillar, Glow, Mote;
             public Material CloudSea, Cumulus, Lake, Mountain, Aurora, AuroraReflection, Snow;
+            public Material Sand, Ocean, Palm, PierWood, Deck, Headland, Glint, GlintReflection;
         }
 
         static string MaterialPath(string name) => $"{k_Art}/Materials/M_Glass_{name}.mat";
@@ -1098,9 +1272,11 @@ namespace VRShootingGallery.EditorTools
             var water = LoadShader(k_Shaders, "SimWater.shader");
             var aurora = LoadShader(k_Shaders, "SimAurora.shader");
             var pillar = LoadShader(k_Shaders, "SimPillar.shader");
+            var ocean = LoadShader(k_Shaders, "SimOcean.shader");
+            var glint = LoadShader(k_Shaders, "SimGlint.shader");
             var beam = AssetDatabase.LoadAssetAtPath<Shader>(k_BeamShaderPath);
             if (window == null || sky == null || land == null || cloudSea == null || water == null || aurora == null || pillar == null ||
-                beam == null)
+                ocean == null || glint == null || beam == null)
             {
                 Debug.LogError($"[{k_Tag}] Missing a shader in '{k_Shaders}' or '{k_BeamShaderPath}'.");
                 return null;
@@ -1268,6 +1444,92 @@ namespace VRShootingGallery.EditorTools
                     m.SetFloat("_Radial", 1f);
                     m.EnableKeyword("_RADIAL");
                 }),
+
+                Sand = ShaderMaterial("Sand", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", new Color(0.93f, 0.8f, 0.6f));
+                    m.SetFloat("_Detail", 0.22f);
+                    m.SetFloat("_DetailScale", 3f);
+                    m.SetFloat("_WetDarken", 0.35f);
+                    m.SetFloat("_WetLevel", k_SeaLevel);
+                    m.SetFloat("_WetBand", 0.45f);
+                    m.SetFloat("_CelSoft", 0.25f);
+                    m.SetFloat("_Rim", 0.15f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                Ocean = ShaderMaterial("Ocean", ocean, _ => { }),
+                Palm = ShaderMaterial("Palm", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", Color.white);
+                    m.SetFloat("_Detail", 0.1f);
+                    m.SetFloat("_DetailScale", 2f);
+                    m.SetFloat("_CelSoft", 0.2f);
+                    m.SetFloat("_Rim", 0.35f);
+                    m.SetFloat("_Sway", 0.6f);
+                    m.SetVector("_SwayWind", new Vector4(0f, 0f, -1f, 0f));
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                PierWood = ShaderMaterial("Pier_Wood", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", Color.white);
+                    m.SetFloat("_Detail", 0.25f);
+                    m.SetFloat("_DetailScale", 1.5f);
+                    m.SetFloat("_CelSoft", 0.12f);
+                    m.SetFloat("_Rim", 0.25f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                Deck = ShaderMaterial("Deck", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", new Color(0.5f, 0.36f, 0.24f));
+                    m.SetFloat("_Detail", 0.3f);
+                    m.SetFloat("_DetailScale", 0.8f);
+                    m.SetFloat("_CelSoft", 0.12f);
+                    m.SetFloat("_Rim", 0.2f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                Headland = ShaderMaterial("Headland", land, m =>
+                {
+                    m.SetFloat("_Strata", 1f);
+                    m.SetFloat("_StrataScale", 9f);
+                    m.SetColor("_StrataA", new Color(0.5f, 0.45f, 0.4f));
+                    m.SetColor("_StrataB", new Color(0.4f, 0.36f, 0.33f));
+                    m.SetColor("_StrataC", new Color(0.62f, 0.56f, 0.48f));
+                    m.SetColor("_StrataD", new Color(0.46f, 0.4f, 0.36f));
+                    m.SetColor("_TopColor", new Color(0.32f, 0.5f, 0.24f));
+                    m.SetFloat("_TopAmount", 1f);
+                    m.SetFloat("_Detail", 0.25f);
+                    m.SetFloat("_DetailScale", 25f);
+                    m.SetFloat("_StrataGlow", 0f);
+                    m.SetFloat("_CelSoft", 0.14f);
+                    m.SetFloat("_Rim", 0.35f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                Glint = ShaderMaterial("Glint", glint, m =>
+                {
+                    m.SetFloat("_Softness", 2.2f);
+                    m.SetFloat("_Core", 0.45f);
+                    m.SetFloat("_Waver", 0f);
+                    m.SetFloat("_ZTest", (float)CompareFunction.LessEqual);
+                    m.SetFloat("_StencilComp", (float)CompareFunction.Always);
+                }),
+                GlintReflection = ShaderMaterial("Glint_Reflection", glint, m =>
+                {
+                    m.SetFloat("_Softness", 1.6f);
+                    m.SetFloat("_Core", 0.2f);
+                    m.SetFloat("_Waver", 1f);
+                    m.SetFloat("_ZTest", (float)CompareFunction.Always);
+                    m.SetFloat("_StencilComp", (float)CompareFunction.Equal);
+                    m.SetFloat("_StencilRef", 1f);
+                }),
             };
 
             foreach (var field in typeof(Palette).GetFields())
@@ -1399,6 +1661,23 @@ namespace VRShootingGallery.EditorTools
                 element.FindPropertyRelative("Band").floatValue = cluster.Band;
                 element.FindPropertyRelative("Glow").floatValue = cluster.Glow;
                 element.FindPropertyRelative("OnGround").boolValue = cluster.OnGround;
+            }
+        }
+
+        static void SetGroves(SerializedObject so, PalmGrove[] groves)
+        {
+            var property = so.FindProperty("m_Groves");
+            property.arraySize = groves.Length;
+            for (int i = 0; i < groves.Length; i++)
+            {
+                var element = property.GetArrayElementAtIndex(i);
+                var grove = groves[i];
+                element.FindPropertyRelative("Centre").vector3Value = grove.Centre;
+                element.FindPropertyRelative("Spread").vector2Value = grove.Spread;
+                element.FindPropertyRelative("Count").intValue = grove.Count;
+                element.FindPropertyRelative("Height").vector2Value = grove.Height;
+                element.FindPropertyRelative("LeanToward").floatValue = grove.LeanToward;
+                element.FindPropertyRelative("Lean").floatValue = grove.Lean;
             }
         }
 
