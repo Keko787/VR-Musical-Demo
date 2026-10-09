@@ -302,7 +302,9 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
   render-texture cameras alone (`WindowView` switches its camera back on if anything turns it off),
   and the frame rate with them.
 - **Sunset Beach** has been compiled and its shaders imported cleanly, but it has not yet been
-  rendered or played. It was written while the editor was open, so no batch preview ran. The
-  committed scene predates it: run **Rebuild Glass Room** in `GlassRoom MiddleVR` to add it.
+  checked in renders. It was written while the editor was open, so no batch preview ran; the scene
+  was then rebuilt with it in the editor.
+- **The furniture is switched off** in the saved scene (bed, cabinet, rug, desk, pendant lamps). A
+  rebuild switches it back on.
 - **More worlds** are a `SimWorld` and some children away. The film's flower field and city would
   both suit: a skyline whose lit windows are an equaliser is an obvious next one.
