@@ -53,6 +53,12 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField, Tooltip("Seconds for a world to dissolve into the blank page and the next to build out of it.")]
         float m_TransitionSeconds = 3.2f;
 
+        [SerializeField, Tooltip("Seconds the glitch between a world's variants lasts; the look swaps half way.")]
+        float m_GlitchSeconds = 1.4f;
+
+        [SerializeField, Tooltip("Seconds between variant changes in a world that has them, with nobody touching anything. 0 is off.")]
+        float m_VariantEverySeconds;
+
         [SerializeField, Tooltip("Where the worlds are: the glass room's place outside. The window cameras stand here.")]
         Transform m_Outside;
 
@@ -100,8 +106,11 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField] int m_NextTrackButton = 3;
         [SerializeField] int m_PlayPauseButton = 4;
 
+        [SerializeField, Tooltip("Wand button that glitches the world into its next variant, in a world that has them.")]
+        int m_VariantButton = 6;
+
         [Header("Desk")]
-        [SerializeField, Tooltip("W changes the world (Shift+W goes back), L toggles low intensity, N skips, Space pauses, and the number-row keys " +
+        [SerializeField, Tooltip("W changes the world (Shift+W goes back), V its variant (Shift+V goes back), L toggles low intensity, N skips, Space pauses, and the number-row keys " +
             "stand in for the wand buttons with the same digit. Stays on in builds so the room can be run from the server node.")]
         bool m_KeyboardControl = true;
 
@@ -180,6 +189,13 @@ namespace VRShootingGallery.GlassRoom
         bool m_Transiting;
         float m_WorldSince;
         int m_TracksStarted;
+
+        bool m_Glitching;
+        float m_GlitchTime;
+        float m_GlitchSeed;
+        int m_PendingVariant;
+        bool m_VariantSwapped;
+        float m_VariantSince;
 
         Color m_Ambient;
         Color m_SunColour;
@@ -268,7 +284,12 @@ namespace VRShootingGallery.GlassRoom
             if (m_AutoCycleSeconds > 0f && !m_Transiting && Time.time - m_WorldSince > m_AutoCycleSeconds)
                 NextWorld();
 
+            if (m_VariantEverySeconds > 0f && !m_Transiting && !m_Glitching && World != null && World.VariantCount > 1 &&
+                Time.time - m_VariantSince > m_VariantEverySeconds)
+                NextVariant();
+
             UpdateTransition(dt);
+            UpdateGlitch(dt);
             PushGlobals();
             LightRoom(dt);
             DriveWindows();
@@ -476,6 +497,75 @@ namespace VRShootingGallery.GlassRoom
             }
         }
 
+        // ---------------------------------------------------------------- variants
+
+        public void NextVariant() => ShowVariant(VariantTarget() + 1);
+        public void PreviousVariant() => ShowVariant(VariantTarget() - 1);
+
+        /// <summary>The variant on show or, mid-glitch, the one on its way.</summary>
+        int VariantTarget() => m_Glitching && !m_VariantSwapped ? m_PendingVariant : Mathf.Max(0, World != null ? World.VariantIndex : 0);
+
+        /// <summary>
+        /// Glitches the world outside into another of its looks. Only in a world that has variants,
+        /// and not while the room is changing worlds; the look swaps half way through the glitch.
+        /// </summary>
+        public void ShowVariant(int index)
+        {
+            var world = World;
+            if (world == null || world.VariantCount < 2 || m_Transiting)
+                return;
+
+            index = ((index % world.VariantCount) + world.VariantCount) % world.VariantCount;
+            if (!m_Glitching && index == world.VariantIndex)
+                return;
+
+            m_PendingVariant = index;
+            if (!m_Glitching || m_VariantSwapped)
+            {
+                m_Glitching = true;
+                m_GlitchTime = 0f;
+                m_VariantSwapped = false;
+                m_GlitchSeed = Random.Range(0f, 100f);
+            }
+        }
+
+        void UpdateGlitch(float dt)
+        {
+            if (!m_Glitching)
+                return;
+
+            m_GlitchTime += dt;
+            float half = Mathf.Max(0.1f, m_GlitchSeconds) * 0.5f;
+
+            if (!m_VariantSwapped && m_GlitchTime >= half)
+            {
+                m_VariantSwapped = true;
+                World?.SetVariant(m_PendingVariant);
+                World?.PushSky(Frame);
+                m_VariantSince = Time.time;
+                UpdateSign();
+            }
+
+            if (m_GlitchTime >= half * 2f)
+            {
+                m_Glitching = false;
+                m_GlitchTime = 0f;
+            }
+        }
+
+        /// <summary>How hard the glass is glitching, 0–1: up to its worst as the look swaps, then back. Gentler in low intensity.</summary>
+        float GlitchAmount
+        {
+            get
+            {
+                if (!m_Glitching)
+                    return 0f;
+
+                float p = Mathf.Clamp01(m_GlitchTime / Mathf.Max(0.1f, m_GlitchSeconds));
+                return Mathf.Pow(Mathf.Sin(p * Mathf.PI), 0.8f) * (m_LowIntensity ? 0.6f : 1f);
+            }
+        }
+
         // ---------------------------------------------------------------- the room
 
         void LightRoom(float dt)
@@ -519,6 +609,7 @@ namespace VRShootingGallery.GlassRoom
                     continue;
 
                 window.SetLamps(m_Lamps);
+                window.SetGlitch(GlitchAmount, m_GlitchSeed, !m_LowIntensity);
                 window.SetTransition(m_Transiting ? m_Dissolve : 0f, blank);
             }
         }
@@ -541,6 +632,8 @@ namespace VRShootingGallery.GlassRoom
                 m_Deck?.NextTrack();
             if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
                 m_Deck?.TogglePause();
+            if (m_VariantButton >= 0 && MiddleVRWand.PressedThisFrame(m_VariantButton))
+                NextVariant();
 
             var keyboard = m_KeyboardControl ? Keyboard.current : null;
             if (keyboard == null)
@@ -556,6 +649,18 @@ namespace VRShootingGallery.GlassRoom
             else if (DigitPressed(keyboard, m_WorldButton))
             {
                 NextWorld();
+            }
+
+            if (keyboard.vKey.wasPressedThisFrame)
+            {
+                if (keyboard.shiftKey.isPressed)
+                    PreviousVariant();
+                else
+                    NextVariant();
+            }
+            else if (DigitPressed(keyboard, m_VariantButton))
+            {
+                NextVariant();
             }
 
             if (keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_IntensityButton))
@@ -588,6 +693,10 @@ namespace VRShootingGallery.GlassRoom
             if (world != null)
                 m_Text.Append("   ·   ").Append(world.Title).Append(" (").Append(System.Array.IndexOf(m_Worlds, world) + 1)
                     .Append('/').Append(WorldCount).Append(')');
+
+            if (world != null && world.VariantCount > 1)
+                m_Text.Append(" — ").Append(world.VariantName).Append(" (").Append(world.VariantIndex + 1).Append('/')
+                    .Append(world.VariantCount).Append(')');
 
             if (m_LowIntensity)
                 m_Text.Append("   ·   LOW INTENSITY");

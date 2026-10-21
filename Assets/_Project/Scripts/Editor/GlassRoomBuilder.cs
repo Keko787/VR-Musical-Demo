@@ -25,10 +25,12 @@ namespace VRShootingGallery.EditorTools
     /// room far past the window cameras' — so neither ever draws the other.
     /// </para>
     /// <para>
-    /// Four worlds are built, all round the same point (the room's place outside), only one awake at
-    /// a time, running from day to night: <b>Red Rock</b>, the canyon and light pillar from the film's
-    /// opening; <b>Above the Clouds</b>, the sea of cloud the room floats over in the film; <b>Sunset
-    /// Beach</b>, surf, palms, a lamp-lit pier and fireworks; and <b>Aurora</b>, a night lake.
+    /// Five worlds are built, all round the same point (the room's place outside), only one awake at
+    /// a time, running from day to night and out into space: <b>Red Rock</b>, the canyon and light
+    /// pillar from the film's opening; <b>Above the Clouds</b>, the sea of cloud the room floats over in
+    /// the film; <b>Sunset Beach</b>, surf, palms, a lamp-lit pier and fireworks; <b>Aurora</b>, a night
+    /// lake; and <b>Orbit</b>, an alien meadow under planets and asteroids after Good Kid's video, with
+    /// three variants switched by a glitch on the glass.
     /// The land is generated at run time from the numbers here, so nothing large is saved.
     /// </para>
     /// <para>
@@ -145,6 +147,7 @@ namespace VRShootingGallery.EditorTools
                 BuildCloudSea(outside, simulation, p),
                 BuildBeach(outside, simulation, p),
                 BuildAurora(outside, simulation, p),
+                BuildOrbit(outside, simulation, p),
             };
 
             BuildFloor(root, p);
@@ -1047,7 +1050,272 @@ namespace VRShootingGallery.EditorTools
             return sim;
         }
 
+        /// <summary>
+        /// Space, after Good Kid's "Orbit": an alien meadow under a sky full of things. Cyan grass
+        /// whose tips glow with the treble, big tropical leaves swaying with the bass, teal boulders and
+        /// ribbed tubes arching out of the ground; overhead a ringed planet whose ring is the spectrum,
+        /// a star whose corona breathes with the bass and flares on the beat, a field of asteroids that
+        /// lift and turn with their bands, satellites blinking on the beat, shooting stars on strong
+        /// beats, all against a nebula. Three variants — Orbit, Pink Nebula, Green Signal — repaint it,
+        /// switched with a glitch on the glass.
+        /// </summary>
+        static SimWorld BuildOrbit(Transform outside, Simulation simulation, Palette p)
+        {
+            var world = NewChild(outside, "World_Orbit");
+
+            var groundObject = MeshObject(world, "Meadow", Vector3.zero, Quaternion.identity, p.Meadow);
+            var ground = Undo.AddComponent<SimSurface>(groundObject);
+            var so = new SerializedObject(ground);
+            SetEnum(k_Tag, so, "m_Profile", (int)SurfaceProfile.DesertFloor);
+            SetFloat(k_Tag, so, "m_InnerRadius", 1f);
+            SetFloat(k_Tag, so, "m_OuterRadius", 8200f);
+            SetInt(k_Tag, so, "m_Rings", 220);
+            SetInt(k_Tag, so, "m_Segments", 400);
+            SetInt(k_Tag, so, "m_Seed", 9);
+            SetFloat(k_Tag, so, "m_Base", -0.05f);
+            SetFloat(k_Tag, so, "m_Rim", 90f);
+            SetFloat(k_Tag, so, "m_RimRadius", 2200f);
+            SetFloat(k_Tag, so, "m_RimWidth", 1500f);
+            SetFloat(k_Tag, so, "m_Terraces", 0f);
+            SetVector4(so, "m_Basin", Vector4.zero);
+            SetFloat(k_Tag, so, "m_LevelAround", 5f);
+            so.ApplyModifiedProperties();
+
+            // Grass thick round the room and thinning out; leaves near the glass and scattered beyond.
+            Grow(world, "Grass", p.Grass, FloraKind.Grass, ground, 21, new[]
+            {
+                Patch(Vector3.zero, new Vector2(12f, 12f), 1800, new Vector2(0.35f, 0.65f)),
+                Patch(Vector3.zero, new Vector2(45f, 45f), 2600, new Vector2(0.45f, 0.9f)),
+                Patch(new Vector3(0f, 0f, 30f), new Vector2(160f, 140f), 2400, new Vector2(0.8f, 1.6f)),
+            });
+            Grow(world, "Broadleaves", p.LeafLight, FloraKind.Broadleaf, ground, 22, new[]
+            {
+                Patch(new Vector3(-7f, 0f, 6f), new Vector2(1.5f, 1.5f), 1, new Vector2(2.6f, 3.4f)),
+                Patch(new Vector3(8.5f, 0f, 9f), new Vector2(1f, 1f), 1, new Vector2(6f, 7.5f)),
+                Patch(new Vector3(-14f, 0f, -4f), new Vector2(2f, 2f), 2, new Vector2(2.2f, 3f)),
+                Patch(new Vector3(16f, 0f, -2f), new Vector2(3f, 3f), 2, new Vector2(2.5f, 3.5f)),
+                Patch(new Vector3(0f, 0f, 40f), new Vector2(120f, 60f), 26, new Vector2(2.5f, 5f)),
+                Patch(new Vector3(0f, 0f, -30f), new Vector2(120f, 30f), 14, new Vector2(2.5f, 4.5f)),
+            });
+            Grow(world, "Blades", p.LeafDark, FloraKind.Blades, ground, 23, new[]
+            {
+                Patch(new Vector3(-4.5f, 0f, 8f), new Vector2(1f, 1f), 1, new Vector2(2f, 2.6f)),
+                Patch(new Vector3(5f, 0f, 6f), new Vector2(1f, 1f), 1, new Vector2(1.8f, 2.4f)),
+                Patch(new Vector3(-10f, 0f, 2f), new Vector2(2f, 2f), 2, new Vector2(2f, 3f)),
+                Patch(new Vector3(12f, 0f, 3f), new Vector2(2f, 2f), 2, new Vector2(2f, 3f)),
+                Patch(new Vector3(0f, 0f, 30f), new Vector2(100f, 50f), 30, new Vector2(2f, 4f)),
+            });
+
+            var stone = new Color(0.85f, 0.85f, 0.85f);
+            var boulderObject = MeshObject(world, "Boulders", Vector3.zero, Quaternion.identity, p.Accent);
+            var boulders = Undo.AddComponent<SimPuffs>(boulderObject);
+            so = new SerializedObject(boulders);
+            SetEnum(k_Tag, so, "m_Kind", (int)PuffKind.Boulders);
+            SetInt(k_Tag, so, "m_Seed", 24);
+            SetRef(k_Tag, so, "m_Ground", ground);
+            SetClusters(so, new[]
+            {
+                Trees(new Vector3(0f, 0f, 25f), new Vector2(60f, 40f), 14, 1.4f, stone, true),
+                Trees(new Vector3(0f, 0f, 120f), new Vector2(250f, 150f), 30, 5f, stone, true),
+                Trees(new Vector3(-9f, 0f, 11f), new Vector2(2f, 2f), 2, 0.8f, stone, true),
+            });
+            so.ApplyModifiedProperties();
+
+            var tubeObject = MeshObject(world, "Tubes", Vector3.zero, Quaternion.identity, p.Accent);
+            var tubes = Undo.AddComponent<SimTubes>(tubeObject);
+            so = new SerializedObject(tubes);
+            SetRef(k_Tag, so, "m_Ground", ground);
+            SetArches(so, new[]
+            {
+                Arch(new Vector3(5f, 0f, 13f), new Vector3(13f, 0f, 9f), 2.8f, 0.45f),
+                Arch(new Vector3(-20f, 0f, 22f), new Vector3(-11f, 0f, 28f), 4f, 0.7f),
+                Arch(new Vector3(28f, 0f, 48f), new Vector3(44f, 0f, 40f), 9f, 1.6f),
+                Arch(new Vector3(-60f, 0f, 70f), new Vector3(-40f, 0f, 85f), 14f, 2.4f),
+            });
+            so.ApplyModifiedProperties();
+
+            // The sky's things.
+            var asteroids = ParticleObject(world, "Asteroids", Vector3.zero, Quaternion.identity, p.Asteroid, 512);
+            var field = Undo.AddComponent<SimAsteroids>(asteroids);
+            so = new SerializedObject(field);
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            SetVector2(so, "m_Elevation", new Vector2(1f, 40f));
+            so.ApplyModifiedProperties();
+
+            Celestial(world, "Ringed_Planet", Sky(-32f, 13f, 6000f), p.PlanetRinged, 900f, 2.4f);
+            Celestial(world, "Star", Sky(28f, 12f, 6200f), p.Star, 480f, 2.2f);
+            Celestial(world, "Small_Planet", Sky(78f, 9f, 6500f), p.PlanetSmall, 260f, 1.4f);
+
+            Satellite(world, "Satellite_1", Sky(-18f, 9f, 140f), simulation, p, 3.5f, new Vector3(2f, 5f, 1f));
+            Satellite(world, "Satellite_2", Sky(15f, 16f, 220f), simulation, p, 4.5f, new Vector3(1f, -4f, 2f));
+            Satellite(world, "Satellite_3", Sky(-55f, 20f, 300f), simulation, p, 6f, new Vector3(-2f, 3f, 1f));
+            Satellite(world, "Satellite_4", Sky(60f, 7f, 110f), simulation, p, 2.5f, new Vector3(3f, 2f, -2f));
+
+            var meteors = ParticleObject(world, "Meteors", Vector3.zero, Quaternion.identity, p.Glint, 16);
+            so = new SerializedObject(Undo.AddComponent<SimMeteors>(meteors));
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            so.ApplyModifiedProperties();
+
+            Motes(world, "Space_Dust", new Vector3(0f, -0.05f, 0f), simulation, p.Mote, MoteMotion.Rise, 500, new Vector3(120f, 25f, 120f),
+                0.4f, 1.2f, 0.12f, new Color(0.6f, 1.3f, 1.4f), 0.25f, 1.2f, outside);
+
+            var variants = OrbitVariants();
+            var first = variants[0];
+            var sim = Undo.AddComponent<SimWorld>(world.gameObject);
+            so = new SerializedObject(sim);
+            SetString(k_Tag, so, "m_Title", "Orbit");
+            SetColor(k_Tag, so, "m_Zenith", first.Zenith);
+            SetColor(k_Tag, so, "m_Horizon", first.Horizon);
+            SetColor(k_Tag, so, "m_Ground", first.Ground);
+            SetVector3(k_Tag, so, "m_SunDirection", Sky(28f, 12f, 1f));
+            SetColor(k_Tag, so, "m_SunColour", first.SunColour);
+            SetFloat(k_Tag, so, "m_SunDegrees", 0f);
+            SetColor(k_Tag, so, "m_ShadowColour", first.ShadowColour);
+            SetFloat(k_Tag, so, "m_Clouds", 0f);
+            SetFloat(k_Tag, so, "m_Stars", 1.2f);
+            SetFloat(k_Tag, so, "m_MilkyWay", 0.25f);
+            SetFloat(k_Tag, so, "m_MoonDegrees", 0f);
+            SetFloat(k_Tag, so, "m_FogDistance", 7000f);
+            SetFloat(k_Tag, so, "m_FogAmount", 0.35f);
+            SetFloat(k_Tag, so, "m_FogSunGlow", 0.3f);
+            SetColor(k_Tag, so, "m_RoomAmbient", first.RoomAmbient);
+            SetColor(k_Tag, so, "m_RoomLight", first.RoomLight);
+            SetFloat(k_Tag, so, "m_RoomLightIntensity", 0.6f);
+            SetFloat(k_Tag, so, "m_LampLevel", 0.9f);
+            SetFloat(k_Tag, so, "m_Nebula", 1f);
+            SetFloat(k_Tag, so, "m_NebulaScale", 1.3f);
+            SetVariants(so, variants);
+            SetInt(k_Tag, so, "m_Variant", 0);
+            so.ApplyModifiedProperties();
+            return sim;
+        }
+
+        /// <summary>The space world's looks: the blue night of the video, the pink nebula of its glitch, and a green signal.</summary>
+        static WorldVariant[] OrbitVariants()
+        {
+            return new[]
+            {
+                new WorldVariant
+                {
+                    Name = "Orbit",
+                    Zenith = new Color(0.02f, 0.03f, 0.12f),
+                    Horizon = new Color(0.18f, 0.22f, 0.5f),
+                    Ground = new Color(0.04f, 0.08f, 0.14f),
+                    SunColour = new Color(1.25f, 1.05f, 0.75f),
+                    ShadowColour = new Color(0.15f, 0.18f, 0.42f),
+                    NebulaA = new Color(0.35f, 0.18f, 0.6f),
+                    NebulaB = new Color(0.12f, 0.35f, 0.85f),
+                    NebulaC = new Color(0.95f, 0.45f, 0.75f),
+                    NebulaOffset = Vector2.zero,
+                    Palette = new[] { new Color(0.25f, 0.85f, 0.88f), new Color(0.18f, 0.72f, 0.62f), new Color(0.1f, 0.28f, 0.62f), new Color(0.3f, 0.62f, 0.85f) },
+                    PlanetTint = Color.white,
+                    StarTint = Color.white,
+                    RoomAmbient = new Color(0.18f, 0.2f, 0.35f),
+                    RoomLight = new Color(0.95f, 0.85f, 0.7f),
+                },
+                new WorldVariant
+                {
+                    Name = "Pink Nebula",
+                    Zenith = new Color(0.55f, 0.35f, 0.6f),
+                    Horizon = new Color(0.98f, 0.7f, 0.85f),
+                    Ground = new Color(0.5f, 0.4f, 0.55f),
+                    SunColour = new Color(1.3f, 1.2f, 1.1f),
+                    ShadowColour = new Color(0.45f, 0.4f, 0.65f),
+                    NebulaA = new Color(0.95f, 0.55f, 0.8f),
+                    NebulaB = new Color(0.4f, 0.9f, 0.95f),
+                    NebulaC = new Color(1f, 1f, 1f),
+                    NebulaOffset = new Vector2(3.7f, 1.9f),
+                    Palette = new[] { new Color(0.3f, 0.88f, 0.85f), new Color(0.25f, 0.6f, 0.9f), new Color(0.12f, 0.25f, 0.6f), new Color(0.95f, 0.78f, 0.88f) },
+                    PlanetTint = new Color(1.1f, 0.9f, 1.1f),
+                    StarTint = new Color(1.1f, 1.05f, 1.1f),
+                    RoomAmbient = new Color(0.5f, 0.42f, 0.5f),
+                    RoomLight = new Color(1f, 0.85f, 0.95f),
+                },
+                new WorldVariant
+                {
+                    Name = "Green Signal",
+                    Zenith = new Color(0f, 0.05f, 0.06f),
+                    Horizon = new Color(0.08f, 0.3f, 0.28f),
+                    Ground = new Color(0.02f, 0.08f, 0.06f),
+                    SunColour = new Color(1.1f, 1.2f, 0.95f),
+                    ShadowColour = new Color(0.08f, 0.22f, 0.22f),
+                    NebulaA = new Color(0.1f, 0.55f, 0.35f),
+                    NebulaB = new Color(0.15f, 0.4f, 0.6f),
+                    NebulaC = new Color(0.7f, 0.95f, 0.4f),
+                    NebulaOffset = new Vector2(-2.3f, 4.2f),
+                    Palette = new[] { new Color(0.2f, 0.85f, 0.65f), new Color(0.3f, 0.95f, 0.45f), new Color(0.06f, 0.38f, 0.32f), new Color(0.25f, 0.6f, 0.55f) },
+                    PlanetTint = new Color(0.8f, 1.1f, 0.95f),
+                    StarTint = new Color(1.05f, 1.1f, 0.9f),
+                    RoomAmbient = new Color(0.12f, 0.25f, 0.22f),
+                    RoomLight = new Color(0.85f, 1f, 0.85f),
+                },
+            };
+        }
+
         // ================================================================== outside pieces
+
+        /// <summary>A point in the sky round the room: degrees round from straight ahead, degrees up, metres out.</summary>
+        static Vector3 Sky(float azimuth, float elevation, float distance)
+        {
+            float a = azimuth * Mathf.Deg2Rad;
+            float e = elevation * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Sin(a) * Mathf.Cos(e), Mathf.Sin(e), Mathf.Cos(a) * Mathf.Cos(e)) * distance;
+        }
+
+        static FloraPatch Patch(Vector3 centre, Vector2 spread, int count, Vector2 size)
+        {
+            return new FloraPatch { Centre = centre, Spread = spread, Count = count, Size = size };
+        }
+
+        static TubeArch Arch(Vector3 from, Vector3 to, float height, float radius)
+        {
+            return new TubeArch { From = from, To = to, Height = height, Radius = radius };
+        }
+
+        static SimFlora Grow(Transform world, string name, Material material, FloraKind kind, SimSurface ground, int seed, FloraPatch[] patches)
+        {
+            var go = MeshObject(world, name, Vector3.zero, Quaternion.identity, material);
+            var flora = Undo.AddComponent<SimFlora>(go);
+            var so = new SerializedObject(flora);
+            SetEnum(k_Tag, so, "m_Kind", (int)kind);
+            SetRef(k_Tag, so, "m_Ground", ground);
+            SetInt(k_Tag, so, "m_Seed", seed);
+            var property = so.FindProperty("m_Patches");
+            property.arraySize = patches.Length;
+            for (int i = 0; i < patches.Length; i++)
+            {
+                var element = property.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("Centre").vector3Value = patches[i].Centre;
+                element.FindPropertyRelative("Spread").vector2Value = patches[i].Spread;
+                element.FindPropertyRelative("Count").intValue = patches[i].Count;
+                element.FindPropertyRelative("Size").vector2Value = patches[i].Size;
+            }
+            so.ApplyModifiedProperties();
+            return flora;
+        }
+
+        static void Celestial(Transform world, string name, Vector3 position, Material material, float radius, float extent)
+        {
+            var go = MeshObject(world, name, position, Quaternion.identity, material);
+            var body = Undo.AddComponent<SimCelestial>(go);
+            var so = new SerializedObject(body);
+            SetFloat(k_Tag, so, "m_Radius", radius);
+            SetFloat(k_Tag, so, "m_Extent", extent);
+            so.ApplyModifiedProperties();
+        }
+
+        static void Satellite(Transform world, string name, Vector3 position, Simulation simulation, Palette p, float scale, Vector3 tumble)
+        {
+            var go = MeshObject(world, name, position, Quaternion.Euler(tumble * 7f), p.Satellite);
+            var beacon = ParticleObject(go.transform, "Beacon", Vector3.zero, Quaternion.identity, p.Glint, 4);
+            var satellite = Undo.AddComponent<SimSatellite>(go);
+            var so = new SerializedObject(satellite);
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            SetRef(k_Tag, so, "m_Beacon", beacon.GetComponent<ParticleSystem>());
+            SetFloat(k_Tag, so, "m_Scale", scale);
+            SetVector3(k_Tag, so, "m_Tumble", tumble);
+            so.ApplyModifiedProperties();
+        }
 
         static SimButte Butte(Transform parent, string name, Vector3 position, float yaw, Material material, float radius, Vector2 aspect,
             float ground, float[] tops, float[] radii, float jagged, float taper, float peak, float talus, int seed, int sides = 56)
@@ -1259,6 +1527,7 @@ namespace VRShootingGallery.EditorTools
             public Material Sky, Canyon, Foliage, Voxel, Pool, Pillar, Glow, Mote;
             public Material CloudSea, Cumulus, Lake, Mountain, Aurora, AuroraReflection, Snow;
             public Material Sand, Ocean, Palm, PierWood, Deck, Headland, Glint, GlintReflection;
+            public Material Meadow, Grass, LeafLight, LeafDark, Accent, Asteroid, Satellite, PlanetRinged, PlanetSmall, Star;
         }
 
         static string MaterialPath(string name) => $"{k_Art}/Materials/M_Glass_{name}.mat";
@@ -1274,9 +1543,10 @@ namespace VRShootingGallery.EditorTools
             var pillar = LoadShader(k_Shaders, "SimPillar.shader");
             var ocean = LoadShader(k_Shaders, "SimOcean.shader");
             var glint = LoadShader(k_Shaders, "SimGlint.shader");
+            var planet = LoadShader(k_Shaders, "SimPlanet.shader");
             var beam = AssetDatabase.LoadAssetAtPath<Shader>(k_BeamShaderPath);
             if (window == null || sky == null || land == null || cloudSea == null || water == null || aurora == null || pillar == null ||
-                ocean == null || glint == null || beam == null)
+                ocean == null || glint == null || planet == null || beam == null)
             {
                 Debug.LogError($"[{k_Tag}] Missing a shader in '{k_Shaders}' or '{k_BeamShaderPath}'.");
                 return null;
@@ -1530,6 +1800,64 @@ namespace VRShootingGallery.EditorTools
                     m.SetFloat("_StencilComp", (float)CompareFunction.Equal);
                     m.SetFloat("_StencilRef", 1f);
                 }),
+
+                // Orbit: the flora is painted from the variant's palette (slot 0 ground and grass,
+                // 1 light leaves, 2 dark leaves, 3 rocks and tubes).
+                Meadow = Flora("Meadow", land, 0, new Color(0.42f, 0.5f, 0.55f), 0f, 0, 0.25f, m =>
+                {
+                    m.SetFloat("_Detail", 0.3f);
+                    m.SetFloat("_DetailScale", 3f);
+                }),
+                Grass = Flora("Grass", land, 0, Color.white, 0.18f, 0, 0.3f, m =>
+                {
+                    m.SetVector("_SwayWind", new Vector4(0.3f, 0f, -1f, 0f));
+                    m.SetColor("_GlowColor", new Color(0.6f, 1.3f, 1.4f));
+                    m.SetFloat("_BandGlow", 1.4f);
+                }),
+                LeafLight = Flora("Leaf_Light", land, 1, Color.white, 0.35f, 1, 0.35f, _ => { }),
+                LeafDark = Flora("Leaf_Dark", land, 2, Color.white, 0.3f, 1, 0.4f, _ => { }),
+                Accent = Flora("Accent", land, 3, Color.white, 0f, 0, 0.35f, m =>
+                {
+                    m.SetFloat("_Detail", 0.15f);
+                    m.SetFloat("_DetailScale", 2f);
+                }),
+                Asteroid = Flora("Asteroid", land, -1, Color.white, 0f, 0, 0.7f, m =>
+                {
+                    m.SetFloat("_Detail", 0.2f);
+                    m.SetFloat("_DetailScale", 2f);
+                }),
+                Satellite = Flora("Satellite", land, -1, Color.white, 0f, 0, 0.4f, _ => { }),
+                PlanetRinged = ShaderMaterial("Planet_Ringed", planet, m =>
+                {
+                    m.SetFloat("_Star", 0f);
+                    m.SetColor("_ColorA", new Color(0.35f, 0.65f, 0.95f));
+                    m.SetColor("_ColorB", new Color(0.15f, 0.35f, 0.8f));
+                    m.SetFloat("_Bands", 7f);
+                    m.SetColor("_Atmosphere", new Color(0.5f, 0.9f, 1.5f));
+                    m.SetFloat("_RingInner", 1.45f);
+                    m.SetFloat("_RingOuter", 2.3f);
+                    m.SetFloat("_RingTilt", 0.2f);
+                    m.SetFloat("_RingAngle", -16f);
+                    m.SetColor("_RingColor", new Color(0.85f, 0.95f, 1.4f));
+                    m.SetFloat("_RingLines", 3f);
+                }),
+                PlanetSmall = ShaderMaterial("Planet_Small", planet, m =>
+                {
+                    m.SetFloat("_Star", 0f);
+                    m.SetColor("_ColorA", new Color(0.95f, 0.55f, 0.75f));
+                    m.SetColor("_ColorB", new Color(0.6f, 0.3f, 0.7f));
+                    m.SetFloat("_Bands", 4f);
+                    m.SetColor("_Atmosphere", new Color(1.2f, 0.6f, 1f));
+                    m.SetFloat("_RingInner", 0f);
+                    m.SetFloat("_RingOuter", 0f);
+                }),
+                Star = ShaderMaterial("Star", planet, m =>
+                {
+                    m.SetFloat("_Star", 1f);
+                    m.SetColor("_StarColor", new Color(1.6f, 1.15f, 0.35f));
+                    m.SetColor("_CoronaColor", new Color(1.5f, 0.6f, 0.15f));
+                    m.SetFloat("_Corona", 0.55f);
+                }),
             };
 
             foreach (var field in typeof(Palette).GetFields())
@@ -1543,6 +1871,29 @@ namespace VRShootingGallery.EditorTools
 
             AssetDatabase.SaveAssets();
             return p;
+        }
+
+        /// <summary>
+        /// A land material for the space world's flora and rocks: painted from a palette slot of the
+        /// world's variant (-1 for none), swaying with the mids (source 0) or the bass (1), rim-lit.
+        /// </summary>
+        static Material Flora(string name, Shader land, int slot, Color tint, float sway, int swaySource, float rim, System.Action<Material> more)
+        {
+            return ShaderMaterial(name, land, m =>
+            {
+                m.SetFloat("_Strata", 0f);
+                m.SetColor("_BaseColor", tint);
+                m.SetFloat("_PaletteSlot", slot);
+                m.SetFloat("_Sway", sway);
+                m.SetFloat("_SwaySource", swaySource);
+                m.SetFloat("_Rim", rim);
+                m.SetFloat("_CelSoft", 0.15f);
+                m.SetFloat("_Detail", 0f);
+                m.SetFloat("_BandGlow", 0f);
+                m.SetFloat("_StrataGlow", 0f);
+                m.SetFloat("_Rings", 0f);
+                more(m);
+            });
         }
 
         static Shader LoadShader(string folder, string file) => AssetDatabase.LoadAssetAtPath<Shader>($"{folder}/{file}");
@@ -1661,6 +2012,50 @@ namespace VRShootingGallery.EditorTools
                 element.FindPropertyRelative("Band").floatValue = cluster.Band;
                 element.FindPropertyRelative("Glow").floatValue = cluster.Glow;
                 element.FindPropertyRelative("OnGround").boolValue = cluster.OnGround;
+            }
+        }
+
+        static void SetArches(SerializedObject so, TubeArch[] arches)
+        {
+            var property = so.FindProperty("m_Arches");
+            property.arraySize = arches.Length;
+            for (int i = 0; i < arches.Length; i++)
+            {
+                var element = property.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("From").vector3Value = arches[i].From;
+                element.FindPropertyRelative("To").vector3Value = arches[i].To;
+                element.FindPropertyRelative("Height").floatValue = arches[i].Height;
+                element.FindPropertyRelative("Radius").floatValue = arches[i].Radius;
+            }
+        }
+
+        static void SetVariants(SerializedObject so, WorldVariant[] variants)
+        {
+            var property = so.FindProperty("m_Variants");
+            property.arraySize = variants.Length;
+            for (int i = 0; i < variants.Length; i++)
+            {
+                var element = property.GetArrayElementAtIndex(i);
+                var v = variants[i];
+                element.FindPropertyRelative("Name").stringValue = v.Name;
+                element.FindPropertyRelative("Zenith").colorValue = v.Zenith;
+                element.FindPropertyRelative("Horizon").colorValue = v.Horizon;
+                element.FindPropertyRelative("Ground").colorValue = v.Ground;
+                element.FindPropertyRelative("SunColour").colorValue = v.SunColour;
+                element.FindPropertyRelative("ShadowColour").colorValue = v.ShadowColour;
+                element.FindPropertyRelative("NebulaA").colorValue = v.NebulaA;
+                element.FindPropertyRelative("NebulaB").colorValue = v.NebulaB;
+                element.FindPropertyRelative("NebulaC").colorValue = v.NebulaC;
+                element.FindPropertyRelative("NebulaOffset").vector2Value = v.NebulaOffset;
+                element.FindPropertyRelative("PlanetTint").colorValue = v.PlanetTint;
+                element.FindPropertyRelative("StarTint").colorValue = v.StarTint;
+                element.FindPropertyRelative("RoomAmbient").colorValue = v.RoomAmbient;
+                element.FindPropertyRelative("RoomLight").colorValue = v.RoomLight;
+
+                var palette = element.FindPropertyRelative("Palette");
+                palette.arraySize = v.Palette.Length;
+                for (int j = 0; j < v.Palette.Length; j++)
+                    palette.GetArrayElementAtIndex(j).colorValue = v.Palette[j];
             }
         }
 

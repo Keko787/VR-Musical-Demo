@@ -55,6 +55,10 @@ Shader "VRMusic/SimLand"
         [Header(Sway)]
         _Sway ("Sway (m at full weight)", Float) = 0
         _SwayWind ("Wind Direction", Vector) = (0, 0, -1, 0)
+        _SwaySource ("Sway With (0 mids, 1 bass)", Range(0, 1)) = 0
+
+        [Header(Paint)]
+        _PaletteSlot ("World Palette Slot (-1 off)", Float) = -1
 
         _FogScale ("Fog", Range(0, 2)) = 1
     }
@@ -107,6 +111,8 @@ Shader "VRMusic/SimLand"
                 float _WetBand;
                 float _Sway;
                 float4 _SwayWind;
+                float _SwaySource;
+                float _PaletteSlot;
                 float _FogScale;
             CBUFFER_END
 
@@ -140,7 +146,7 @@ Shader "VRMusic/SimLand"
                     float phase = input.uv3.y;
                     float3 wind = normalize(float3(_SwayWind.x, 0.0, _SwayWind.z) + 1e-4);
                     float3 across = float3(-wind.z, 0.0, wind.x);
-                    float gust = 0.35 + 1.3 * _GR_Music.y;
+                    float gust = 0.35 + 1.3 * lerp(_GR_Music.y, _GR_Music.x, _SwaySource);
                     float along = sin(_GR_Clock * 1.7 + phase + weight * 1.3) * 0.6 + 0.4;
                     float side = sin(_GR_Clock * 2.9 + phase * 1.7 + weight * 2.1);
                     output.positionWS += (wind * along + across * side * 0.35) * (_Sway * gust * weight);
@@ -168,6 +174,10 @@ Shader "VRMusic/SimLand"
                 float flat = smoothstep(0.72, 0.92, N.y);
 
                 float3 albedo = _BaseColor.rgb;
+
+                // Painted from the world variant's palette, so a glitch to another variant repaints it.
+                if (_PaletteSlot > -0.5)
+                    albedo *= _GR_Palette[clamp((int)(_PaletteSlot + 0.5), 0, 3)].rgb;
                 float3 emission = 0.0;
 
                 if (_Strata > 0.001)

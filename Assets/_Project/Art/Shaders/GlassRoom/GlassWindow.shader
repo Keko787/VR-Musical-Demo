@@ -9,6 +9,10 @@
 // Between worlds the view breaks into tiles that shrink away into the simulation's blank page, in a
 // wave that runs round the room from the back of the left wall to the back of the right, and the
 // next world builds back out of tiles behind it. _Dissolve runs 0 → 1 going out and 1 → 2 coming in.
+//
+// Between a world's variants the change is quicker and rougher: a glitch, like a datamosh. Rows of the
+// picture shear and smear sideways, blocks pixelate, and the colour channels part; the look swaps
+// underneath at its worst. _Glitch is its strength, 0 to 1.
 Shader "VRMusic/GlassWindow"
 {
     Properties
@@ -27,6 +31,9 @@ Shader "VRMusic/GlassWindow"
         _Sweep ("Sweep (offset m, perimeter m)", Vector) = (0, 8.3312, 0, 0)
         _VoidColor ("Blank Page", Color) = (0.8, 0.88, 0.97, 1)
         _EdgeColor ("Tile Edge", Color) = (1, 1, 1, 1)
+        _Glitch ("Glitch", Range(0, 1)) = 0
+        _GlitchSeed ("Glitch Seed", Float) = 0
+        _GlitchStep ("Glitch Steps (0 smooth, 1 stepped)", Range(0, 1)) = 1
     }
 
     SubShader
@@ -67,6 +74,9 @@ Shader "VRMusic/GlassWindow"
                 float4 _Sweep;
                 float4 _VoidColor;
                 float4 _EdgeColor;
+                float _Glitch;
+                float _GlitchSeed;
+                float _GlitchStep;
             CBUFFER_END
 
             // Per window, from WindowView: where each lamp is reflected (u, v), its blob radius in
@@ -133,7 +143,47 @@ Shader "VRMusic/GlassWindow"
                     grid = rule * gone;
                 }
 
-                float3 view = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).rgb * _Exposure;
+                // The glitch between variants: rows shear and smear, blocks pixelate, channels part.
+                float split = 0.0;
+                if (_Glitch > 0.001)
+                {
+                    float g = _Glitch;
+
+                    // Stepped, the pattern jumps six times a second; smooth (low intensity), it holds still.
+                    float t = _GlitchSeed + (_GlitchStep > 0.5 ? floor(_GR_Clock * 6.0) : 0.0);
+
+                    float rowSize = lerp(0.22, 0.05, g);
+                    float row = floor(m.y / rowSize + GR_Hash11(floor(m.y / 0.4) + t) * 2.0);
+                    float moved = step(1.0 - 0.75 * g, GR_Hash12(float2(row, t)));
+                    float shift = (GR_Hash12(float2(row, t + 3.7)) - 0.5) * 0.35 * g * moved;
+                    float2 gm = m + float2(shift * _WallSize.x, 0.0);
+
+                    // Smear: in some moved rows each stretch of the picture drags its left edge across.
+                    float stretch = 0.18 + 0.5 * GR_Hash12(float2(row, t + 9.1));
+                    float smear = moved * step(0.45, GR_Hash12(float2(row, t + 5.3)));
+                    gm.x = lerp(gm.x, floor(gm.x / stretch) * stretch + 0.02, smear * g);
+
+                    // Blocks, as it peaks.
+                    float block = 0.07 * smoothstep(0.35, 1.0, g);
+                    if (block > 0.001)
+                        gm = (floor(gm / block) + 0.5) * block;
+
+                    sampleUV = gm / _WallSize.xy;
+                    split = 0.012 * g;
+                }
+
+                float3 view;
+                if (split > 0.0)
+                {
+                    view.r = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV + float2(split, 0.0)).r;
+                    view.g = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).g;
+                    view.b = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV - float2(split, 0.0)).b;
+                }
+                else
+                {
+                    view = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).rgb;
+                }
+                view *= _Exposure;
                 float3 blank = _VoidColor.rgb * (1.0 + 0.15 * grid);
                 float3 col = lerp(blank, view, shown) + _EdgeColor.rgb * edge * 0.5 * _VoidColor.a;
 

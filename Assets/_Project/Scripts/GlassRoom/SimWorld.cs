@@ -3,6 +3,43 @@ using UnityEngine;
 namespace VRShootingGallery.GlassRoom
 {
     /// <summary>
+    /// One look a world can take: its sky, the nebula in it, and the colours its plants, rocks,
+    /// planets and the room's light are painted in. A world with variants switches between them with
+    /// a glitch on the glass instead of the full rebuild between worlds.
+    /// </summary>
+    [System.Serializable]
+    public class WorldVariant
+    {
+        public string Name = "Variant";
+
+        [Header("Sky")]
+        public Color Zenith = new(0.05f, 0.06f, 0.2f);
+        public Color Horizon = new(0.25f, 0.3f, 0.6f);
+        public Color Ground = new(0.05f, 0.1f, 0.15f);
+        [ColorUsage(false, true)] public Color SunColour = new(1.2f, 1.1f, 0.9f);
+        public Color ShadowColour = new(0.2f, 0.2f, 0.45f);
+
+        [Header("Nebula")]
+        public Color NebulaA = new(0.45f, 0.25f, 0.7f);
+        public Color NebulaB = new(0.2f, 0.45f, 0.9f);
+        public Color NebulaC = new(0.9f, 0.45f, 0.75f);
+
+        [Tooltip("Where in the nebula's noise this variant's swirls come from, so each sky has its own shapes.")]
+        public Vector2 NebulaOffset;
+
+        [Header("Paint")]
+        [Tooltip("Ground and grass, light leaves, dark leaves, rocks and tubes. The flora's materials pick a slot.")]
+        public Color[] Palette = { new(0.25f, 0.85f, 0.85f), new(0.2f, 0.75f, 0.6f), new(0.1f, 0.3f, 0.6f), new(0.35f, 0.7f, 0.85f) };
+
+        [ColorUsage(false, true)] public Color PlanetTint = Color.white;
+        [ColorUsage(false, true)] public Color StarTint = Color.white;
+
+        [Header("The room")]
+        public Color RoomAmbient = new(0.3f, 0.32f, 0.45f);
+        public Color RoomLight = new(0.85f, 0.85f, 1f);
+    }
+
+    /// <summary>
     /// One of the worlds outside the glass: its sky, how it lights the room, and where its beat rings
     /// start. The landscape and the things in it that play to the music are its children; this holds
     /// what the <see cref="Simulation"/> needs to switch to it.
@@ -78,14 +115,41 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField, Range(0f, 1.5f), Tooltip("How bright the pendant lamps burn. Low by day, full at night.")]
         float m_LampLevel = 0.55f;
 
+        [Header("Space")]
+        [SerializeField, Range(0f, 2f), Tooltip("How much nebula glows across the sky. 0 for none.")]
+        float m_Nebula;
+
+        [SerializeField, Tooltip("Size of the nebula's swirls: higher is finer.")]
+        float m_NebulaScale = 1.6f;
+
+        [Header("Variants")]
+        [SerializeField, Tooltip("Looks this world can switch between with a glitch (V, or the variant wand button). Empty for one look: " +
+            "the sky above.")]
+        WorldVariant[] m_Variants;
+
+        [SerializeField] int m_Variant;
+
         public string Title => m_Title;
         public Transform RingOrigin => m_RingOrigin;
         public Color RingColour => m_RingColour;
         public float RingDelay => m_RingDelay;
-        public Color RoomAmbient => m_RoomAmbient;
-        public Color RoomLight => m_RoomLight;
+        public Color RoomAmbient => Current?.RoomAmbient ?? m_RoomAmbient;
+        public Color RoomLight => Current?.RoomLight ?? m_RoomLight;
         public float RoomLightIntensity => m_RoomLightIntensity;
         public float LampLevel => m_LampLevel;
+
+        public int VariantCount => m_Variants?.Length ?? 0;
+        public int VariantIndex => VariantCount > 0 ? Mathf.Clamp(m_Variant, 0, VariantCount - 1) : -1;
+        public string VariantName => Current?.Name;
+
+        WorldVariant Current => VariantCount > 0 ? m_Variants[VariantIndex] : null;
+
+        /// <summary>Changes to a variant's look; the next <see cref="PushSky"/> paints it. Wraps round.</summary>
+        public void SetVariant(int index)
+        {
+            if (VariantCount > 0)
+                m_Variant = ((index % VariantCount) + VariantCount) % VariantCount;
+        }
 
         /// <summary>The direction the room's light comes from, as a rotation for the directional light.</summary>
         public Quaternion RoomLightRotation
@@ -109,18 +173,41 @@ namespace VRShootingGallery.GlassRoom
         static readonly int k_CloudColor = Shader.PropertyToID("_GR_CloudColor");
         static readonly int k_RingColor = Shader.PropertyToID("_GR_RingColor");
         static readonly int k_RingOrigin = Shader.PropertyToID("_GR_RingOrigin");
+        static readonly int k_Nebula = Shader.PropertyToID("_GR_Nebula");
+        static readonly int k_NebulaA = Shader.PropertyToID("_GR_NebulaA");
+        static readonly int k_NebulaB = Shader.PropertyToID("_GR_NebulaB");
+        static readonly int k_NebulaC = Shader.PropertyToID("_GR_NebulaC");
+        static readonly int k_Palette = Shader.PropertyToID("_GR_Palette");
+        static readonly int k_PlanetTint = Shader.PropertyToID("_GR_PlanetTint");
+        static readonly int k_StarTint = Shader.PropertyToID("_GR_StarTint");
+
+        readonly Vector4[] m_PaletteValues = new Vector4[4];
 
         /// <summary>Hands this world's sky to every outside shader. Called when the world wakes, and each frame while it is out.</summary>
         public void PushSky(Quaternion frame)
         {
+            var look = Current;
             var sun = frame * (m_SunDirection.sqrMagnitude > 1e-6f ? m_SunDirection.normalized : Vector3.up);
             float disc = m_SunDegrees > 0f ? Mathf.Cos(m_SunDegrees * Mathf.Deg2Rad) : 2f;
             Shader.SetGlobalVector(k_SunDir, new Vector4(sun.x, sun.y, sun.z, disc));
-            Shader.SetGlobalColor(k_SunColor, m_SunColour);
-            Shader.SetGlobalColor(k_ShadowColor, m_ShadowColour);
-            Shader.SetGlobalColor(k_Zenith, m_Zenith);
-            Shader.SetGlobalColor(k_Horizon, m_Horizon);
-            Shader.SetGlobalColor(k_Ground, m_Ground);
+            Shader.SetGlobalColor(k_SunColor, look?.SunColour ?? m_SunColour);
+            Shader.SetGlobalColor(k_ShadowColor, look?.ShadowColour ?? m_ShadowColour);
+            Shader.SetGlobalColor(k_Zenith, look?.Zenith ?? m_Zenith);
+            Shader.SetGlobalColor(k_Horizon, look?.Horizon ?? m_Horizon);
+            Shader.SetGlobalColor(k_Ground, look?.Ground ?? m_Ground);
+
+            // Space: the nebula and the paint the flora and planets take. A world without variants has
+            // no nebula and plain white paint, so nothing that reads them changes.
+            var offset = look?.NebulaOffset ?? Vector2.zero;
+            Shader.SetGlobalVector(k_Nebula, new Vector4(m_Nebula, m_NebulaScale, offset.x, offset.y));
+            Shader.SetGlobalColor(k_NebulaA, look?.NebulaA ?? Color.black);
+            Shader.SetGlobalColor(k_NebulaB, look?.NebulaB ?? Color.black);
+            Shader.SetGlobalColor(k_NebulaC, look?.NebulaC ?? Color.black);
+            for (int i = 0; i < m_PaletteValues.Length; i++)
+                m_PaletteValues[i] = look?.Palette != null && i < look.Palette.Length ? (Vector4)look.Palette[i] : Vector4.one;
+            Shader.SetGlobalVectorArray(k_Palette, m_PaletteValues);
+            Shader.SetGlobalColor(k_PlanetTint, look?.PlanetTint ?? Color.white);
+            Shader.SetGlobalColor(k_StarTint, look?.StarTint ?? Color.white);
             Shader.SetGlobalVector(k_Fog, new Vector4(m_FogDistance, m_FogAmount, m_FogSunGlow, 0f));
             Shader.SetGlobalVector(k_Sky, new Vector4(m_Clouds, m_Stars, m_MilkyWay, m_CloudDrift));
             Shader.SetGlobalColor(k_CloudColor, m_CloudColour);

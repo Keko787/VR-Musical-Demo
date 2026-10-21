@@ -65,7 +65,8 @@ Glass_Room                 Simulation — worlds, transitions, music globals, ro
 │  ├─ World_RedRock        SimWorld + its land, pillar, voxels, motes
 │  ├─ World_CloudSea       SimWorld + cloud sea, cumulus towers, pillars, sparks
 │  ├─ World_Beach          SimWorld + sand, sea (SimOcean), deck, palms, pier and its lamps, headlands, islands, fireworks
-│  └─ World_Aurora         SimWorld + lake, mountains, island, curtains (and reflections), snow
+│  ├─ World_Aurora         SimWorld + lake, mountains, island, curtains (and reflections), snow
+│  └─ World_Orbit          SimWorld (3 variants) + meadow, grass, leaves, boulders, tubes, asteroids, planets, star, satellites, meteors, dust
 ├─ Floorboards, Rug
 ├─ Frame                   iron posts, rails, sills, corner braces
 ├─ Desk                    glass top, legs, glass of water, Tablet (shows the front view), Teddy_Bear
@@ -87,12 +88,14 @@ survive a rebuild.
 | 2 | **L** | Toggle low intensity |
 | 3 | **N** | Next track |
 | 4 | **Space** | Pause / resume |
+| 6 | **V** | Next variant of the world outside, if it has variants (**Shift+V** goes back) |
 
 As in the other demos, the number-row keys stand in for the wand buttons with the same digit, and
 the keyboard stays on in builds.
 
 **Hands off:** `m_NewWorldEachTrack` (on by default) rebuilds the outside into the next world
-whenever a new track starts. `m_AutoCycleSeconds` changes worlds on a timer.
+whenever a new track starts. `m_AutoCycleSeconds` changes worlds on a timer, and
+`m_VariantEverySeconds` changes a world's variant on a timer (both off by default).
 
 ## Changing worlds
 
@@ -184,6 +187,42 @@ glass. The room's lamps burn at full brightness.
   the bass.
 - **Stars** twinkle harder with the treble, and so do their reflections in the lake.
 
+### Orbit
+
+Space, after Good Kid's "Orbit" video. The room sits on an alien meadow: cyan grass, big tropical
+leaves, spiky dark plants, teal boulders, and ribbed tubes arching out of the ground. Above it hang
+a ringed planet on the left, a burning star on the right, a smaller planet further round, a field of
+asteroids, four drifting satellites and a nebula across the stars.
+
+- **The ring is the spectrum.** Going round the planet's ring, each stretch is a band, with the bass
+  at the front and the treble at the back. It brightens like a circular meter. The ring's far half
+  hides behind the planet and its near half crosses in front.
+- **The star breathes with the bass.** Its corona's flames reach further with the bass, and a beat
+  throws a ring of flare out from its edge.
+- **The asteroids dance in layers.** The lower a rock hangs, the lower its band: rocks near the
+  horizon lift and spin with the bass, and the high ones with the treble. The whole field drifts
+  round the room as if in orbit.
+- **The meadow plays too.** The grass waves with the mids and its tips glow with the treble; the big
+  leaves sway with the bass.
+- **Beats** blink the satellites' beacons. **Strong beats** send a shooting star across the sky
+  (at most one every 0.8 s, or 2 s in low intensity). **Loudness** brightens the nebula.
+
+The planets and the star are billboards that always face the room's fixed eye, not any one camera,
+so their discs, rings and lighting match at the corners between walls.
+
+#### Variants, and the glitch between them
+
+Orbit has three looks: **Orbit** (the video's blue night), **Pink Nebula** (the pastel pink and cyan
+of its glitch) and **Green Signal** (teal and green). Each look repaints the sky, the nebula's
+colours and swirls, the planets' and the star's tints, the room's light, and the flora. The flora's
+materials take their colour from one of four palette slots in the active variant: ground and grass,
+light leaves, dark leaves, and rocks and tubes.
+
+**V** (or wand 6) switches looks with a glitch on the glass rather than the tile rebuild used
+between worlds. For 1.4 s rows of the picture shear and smear sideways, blocks pixelate, and the
+colour channels split. The look swaps underneath at the glitch's worst point. Any world can have
+variants: give its `SimWorld` some in **Variants**. A world without them ignores V.
+
 ## The room
 
 - **Its light comes from outside.** Each world sets the scene's directional light (colour,
@@ -200,6 +239,9 @@ glass. The room's lamps burn at full brightness.
 
 - Every flash outside rides the analyser's beat, which is capped at 3 per second (2 in low
   intensity).
+- **The glitch between variants** shifts and smears the picture but keeps its brightness. Its
+  pattern jumps six times a second for the 1.4 s it lasts. In low intensity the pattern holds still
+  and the glitch is gentler.
 - **Low intensity** (wand 2 / **L**) dims every glow outside to 55%, halves the beat rings, and dims
   the blank page between worlds. The blank page is the one large change in brightness, and it fades
   over 1.6 s, never cuts.
@@ -234,6 +276,13 @@ glass. The room's lamps burn at full brightness.
 | `SimPalms` | Palm trees, curved trunks and folded fronds, with sway weights for the shader |
 | `SimPier` | The pier's mesh, and its lamps and their reflections as an equaliser |
 | `SimFireworks` | Bursts on strong beats, coloured by the leading part of the music, mirrored in the sea |
+| `WorldVariant` (in `SimWorld`) | One look of a world: sky, nebula, palette, tints, room light |
+| `SimCelestial` | A planet or star: a quad that `SimPlanet` turns to face the room |
+| `SimAsteroids` | Faceted rocks round the room, lifted and spun by their bands |
+| `SimFlora` | Grass tufts with treble-lit tips, broad leaves, spiky blades; palette-painted, swaying |
+| `SimTubes` | Ribbed arches out of the ground |
+| `SimSatellite` | A tumbling probe whose beacon blinks on the beat |
+| `SimMeteors` | Shooting stars on strong beats, as velocity-stretched glows |
 | `LightPillar`, `VoxelMesa`, `SimMotes` | The pillar, the cubes, the motes |
 | `SimMeshes` | Noise and mesh helpers |
 | `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards |
@@ -247,6 +296,7 @@ glass. The room's lamps burn at full brightness.
 | `VRMusic/SimWater` | Sky-reflecting water that marks the stencil buffer |
 | `VRMusic/SimOcean` | The beach's sea: swells, run-up, the surge, glitter, foam; marks the stencil buffer |
 | `VRMusic/SimGlint` | Additive glows (lamps, sparks) that can also be drawn as stencil-clipped reflections |
+| `VRMusic/SimPlanet` | Planets (banded, lit, atmosphere, a ring that is the spectrum) and stars (corona, flares) |
 | `VRMusic/SimAurora` | Curtains and their stencil-clipped reflections |
 | `VRMusic/SimPillar` | The camera-facing light pillar |
 
@@ -288,6 +338,14 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 | `SimFireworks` | `m_MinStrength` / `m_MinInterval` | 0.4 / 0.6 s | What beat sets a shell off, and how often at most |
 | | `m_Sparks` / `m_Life` / `m_Speed` | 140 / 2.4 s / 38 m/s | A burst's size and length |
 | `M_Glass_Palm` | `_Sway` | 0.6 m | Frond tip sway at full mids |
+| `Simulation` | `m_GlitchSeconds` / `m_VariantEverySeconds` | 1.4 s / 0 (off) | The glitch between variants; hands-off variant changes |
+| `SimWorld` (Orbit) | **Variants** | Orbit, Pink Nebula, Green Signal | Each look's sky, nebula, palette, tints and room light |
+| | `m_Nebula` / `m_NebulaScale` | 1 / 1.3 | Nebula brightness and swirl size |
+| `SimAsteroids` | `m_Count` / `m_Lift` / `m_Spin` | 420 / 0.05 / 6 + 60°/s | Rocks; how far they lift and how fast they spin with their bands |
+| `SimMeteors` | `m_MinStrength` / `m_MinInterval` | 0.5 / 0.8 s | What beat sends a shooting star, and how often at most |
+| `M_Glass_Grass` | `_BandGlow` / `_Sway` | 1.4 / 0.18 m | Treble glow at the tips; sway with the mids |
+| `M_Glass_Leaf_*` | `_Sway` | 0.35 / 0.3 m | Leaf sway with the bass |
+| `M_Glass_Planet_Ringed` | `_RingInner` / `_RingOuter` / `_RingTilt` / `_RingAngle` | 1.45 / 2.3 / 0.2 / −16° | The ring's shape |
 | `PendantLamp` | `m_SwayDegrees` / `m_LightIntensity` | 2.5° / 0.9 | Swing and brightness |
 | `M_Glass_Canyon` | `_StrataGlow` / `_Rings` | 1.4 / 1.2 | Strata seams and beat rings on the rock |
 | `M_Glass_Window` | `_TintAmount` / `_Haze` / `_Streaks` / `_CellSize` | 0.12 / 0.06 / 0.05 / 0.11 m | The glass, and the dissolve's tile size |
@@ -306,5 +364,8 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
   was then rebuilt with it in the editor.
 - **The furniture is switched off** in the saved scene (bed, cabinet, rug, desk, pendant lamps). A
   rebuild switches it back on.
+- **Orbit** and its variants compile, and every glass room shader compiles with `fxc` against URP's
+  headers. They have not yet been rendered: they were written while the editor was open. Run
+  **Rebuild Glass Room** to add Orbit to the scene; that also switches the furniture back on.
 - **More worlds** are a `SimWorld` and some children away. The film's flower field and city would
   both suit: a skyline whose lit windows are an equaliser is an obvious next one.

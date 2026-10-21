@@ -46,6 +46,15 @@ float4 _GR_Sky;                 // x: clouds, y: stars, z: milky way, w: cloud d
 float4 _GR_Moon;                // xyz toward the moon; w = cos of its angular radius (0 = no moon)
 float4 _GR_CloudColor;          // what the cirrus is lit to: white by day, pink and orange at sunset
 
+// Space (a world's variant): the nebula across the sky, the paint the flora takes, the planets' tints.
+float4 _GR_Nebula;              // x: amount, y: swirl scale, zw: where in the noise this variant's swirls are
+float4 _GR_NebulaA;
+float4 _GR_NebulaB;
+float4 _GR_NebulaC;
+float4 _GR_Palette[4];          // ground and grass, light leaves, dark leaves, rocks and tubes
+float4 _GR_PlanetTint;
+float4 _GR_StarTint;
+
 // ------------------------------------------------------------------ noise
 
 float GR_Hash11(float p)
@@ -167,6 +176,26 @@ float3 GR_Sky(float3 dir, float sunGain)
     float sd = dot(dir, _GR_SunDir.xyz);
     float nearHorizon = 1.0 - saturate(abs(y) * 2.5);
     col += _GR_SunColor.rgb * pow(saturate(sd), 5.0) * 0.18 * nearHorizon;
+
+    // A nebula: billowing clouds of three colours across the whole sky, glowing a little brighter
+    // with the loudness. Laid down before the stars, so the brightest of it drowns them out.
+    if (_GR_Nebula.x > 0.001)
+    {
+        // Noise on the three planes through the direction, blended by facing: no seam anywhere
+        // round the sky, which an angle-based lookup would put on one of the walls.
+        float3 w = pow(abs(dir), 4.0);
+        w /= w.x + w.y + w.z;
+        float3 p = dir * (_GR_Nebula.y * 2.0) + float3(_GR_Nebula.zw, _GR_Nebula.z - _GR_Nebula.w);
+        float warp = GR_Fbm(p.yz * 0.7 + 1.3) * w.x + GR_Fbm(p.zx * 0.7 + 1.3) * w.y + GR_Fbm(p.xy * 0.7 + 1.3) * w.z - 0.5;
+        float3 pa = p + warp * 1.6 + _GR_Clock * 0.003;
+        float3 pb = p * 1.9 - warp * 2.2 + 4.1;
+        float a = GR_Fbm(pa.yz) * w.x + GR_Fbm(pa.zx) * w.y + GR_Fbm(pa.xy) * w.z;
+        float b = GR_Fbm(pb.yz) * w.x + GR_Fbm(pb.zx) * w.y + GR_Fbm(pb.xy) * w.z;
+        float3 cloud = lerp(_GR_NebulaA.rgb, _GR_NebulaB.rgb, smoothstep(0.35, 0.7, b));
+        cloud = lerp(cloud, _GR_NebulaC.rgb, smoothstep(0.62, 0.85, a) * 0.8);
+        float density = smoothstep(0.35, 0.85, a) * (0.6 + 0.4 * b);
+        col += cloud * density * _GR_Nebula.x * (0.75 + 0.35 * _GR_Music.w) * smoothstep(-0.15, 0.1, y);
+    }
 
     // Stars, twinkling harder with the treble.
     if (_GR_Sky.y > 0.001 && y > -0.05)

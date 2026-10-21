@@ -75,6 +75,9 @@ namespace VRShootingGallery.GlassRoom
         static readonly int k_Dissolve = Shader.PropertyToID("_Dissolve");
         static readonly int k_VoidColor = Shader.PropertyToID("_VoidColor");
         static readonly int k_Lamps = Shader.PropertyToID("_Lamps");
+        static readonly int k_Glitch = Shader.PropertyToID("_Glitch");
+        static readonly int k_GlitchSeed = Shader.PropertyToID("_GlitchSeed");
+        static readonly int k_GlitchStep = Shader.PropertyToID("_GlitchStep");
 
         Renderer m_Renderer;
         MaterialPropertyBlock m_Block;
@@ -84,6 +87,9 @@ namespace VRShootingGallery.GlassRoom
         Transform m_Head;
         float m_HeadSearchAt;
         readonly Vector4[] m_LampSpots = new Vector4[4];
+        float m_Glitch;
+        float m_GlitchSeed;
+        bool m_GlitchStepped = true;
 
         void OnEnable()
         {
@@ -217,6 +223,17 @@ namespace VRShootingGallery.GlassRoom
         public void SetTransition(float dissolve, Color blank) => Push(dissolve, blank);
 
         /// <summary>
+        /// The glitch between a world's variants: its strength (0–1), a seed so each glitch looks its own, and
+        /// whether its pattern jumps (off in low intensity, where it holds still). Applied with the next transition push.
+        /// </summary>
+        public void SetGlitch(float amount, float seed, bool stepped)
+        {
+            m_Glitch = amount;
+            m_GlitchSeed = seed;
+            m_GlitchStepped = stepped;
+        }
+
+        /// <summary>
         /// Puts each lamp's reflection where the eye would see it in this glass: the lamp mirrored
         /// through the wall's plane, and the point where the line from the eye to that image crosses it.
         /// </summary>
@@ -268,6 +285,9 @@ namespace VRShootingGallery.GlassRoom
             m_Block.SetFloat(k_Dissolve, dissolve);
             m_Block.SetColor(k_VoidColor, blank);
             m_Block.SetVectorArray(k_Lamps, m_LampSpots);
+            m_Block.SetFloat(k_Glitch, m_Glitch);
+            m_Block.SetFloat(k_GlitchSeed, m_GlitchSeed);
+            m_Block.SetFloat(k_GlitchStep, m_GlitchStepped ? 1f : 0f);
             m_Renderer.SetPropertyBlock(m_Block);
 
             if (m_Mirrors == null || m_Texture == null)

@@ -10,6 +10,9 @@ namespace VRShootingGallery.GlassRoom
 
         /// <summary>One towering cumulus per cluster, its puffs stacked and narrowing upward.</summary>
         Cumulus,
+
+        /// <summary>Rounded boulders, one squashed ball each, sunk a little into the ground.</summary>
+        Boulders,
     }
 
     /// <summary>One group of puffs: where, how many, how big, what colour, and which part of the music lights it.</summary>
@@ -78,6 +81,8 @@ namespace VRShootingGallery.GlassRoom
                 var band = new Vector2(cluster.Band, cluster.Glow);
                 if (m_Kind == PuffKind.Trees)
                     Trees(b, cluster, band, Range);
+                else if (m_Kind == PuffKind.Boulders)
+                    Boulders(b, cluster, band, Range);
                 else
                     Cumulus(b, cluster, band, Range);
             }
@@ -117,6 +122,30 @@ namespace VRShootingGallery.GlassRoom
                     new Vector3(s, s * 0.85f, s) * 0.72f, shade, band);
                 SimMeshes.Icosphere(b, at + new Vector3(range(-0.2f, 0.2f) * s, s * 1.55f, 0f),
                     new Vector3(s, s * 0.85f, s) * 0.62f, light, band);
+            }
+        }
+
+        void Boulders(SimMeshes.Builder b, PuffCluster cluster, Vector2 band, System.Func<float, float, float> range)
+        {
+            for (int i = 0; i < cluster.Count; i++)
+            {
+                float angle = range(0f, Mathf.PI * 2f);
+                float reach = Mathf.Sqrt(range(0f, 1f));
+                var at = cluster.Centre + new Vector3(Mathf.Cos(angle) * cluster.Spread.x * reach, 0f,
+                    Mathf.Sin(angle) * cluster.Spread.y * reach);
+
+                if (cluster.OnGround && m_Ground != null)
+                {
+                    var local = m_Ground.transform.InverseTransformPoint(transform.TransformPoint(at));
+                    local.y = m_Ground.HeightAt(local.x, local.z);
+                    at = transform.InverseTransformPoint(m_Ground.transform.TransformPoint(local));
+                }
+
+                float s = cluster.Size * range(0.5f, 1.4f);
+                var radii = new Vector3(s * range(0.9f, 1.4f), s * range(0.5f, 0.75f), s * range(0.9f, 1.3f));
+                var colour = cluster.Colour * range(0.85f, 1.1f);
+                colour.a = 1f;
+                SimMeshes.Icosphere(b, at + Vector3.up * (radii.y * 0.45f), radii, colour, band);
             }
         }
 
