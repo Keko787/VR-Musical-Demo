@@ -30,6 +30,7 @@ Material:
     - _Detail: 0.25
     - _DetailScale: 30
     - _FogScale: 1
+    - _PaletteSlot: -1
     - _Rim: 0.3
     - _Rings: 1.2
     - _Snow: 0
@@ -39,6 +40,7 @@ Material:
     - _StrataGlow: 1.4
     - _StrataScale: 14
     - _Sway: 0
+    - _SwaySource: 0
     - _TopAmount: 1
     - _WetBand: 0.4
     - _WetDarken: 0
