@@ -1,6 +1,7 @@
 // Still water in the outside worlds — the pool under the canyon's light pillar, the lake under the
 // aurora. It reflects the world's sky (stars, moon and all) through ripples the bass stirs, and
-// glints toward the sun or moon with the treble.
+// glints toward the sun or moon with the treble. A fjord's water also carries the world's beat rings,
+// spreading across it as ripples that catch the light.
 //
 // It also marks itself in the stencil buffer, so the aurora's mirror image can be drawn on the
 // water and nowhere else: the reflection hangs below the water plane, where depth testing would
@@ -14,6 +15,8 @@ Shader "VRMusic/SimWater"
         _Ripple ("Ripple", Range(0, 2)) = 0.4
         _RippleScale ("Ripple Size (m)", Float) = 6
         _Glint ("Glint", Range(0, 4)) = 1
+        _Rings ("Beat Rings (light)", Range(0, 4)) = 0
+        _RingRipple ("Beat Rings (ripple)", Range(0, 4)) = 0
         _FogScale ("Fog", Range(0, 2)) = 1
         _StencilRef ("Stencil Mark", Float) = 1
     }
@@ -51,6 +54,8 @@ Shader "VRMusic/SimWater"
                 float _Ripple;
                 float _RippleScale;
                 float _Glint;
+                float _Rings;
+                float _RingRipple;
                 float _FogScale;
                 float _StencilRef;
             CBUFFER_END
@@ -95,12 +100,23 @@ Shader "VRMusic/SimWater"
                 float amp = _Ripple * (0.3 + 1.4 * _GR_Music.x) / (1.0 + dist * 0.003);
                 float3 N = normalize(float3(-(nx - n0) / e * amp, 1.0, -(nz - n0) / e * amp));
 
+                // The beat rings as ripples: tilt the water along the ring's slope, out from its origin.
+                float ring = 0.0;
+                if (_Rings > 0.001 || _RingRipple > 0.001)
+                {
+                    ring = GR_Rings(input.positionWS);
+                    float2 outward = normalize(input.positionWS.xz - _GR_RingOrigin.xz + 1e-3);
+                    float slope = (GR_Rings(input.positionWS + float3(outward.x, 0.0, outward.y) * 3.0) - ring) / 3.0;
+                    N = normalize(N + float3(outward.x, 0.0, outward.y) * slope * 30.0 * _RingRipple);
+                }
+
                 float3 R = reflect(-V, N);
                 R.y = abs(R.y);
                 float3 sky = GR_Sky(R, _Glint * (0.6 + 0.8 * _GR_Music.z));
 
                 float fresnel = 0.04 + 0.96 * pow(1.0 - saturate(dot(N, V)), 5.0);
                 float3 col = lerp(_DeepColor.rgb, sky, saturate(_Reflectivity * (0.3 + 0.7 * fresnel)));
+                col += _GR_RingColor.rgb * ring * _Rings * _GR_Intensity;
 
                 col = GR_ApplyFog(col, input.positionWS, _FogScale);
                 return half4(col, 1.0);

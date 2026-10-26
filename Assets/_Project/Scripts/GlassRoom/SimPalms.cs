@@ -169,7 +169,9 @@ namespace VRShootingGallery.GlassRoom
                 float u = i / (float)segments;
                 var spine = top + out_ * (length * u * 0.95f) + Vector3.up * (length * (rise * u - 0.95f * u * u));
 
-                float width = length * 0.17f * Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Pow(u, 0.8f)), 0.8f);
+                // Floored at 0: the float Mathf.PI is a hair over π, so at the tip the sine is a hair
+                // below zero, and a fractional power of that is NaN, which takes the whole mesh's bounds with it.
+                float width = length * 0.17f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.PI * Mathf.Pow(u, 0.8f))), 0.8f);
                 width *= 1f - 0.4f * (i % 2);                           // the ragged edge of the leaflets
                 var droop = Vector3.up * (width * 0.4f);
 

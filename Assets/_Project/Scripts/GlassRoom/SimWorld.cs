@@ -53,6 +53,9 @@ namespace VRShootingGallery.GlassRoom
     {
         [SerializeField] string m_Title = "World";
 
+        [SerializeField, Tooltip("The group the world menu lists it under: Shelter, Space, Norway.")]
+        string m_Group = "Shelter";
+
         [Header("Sky")]
         [SerializeField] Color m_Zenith = new(0.07f, 0.22f, 0.72f);
         [SerializeField] Color m_Horizon = new(0.62f, 0.8f, 0.98f);
@@ -74,6 +77,33 @@ namespace VRShootingGallery.GlassRoom
 
         [SerializeField, Tooltip("What the cirrus is lit to. White by day; pink and orange for a sunset.")]
         Color m_CloudColour = Color.white;
+
+        [SerializeField, Range(0f, 1f), Tooltip("Heaped cloud over the world: how much of the sky it covers. 0 for none.")]
+        float m_CloudCover;
+
+        [SerializeField, Range(0f, 1f), Tooltip("How dark the thick of the cloud is. High for a storm.")]
+        float m_CloudDarkness = 0.25f;
+
+        [SerializeField, Tooltip("Metres across a cloud, and the height of the deck above the room.")]
+        Vector2 m_CloudSize = new(1800f, 2600f);
+
+        [SerializeField, Tooltip("Metres a second the clouds drift, across (x) and ahead (y).")]
+        Vector2 m_CloudWind = new(6f, -3f);
+
+        [SerializeField, Range(0f, 1f), Tooltip("How far the loudness opens the clouds: a loud passage lets the sun in.")]
+        float m_CloudsOpen = 0.4f;
+
+        [SerializeField, Range(0f, 1f), Tooltip("How dark the clouds' shadows on the land are.")]
+        float m_CloudShadows = 0.6f;
+
+        [SerializeField, Tooltip("Mist lying in a band of height above the room's floor, bottom to top, as cloud does along a cliff top.")]
+        Vector2 m_MistBand;
+
+        [SerializeField, Tooltip("How thick the mist is, per kilometre looked through. 0 for none.")]
+        float m_MistDensity;
+
+        [SerializeField, Range(0f, 2f), Tooltip("How much the bass thickens it.")]
+        float m_MistByBass = 0.5f;
         [SerializeField, Range(0f, 2f)] float m_Stars;
         [SerializeField, Range(0f, 1f)] float m_MilkyWay;
         [SerializeField] Vector3 m_MoonDirection = new(-0.75f, 0.38f, 0.35f);
@@ -130,6 +160,7 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField] int m_Variant;
 
         public string Title => m_Title;
+        public string Group => m_Group;
         public Transform RingOrigin => m_RingOrigin;
         public Color RingColour => m_RingColour;
         public float RingDelay => m_RingDelay;
@@ -171,6 +202,9 @@ namespace VRShootingGallery.GlassRoom
         static readonly int k_Sky = Shader.PropertyToID("_GR_Sky");
         static readonly int k_Moon = Shader.PropertyToID("_GR_Moon");
         static readonly int k_CloudColor = Shader.PropertyToID("_GR_CloudColor");
+        static readonly int k_Clouds = Shader.PropertyToID("_GR_Clouds");
+        static readonly int k_CloudMotion = Shader.PropertyToID("_GR_CloudMotion");
+        static readonly int k_Mist = Shader.PropertyToID("_GR_Mist");
         static readonly int k_RingColor = Shader.PropertyToID("_GR_RingColor");
         static readonly int k_RingOrigin = Shader.PropertyToID("_GR_RingOrigin");
         static readonly int k_Nebula = Shader.PropertyToID("_GR_Nebula");
@@ -211,6 +245,12 @@ namespace VRShootingGallery.GlassRoom
             Shader.SetGlobalVector(k_Fog, new Vector4(m_FogDistance, m_FogAmount, m_FogSunGlow, 0f));
             Shader.SetGlobalVector(k_Sky, new Vector4(m_Clouds, m_Stars, m_MilkyWay, m_CloudDrift));
             Shader.SetGlobalColor(k_CloudColor, m_CloudColour);
+
+            // The wind blows in the room's frame, like the sun.
+            var wind = frame * new Vector3(m_CloudWind.x, 0f, m_CloudWind.y);
+            Shader.SetGlobalVector(k_Clouds, new Vector4(m_CloudCover, m_CloudDarkness, m_CloudSize.x, m_CloudSize.y));
+            Shader.SetGlobalVector(k_CloudMotion, new Vector4(wind.x, wind.z, m_CloudsOpen, m_CloudShadows));
+            Shader.SetGlobalVector(k_Mist, new Vector4(m_MistBand.x, m_MistBand.y, m_MistDensity, m_MistByBass));
 
             var moon = frame * (m_MoonDirection.sqrMagnitude > 1e-6f ? m_MoonDirection.normalized : Vector3.up);
             float moonDisc = m_MoonDegrees > 0f ? Mathf.Cos(m_MoonDegrees * Mathf.Deg2Rad) : 0f;

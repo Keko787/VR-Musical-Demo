@@ -44,8 +44,9 @@ namespace VRShootingGallery.GlassRoom
 
         [SerializeField] int m_StartWorld;
 
-        [SerializeField, Tooltip("Rebuild the outside into the next world whenever a new track starts.")]
-        bool m_NewWorldEachTrack = true;
+        [SerializeField, Tooltip("Rebuild the outside into the next world whenever a new track starts. Off: the world stays " +
+            "through every change of track, until someone picks another.")]
+        bool m_WorldPerTrack;
 
         [SerializeField, Tooltip("Seconds between world changes with nobody touching anything. 0 is off.")]
         float m_AutoCycleSeconds;
@@ -107,8 +108,12 @@ namespace VRShootingGallery.GlassRoom
         GameObject[] m_FurniturePieces;
 
         [Header("Wand")]
-        [SerializeField, Tooltip("Wand button that changes the world outside. Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
+        [SerializeField, Tooltip("Wand button that opens the world menu (or, without one, changes the world outside). Indices are whatever the .vrx says; " +
+            "the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
         int m_WorldButton = 1;
+
+        [SerializeField, Tooltip("The menu on the front wall the world button opens. None, and the button steps to the next world instead.")]
+        WorldMenu m_Menu;
 
         [SerializeField] int m_IntensityButton = 2;
         [SerializeField] int m_NextTrackButton = 3;
@@ -121,7 +126,7 @@ namespace VRShootingGallery.GlassRoom
         int m_FurnitureButton = -1;
 
         [Header("Desk")]
-        [SerializeField, Tooltip("W changes the world (Shift+W goes back), V its variant (Shift+V goes back), F shows or hides the furniture, L toggles low intensity, N skips, Space pauses, and the number-row keys " +
+        [SerializeField, Tooltip("W opens the world menu (Shift+W goes back a world), V the world's variant (Shift+V goes back), F shows or hides the furniture, L toggles low intensity, N skips, Space pauses, and the number-row keys " +
             "stand in for the wand buttons with the same digit. Stays on in builds so the room can be run from the server node.")]
         bool m_KeyboardControl = true;
 
@@ -135,6 +140,7 @@ namespace VRShootingGallery.GlassRoom
         public SimWorld World => m_Current >= 0 && m_Worlds != null && m_Current < m_Worlds.Length ? m_Worlds[m_Current] : null;
         public int WorldIndex => m_Current;
         public int WorldCount => m_Worlds != null ? m_Worlds.Length : 0;
+        public SimWorld WorldAt(int index) => m_Worlds != null && index >= 0 && index < m_Worlds.Length ? m_Worlds[index] : null;
 
         /// <summary>0 when a world is simply outside; 0 → 1 while it dissolves, 1 → 2 while the next builds.</summary>
         public float Transition => m_Dissolve;
@@ -270,9 +276,9 @@ namespace VRShootingGallery.GlassRoom
 
         void OnTrackStarted(AudioClip clip)
         {
-            // The first track starts as the scene opens; only a change of track changes the world.
+            // The first track starts as the scene opens; only a change of track changes the world, and only when asked to.
             m_TracksStarted++;
-            if (m_TracksStarted > 1 && m_NewWorldEachTrack)
+            if (m_TracksStarted > 1 && m_WorldPerTrack)
                 NextWorld();
         }
 
@@ -574,7 +580,9 @@ namespace VRShootingGallery.GlassRoom
                     return 0f;
 
                 float p = Mathf.Clamp01(m_GlitchTime / Mathf.Max(0.1f, m_GlitchSeconds));
-                return Mathf.Pow(Mathf.Sin(p * Mathf.PI), 0.8f) * (m_LowIntensity ? 0.6f : 1f);
+                // Floored at 0, as a fractional power of a sine must be: at p = 1 the float sine of
+                // Mathf.PI is a hair below zero, and the power of that is NaN.
+                return Mathf.Pow(Mathf.Max(0f, Mathf.Sin(p * Mathf.PI)), 0.8f) * (m_LowIntensity ? 0.6f : 1f);
             }
         }
 
@@ -692,7 +700,7 @@ namespace VRShootingGallery.GlassRoom
         void ReadInput()
         {
             if (m_WorldButton >= 0 && MiddleVRWand.PressedThisFrame(m_WorldButton))
-                NextWorld();
+                WorldButton();
             if (m_IntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
             if (m_NextTrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_NextTrackButton))
@@ -716,11 +724,11 @@ namespace VRShootingGallery.GlassRoom
                 if (keyboard.shiftKey.isPressed)
                     PreviousWorld();
                 else
-                    NextWorld();
+                    WorldButton();
             }
             else if (DigitPressed(keyboard, m_WorldButton))
             {
-                NextWorld();
+                WorldButton();
             }
 
             if (keyboard.vKey.wasPressedThisFrame)
@@ -743,6 +751,15 @@ namespace VRShootingGallery.GlassRoom
                 m_Deck?.TogglePause();
         }
 
+        /// <summary>The world button opens the menu on the front wall, or closes it; with no menu it steps to the next world.</summary>
+        void WorldButton()
+        {
+            if (m_Menu != null)
+                m_Menu.Toggle();
+            else
+                NextWorld();
+        }
+
         /// <summary>The number-row key printed with the same digit as a wand button, the way the other demos do it.</summary>
         static bool DigitPressed(Keyboard keyboard, int button)
         {
@@ -763,7 +780,7 @@ namespace VRShootingGallery.GlassRoom
 
             var world = m_Next >= 0 && m_Next < WorldCount ? m_Worlds[m_Next] : World;
             if (world != null)
-                m_Text.Append("   ·   ").Append(world.Title).Append(" (").Append(System.Array.IndexOf(m_Worlds, world) + 1)
+                m_Text.Append("   ·   ").Append(world.Group).Append(": ").Append(world.Title).Append(" (").Append(System.Array.IndexOf(m_Worlds, world) + 1)
                     .Append('/').Append(WorldCount).Append(')');
 
             if (world != null && world.VariantCount > 1)

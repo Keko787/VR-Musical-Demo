@@ -54,5 +54,21 @@ namespace VRShootingGallery
             return false;
 #endif
         }
+
+        /// <summary>The wand's joystick, x right and y up, each −1 to 1; zero when there is no wand.</summary>
+        public static Vector2 Axis
+        {
+            get
+            {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
+                var devices = MVR.DeviceMgr;
+                return devices == null
+                    ? Vector2.zero
+                    : new Vector2(devices.GetWandHorizontalAxisValue(), devices.GetWandVerticalAxisValue());
+#else
+                return Vector2.zero;
+#endif
+            }
+        }
     }
 }

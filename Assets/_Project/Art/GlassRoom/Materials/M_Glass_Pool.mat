@@ -28,6 +28,8 @@ Material:
     - _FogScale: 1
     - _Glint: 1
     - _Reflectivity: 0.45
+    - _RingRipple: 0
+    - _Rings: 0
     - _Ripple: 0.25
     - _RippleScale: 5
     - _StencilRef: 1

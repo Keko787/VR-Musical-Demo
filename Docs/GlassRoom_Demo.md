@@ -64,9 +64,12 @@ Glass_Room                 Simulation — worlds, transitions, music globals, ro
 │  ├─ Sky                  SkyDome: one dome, painted by whichever world is awake
 │  ├─ World_RedRock        SimWorld + its land, pillar, voxels, motes
 │  ├─ World_CloudSea       SimWorld + cloud sea, cumulus towers, pillars, sparks
+│  ├─ World_SkyPool        SimWorld + open sea, Pool (SimPool) and its Water, Springboard, Splash, cumulus, gulls
 │  ├─ World_Beach          SimWorld + sand, sea (SimOcean), deck, palms, pier and its lamps, headlands, islands, fireworks
 │  ├─ World_Aurora         SimWorld + lake, mountains, island, curtains (and reflections), snow
-│  └─ World_Orbit          SimWorld (3 variants) + meadow, grass, leaves, boulders, tubes, asteroids, planets, star, satellites, meteors, dust
+│  ├─ World_Orbit          SimWorld (3 variants) + meadow, grass, leaves, boulders, tubes, asteroids, planets, star, satellites, meteors, dust
+│  └─ World_Lustrafjord …  the nine Norway views: SimWorld + Land (SimSurface, Fjordland) and its Tarns, Water, villages,
+│                          fish farms, ship, waterfalls, spruces, trees, boulders, grass, birds, lightning — whichever the view has
 ├─ Floorboards, Rug
 ├─ Frame                   iron posts, rails, sills, corner braces
 ├─ Desk                    glass top, legs, glass of water, Tablet (shows the front view), Teddy_Bear
@@ -74,7 +77,9 @@ Glass_Room                 Simulation — worlds, transitions, music globals, ro
 ├─ Bed                     brass head and foot, mattress, blanket, pillow
 ├─ Pendants                three PendantLamps, each with a point light
 ├─ Glass_Walls             Glass_Left / Glass_Front / Glass_Right: WindowView each
-└─ Status_Sign             dim line on the floor at the open back
+├─ Status_Sign             dim line on the floor at the open back
+└─ World_Menu              WorldMenu, on the front wall just inside the glass: Content (panel, highlight, title, rows,
+                           cursor) and Wand_Ray; hidden until the world button opens it
 ```
 
 A rebuild clears the children and reuses the `Simulation` on the root, so its Inspector settings
@@ -84,7 +89,7 @@ survive a rebuild.
 
 | Wand button | Key | Does |
 | --- | --- | --- |
-| 1 | **W** | Next world (**Shift+W** goes back) |
+| 1 | **W** | Open or close the world menu (**Shift+W** goes straight back a world) |
 | 2 | **L** | Toggle low intensity |
 | 3 | **N** | Next track |
 | 4 | **Space** | Pause / resume |
@@ -94,9 +99,34 @@ survive a rebuild.
 As in the other demos, the number-row keys stand in for the wand buttons with the same digit, and
 the keyboard stays on in builds.
 
-**Hands off:** `m_NewWorldEachTrack` (on by default) rebuilds the outside into the next world
-whenever a new track starts. `m_AutoCycleSeconds` changes worlds on a timer, and
-`m_VariantEverySeconds` changes a world's variant on a timer (both off by default).
+### The world menu
+
+The world button opens a menu on the front wall, a dark glass panel over the window at a little
+below eye height, above the desk. It lists the worlds by group first: **Shelter** (Red Rock, Above
+the Clouds, Sky Pool, Sunset Beach, Aurora), **Space** (Orbit) and **Norway** (nine views). Picking a
+group lists its worlds, with a way back at the bottom. Picking a world closes the menu and rebuilds
+the outside into it with the usual tile change. The world outside now, and its group, are marked in
+amber.
+
+| With the wand | At the desk | Does |
+| --- | --- | --- |
+| Point at a row | — | Selects it; a thin ray shows where the wand points, and a dot where it meets the panel |
+| Joystick up / down | **↑ / ↓** | Moves the selection (holding repeats) |
+| Trigger (button 0) | **Enter** | Picks the row |
+| Joystick right | **→** | Opens the selected group |
+| Joystick left | **← / Backspace / Esc** | Back to the groups, or closes the menu from there |
+| Button 1 | **W** | Closes the menu |
+
+The groups come from each world's **Group** on its `SimWorld`, in the order the worlds are listed,
+so a new world shows up in the menu by setting that field. Without a `WorldMenu` on the
+`Simulation`, the world button goes back to stepping to the next world. The other buttons and keys
+keep working while the menu is open. The pointer looks for MiddleVR's `HandNode`; at a desk with no
+wand, the keys work alone.
+
+**A change of track leaves the world alone.** The world outside stays until someone picks another
+from the menu. Three hands-off options are all off by default: `m_WorldPerTrack` rebuilds the
+outside into the next world whenever a new track starts, `m_AutoCycleSeconds` changes worlds on a
+timer, and `m_VariantEverySeconds` changes a world's variant on a timer.
 
 ## Changing worlds
 
@@ -109,6 +139,10 @@ wave. The whole change takes 3.2 s (`m_TransitionSeconds`). The room's light eas
 world's light over 1.5 s.
 
 ## The worlds
+
+The worlds come in three groups, which the world menu lists them by: **Shelter**, the worlds after
+the film and its mood (Red Rock, Above the Clouds, Sky Pool, Sunset Beach, Aurora); **Space**
+(Orbit); and **Norway**, nine views after photographs.
 
 ### Red Rock
 
@@ -142,6 +176,43 @@ above a sea of cloud.
 - **Cumulus towers** on the horizon each glow from inside with their own part of the spectrum.
 - **Three distant pillars of light**, one each for bass, mids and treble.
 - **Sparks** lift off the sea with the treble.
+
+### Sky Pool
+
+After a surreal collage: a long swimming pool standing in the open sea under one enormous cumulus,
+and the water in the pool is sky. Look into it and you look down into a blue sky with white clouds
+drifting in it, as if the pool were a hole through to the sky on the other side. The collage's
+swimmers are left out.
+
+The room stands on the white deck at the pool's near end. A springboard reaches out over the water
+from just past the front glass. The pool is 10 m wide and 50 m long, with a grey coping along its
+edge, a waterline frieze of blue tiles with a white Greek key, and steel ladders near both ends. The
+far end is an infinity edge: the pool runs out to a thin dark line, and the sea carries on to the
+horizon. Gulls wheel overhead, and fair-weather cumulus sit round the rest of the horizon.
+
+- **The music pours into the pool and drifts away down it as cloud.** The spectrogram is laid along
+  the pool. Each moment enters at the near end, under the board, and floats toward the far end at
+  2.5 m/s, so a loud passage thickens the clouds where it is and then drifts off with them. Pitch runs
+  across the pool: the bass down the middle and the treble along the walls. The music fades out
+  over the pool's last third, before the infinity edge. A fainter, slower deck of cloud lies deeper down, which
+  gives the sky beneath some depth.
+- **Each beat is a dive.** The springboard dips and rebounds on the beat, dying away, as if somebody
+  has just gone off it. Rings of ripples spread across the water from a little beyond its tip. They
+  bend the sky beneath as they pass and catch the light. These are the world's beat rings, at
+  4.5 m/s, so strong beats make bigger ripples.
+- **The cumulus billows with the music.** It is built from seven turrets, and each one swells with
+  its own band: the bass in the great central tower, rising through the shoulders either side, up to
+  the treble in the small turrets on top. Each puff swells by a share of its own radius (up to 14% at
+  full level), so the cloud boils rather than inflates.
+- **The bass swells the sea.** The sea is the beach's ocean shader with its shore put far behind the
+  room. Only the swells are left, rolling in from the horizon, bigger with the bass.
+- **The mids set the gulls flapping.** They glide while the middle of the music is quiet. As the mids
+  come up they beat their wings and climb a little.
+
+The water is one quad drawn by its own shader (`VRMusic/SimSkyPool`). Everything in it (the sky
+beneath, the clouds, the ripples) is worked out per pixel. `SimPool` builds the platform from the
+same numbers it hands to that shader each frame (`_Pool`), so the water's edges, its walls' shade and
+the place the music pours in always match the platform.
 
 ### Sunset Beach
 
@@ -224,6 +295,75 @@ between worlds. For 1.4 s rows of the picture shear and smear sideways, blocks p
 colour channels split. The look swaps underneath at the glitch's worst point. Any world can have
 variants: give its `SimWorld` some in **Variants**. A world without them ignores V.
 
+## Norway
+
+Nine views after photographs of Norway, each a world of its own in the **Norway** group. They share
+one way of being built, and the music plays on all of them the same few ways.
+
+**The ground** is a `SimSurface` with the `Fjordland` profile, built in layers:
+
+1. A mass of ridged mountains (`m_Base`, `m_Rim`, `m_RimWidth`), cut off level at `m_Plateau` if
+   there is one, leaving sheer walls under flat tops.
+2. **Valleys and fjords** carved along paths (`m_Valleys`). Each has a flat floor and walls that are
+   steep at the foot and round off into the mountains at the top, the U a glacier leaves. Each point
+   on a path carries the floor's height, so one valley can be a fjord at its mouth, a lake further up
+   and fields at its head.
+3. **A coast and a bay** (`m_Coast`, `m_Bay`) dropping the land into the sea.
+4. **The view limit**: within `m_ViewRadius`, nothing rises above a line falling at `m_ViewSlope` from
+   the edge of the room's summit, so the summit is a mountain top whatever the mountains round it do.
+   It never digs below the mountains' foot, so it leaves no moat.
+5. **Horn peaks** (`m_Peaks`), raised after the limit, so a sea stack can stand out of the water and
+   a spire can stand beside the room. Their foot reaches further in some directions than others, so
+   ridges run off them.
+6. **The summit** (`m_Summit`): a broad dome round the room.
+7. **Tarns** (`m_Tarns`): each fills to just below the lowest point of its own rim, worked out when
+   the ground generates, so a tarn's water can never stand above the ground beside it. The water is
+   drawn on the `Tarns` child.
+
+The land shader paints it by height above the water and slope: forest up to a ragged tree line,
+heath above it, a patchwork of fields on the level ground low down (one strip in six cut for hay),
+bare rock on the cliffs and showing through the heath, shingle or sand along the water, and snow
+above the snow line.
+
+**The room floats over most of them**, as the drone the photographs were taken from did
+(`Hover`, 30 to 120 m). From eye height on a broad summit, the summit's own shoulder hides everything
+below it: you see something only if the ground in between falls away faster than your line of sight
+to it. From above, the fjord opens up under the glass. The two views taken by someone standing (the
+bird cliffs and the storm gorge) keep the room on the ground. In Bird Cliffs the room stands right at
+the cliff edge, because from even a few metres back you cannot see down a cliff.
+
+**The music:**
+
+- **The clouds open with the loudness.** A deck of heaped cloud covers part of the sky. As the music
+  swells it thins and the sun comes through, and the clouds' shadows slide across the land as the
+  deck drifts. Quiet passages close it again. This is the main way the music reaches these worlds,
+  and it is slow on purpose, like weather.
+- **Beat rings ripple across the water** from a point on the fjord or bay, lighting it and tilting
+  its surface as they pass. The tarns carry them too.
+- **Waterfalls run with the bass**: faster and whiter, and a little wider as it swells.
+- **The grass sways with the mids**, and gulls (Arctic Bay, Bird Cliffs) flap and climb with them.
+- **Fish farms and the cruise ship** carry lamps along the spectrum, one band each: an equaliser on
+  the water that shows when the music is loud.
+- **Snow glints with the treble** on Glacier Peak. **Surf** runs higher up the shore on each beat at
+  Arctic Bay and Bird Cliffs. **Mist** along Storm Gorge's cliff tops thickens with the bass, and
+  **lightning** lights its clouds from inside on the strongest beats.
+
+| View | After | What it shows |
+| --- | --- | --- |
+| **Lustrafjord** | Molden, over the Lustrafjord | A bare summit with tarns at the room's feet, 120 m below the floating room. The turquoise fjord is far below, one arm curling away behind the mountain on the left and the other running off past farms on a green shelf to the right. Haze, and snow on the farthest ridges |
+| **Hilltop Fjord** | A grassy knoll above a fjord | Grass falling away under the room, two birches, the fjord running out from the left past a pyramid of a mountain, an arm reaching into the blue distance, heaped cloud |
+| **Arctic Bay** | Andøya | High on a green mountainside: a valley leads down to a bay with a white beach, cliffs on the headland to the left, the open ocean to the right with the sun on it, gulls below |
+| **Glacier Peak** | The mountains of the north | The snowfield right below the room between a rock wall and a grey fin, a long blue lake in a green valley far beneath, ranges of grey peaks streaked with snow beyond |
+| **Olden** | The head of the fjord at Olden | A cruise ship at anchor, the village where the fjord ends, a valley of fields and farms running on between sheer green walls to a lake, waterfalls down the cliffs, snow on the peaks |
+| **Bird Cliffs** | Bleik | The grassy edge of a sea cliff: the sea straight down with surf along the rocks, a ridge of jagged peaks running out into it, a stack offshore, gulls wheeling below the edge |
+| **Storm Gorge** | A cliff-walled valley under a storm | A meadow and a row of trees, black cliffs split by a narrow gorge, snow in the gullies, cloud pouring over the cliff tops, warm light through the gap, lightning in the cloud. The room's lamps burn full |
+| **Dronningruta** | The Queen's Route, Vesterålen | Down into a green bowl with two dark tarns among slabs of rock, black jagged peaks behind on the left, the sea far off on the right, a heavy sky with the light low |
+| **Senja** | A fjord on Senja | Straight down a fjord from grey slabs: steep walls either side, a fish farm's rings on the still water, a village on the right shore, a crown of jagged peaks where the fjord opens to the sea |
+
+Each view is one `NorwayView` in `GlassRoomBuilder.Norway.cs`: the ground's numbers, its paint, the
+sky, the room's light, the ring origin and what stands in it. A new view is another method there and
+a line in `BuildNorway`.
+
 ## The room
 
 - **Its light comes from outside.** Each world sets the scene's directional light (colour,
@@ -250,6 +390,9 @@ variants: give its `SimWorld` some in **Variants**. A world without them ignores
 - **The glitch between variants** shifts and smears the picture but keeps its brightness. Its
   pattern jumps six times a second for the 1.4 s it lasts. In low intensity the pattern holds still
   and the glitch is gentler.
+- **Lightning** in Storm Gorge strikes only on beats above 0.65 strength, never two within 1.6 s,
+  and stays a glow inside the cloud with a faint lift of the land rather than a white-out. Low
+  intensity halves it again on top of the usual dimming.
 - **Low intensity** (wand 2 / **L**) dims every glow outside to 55%, halves the beat rings, and dims
   the blank page between worlds. The blank page is the one large change in brightness, and it fades
   over 1.6 s, never cuts.
@@ -276,14 +419,21 @@ variants: give its `SimWorld` some in **Variants**. A world without them ignores
 | `SimWorld` | One world's sky, how it lights the room, and where its beat rings start |
 | `WindowView` | One glass wall: the outside camera, its off-axis frustum from the fixed eye, the render texture, lamp reflections |
 | `PendantLamp` | A lamp's glow, light and gentle swing |
-| `SimSurface` | Polar-grid ground generated around the room: desert floor, mountain ring, flat water or cloud |
+| `SimSurface` | Polar-grid ground generated around the room: desert floor, mountain ring, beach, Norway's fjordland (valleys, fjords, peaks, tarns and their water, coast, the view limit), flat water or cloud (water can curve up toward the horizon far out, so from a summit the sea runs all the way out) |
 | `SimButte` | Tiered rock formations: buttes, mesas, spires, the room's pedestal |
-| `SimPuffs` | Trees and cumulus built from balls, optionally lit by a band |
+| `SimPuffs` | Trees, spruces, boulders and cumulus built from balls, optionally lit by a band |
 | `SkyDome`, `AuroraCurtain` | The sky's sphere; a curtain's strip |
 | `SimOcean` | Hands the sea its beach's waterline |
 | `SimPalms` | Palm trees, curved trunks and folded fronds, with sway weights for the shader |
 | `SimPier` | The pier's mesh, and its lamps and their reflections as an equaliser |
 | `SimFireworks` | Bursts on strong beats, coloured by the leading part of the music, mirrored in the sea |
+| `SimPool` | The sky pool's platform (deck, coping, frieze, ladders, infinity edge) and its water quad; hands the water's shader the pool's shape |
+| `SimSpringboard` | The springboard and its stand; the board dips and rebounds on the beat |
+| `SimGulls` | Gulls circling over the sea, flapping and climbing with the mids |
+| `SimProps` | Norway's houses (on level ground above the water), fish farms (rings with a band lamp each) and a cruise ship (windows along the spectrum) |
+| `SimWaterfall` | A waterfall traced down the steepest way from its source until the ground levels out or meets the water, as a ribbon on the rock |
+| `SimLightning` | Lightning in the clouds on the strongest beats (`_GR_Flash`) |
+| `WorldMenu` | The world menu on the front wall: groups, then worlds; wand pointer, joystick, trigger and keys |
 | `WorldVariant` (in `SimWorld`) | One look of a world: sky, nebula, palette, tints, room light |
 | `SimCelestial` | A planet or star: a quad that `SimPlanet` turns to face the room |
 | `SimAsteroids` | Faceted rocks round the room, lifted and spun by their bands |
@@ -293,23 +443,29 @@ variants: give its `SimWorld` some in **Variants**. A world without them ignores
 | `SimMeteors` | Shooting stars on strong beats, as velocity-stretched glows |
 | `LightPillar`, `VoxelMesa`, `SimMotes` | The pillar, the cubes, the motes |
 | `SimMeshes` | Noise and mesh helpers |
-| `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards |
+| `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards. The Norway views and the world menu are in `GlassRoomBuilder.Norway.cs` |
 
 | Shader | Draws |
 | --- | --- |
 | `VRMusic/GlassWindow` | The glass: the view, tint, haze, streaks, lamp reflections, and the tile dissolve |
 | `VRMusic/SimSky` | The dome: gradient, sun, cirrus, stars, milky way, moon |
-| `VRMusic/SimLand` | Rock, ground, trees, snow, cumulus, voxels: cel-lit with violet shadows, strata, rim light, band glow, beat rings, haze |
+| `VRMusic/SimLand` | Rock, ground, trees, snow, cumulus, voxels: cel-lit with violet shadows, strata, Norway's biome paint, rim light, band glow, beat rings, surf, snow glints, cloud shadows, haze |
 | `VRMusic/SimCloudSea` | The cloud sea lifted by the spectrogram |
-| `VRMusic/SimWater` | Sky-reflecting water that marks the stencil buffer |
-| `VRMusic/SimOcean` | The beach's sea: swells, run-up, the surge, glitter, foam; marks the stencil buffer |
+| `VRMusic/SimWater` | Sky-reflecting water that marks the stencil buffer; can carry the beat rings as light and ripples |
+| `VRMusic/SimFall` | A waterfall: white streaks running down a ribbon, faster, whiter and wider with its band |
+| `VRMusic/SimOcean` | The beach's sea: swells, run-up, the surge, glitter, foam; marks the stencil buffer. The sky pool's open sea is the same shader with its shore out of sight |
+| `VRMusic/SimSkyPool` | The sky pool's water: the sky beneath, its clouds thickened by the spectrogram and drifting down the pool, wind and beat ripples |
 | `VRMusic/SimGlint` | Additive glows (lamps, sparks) that can also be drawn as stencil-clipped reflections |
 | `VRMusic/SimPlanet` | Planets (banded, lit, atmosphere, a ring that is the spectrum) and stars (corona, flares) |
 | `VRMusic/SimAurora` | Curtains and their stencil-clipped reflections |
 | `VRMusic/SimPillar` | The camera-facing light pillar |
 
 `SimCommon.hlsl` holds the shared globals (`_GR_*`), the noise functions and the sky function. The
-water reflects the same sky function that the dome draws.
+water reflects the same sky function that the dome draws. The sky also has a deck of heaped cloud
+(`_GR_Clouds`, `_GR_CloudMotion`) that the land reads back for its cloud shadows, along the sun, so a
+shadow lies under its cloud. The fog adds mist in a band of height (`_GR_Mist`), as much as the line
+of sight runs through the band. Lightning (`_GR_Flash`) lights the cloud deck and lifts the land's
+light. A world without clouds, mist or lightning leaves them all at zero.
 
 **Land shader vertex colour:** below full alpha, a vertex's colour takes over and glows. A voxel
 cube that breaks free has particle alpha 0. It is this way round because a mesh with no colour
@@ -317,14 +473,15 @@ channel reads as opaque white, and it must still be painted. For the same reason
 land shader draws must fill its second UV channel (the band glow). A missing channel is not read as
 zero, and the first canyon floor had one sector glowing white. The third UV channel holds sway
 (weight, phase). It is read only by a material with `_Sway` above 0 (the palms), so other meshes can
-leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel`, the waterline.
+leave it empty. A cumulus puff puts its radius there instead, for a material with `_Billow` above 0
+(the sky pool's cumulus), which swells each puff with its band by that share of its radius. `_WetDarken` darkens a ragged band of sand just above `_WetLevel`, the waterline.
 
 ## Tuning
 
 | Component | Field | Default | Effect |
 | --- | --- | --- | --- |
 | `Simulation` | `m_TransitionSeconds` | 3.2 | Dissolve out + build in |
-| | `m_NewWorldEachTrack` / `m_AutoCycleSeconds` | on / 0 | Hands-off world changes |
+| | `m_WorldPerTrack` / `m_AutoCycleSeconds` | off / 0 | Hands-off world changes: with each new track, or on a timer |
 | | `m_Attack` / `m_Release` | 0.05 / 0.4 s | How the outside eases with the bands, on top of the analyser |
 | | `m_SpectrogramRate` / `m_SpectrogramSlices` | 12 / 240 | 20 s of music on the cloud sea |
 | | `m_LowIntensityScale` | 0.55 | Glow level in low intensity |
@@ -346,6 +503,14 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 | `SimFireworks` | `m_MinStrength` / `m_MinInterval` | 0.4 / 0.6 s | What beat sets a shell off, and how often at most |
 | | `m_Sparks` / `m_Life` / `m_Speed` | 140 / 2.4 s / 38 m/s | A burst's size and length |
 | `M_Glass_Palm` | `_Sway` | 0.6 m | Frond tip sway at full mids |
+| `SimPool` | `m_Width` / `m_Length` / `m_Near` | 10 / 50 / 2.4 m | The water's size, and how far in front of the room it starts |
+| `M_Glass_Sky_Pool` | `_Cover` / `_CoverByMusic` | 0.4 / 0.5 | Cloud in the pool at rest, and what the music adds |
+| | `_FlowSpeed` / `_CloudScale` | 2.5 m/s / 7 m | How fast the clouds and the music drift down the pool; cloud size |
+| | `_RingRipple` / `_RingWavelength` / `_Sheen` | 4 cm / 0.8 m / 0.35 | The beat's ripples, and the light on them |
+| `SimWorld` (Sky Pool) | `m_RingSpeed` / `m_RingDelay` | 4.5 m/s / 0.12 s | How fast the ripples spread, and how long after the beat they start |
+| `SimSpringboard` | `m_Dip` / `m_Frequency` / `m_Damping` | 2.2° / 2.4 Hz / 3.2 | The board's spring on the beat |
+| `M_Glass_Pool_Cumulus` | `_Billow` | 0.14 | How far a puff swells at full level, as a share of its radius |
+| `SimGulls` | `m_Count` / `m_Span` / `m_Climb` | 6 / 1.5 m / 4 m | Gulls, their wingspan, how far the mids lift them |
 | `Simulation` | `m_GlitchSeconds` / `m_VariantEverySeconds` | 1.4 s / 0 (off) | The glitch between variants; hands-off variant changes |
 | | `m_Furniture` | on | The room's furniture; off for the bare glass box. Kept through a rebuild |
 | `SimWorld` (Orbit) | **Variants** | Orbit, Pink Nebula, Green Signal | Each look's sky, nebula, palette, tints and room light |
@@ -358,6 +523,18 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 | `PendantLamp` | `m_SwayDegrees` / `m_LightIntensity` | 2.5° / 0.9 | Swing and brightness |
 | `M_Glass_Canyon` | `_StrataGlow` / `_Rings` | 1.4 / 1.2 | Strata seams and beat rings on the rock |
 | `M_Glass_Window` | `_TintAmount` / `_Haze` / `_Streaks` / `_CellSize` | 0.12 / 0.06 / 0.05 / 0.11 m | The glass, and the dissolve's tile size |
+| `SimWorld` (Norway) | `m_CloudCover` / `m_CloudDarkness` / `m_CloudSize` | per view | How much heaped cloud, how dark its thick (a storm), its size and height |
+| | `m_CloudsOpen` / `m_CloudShadows` / `m_CloudWind` | 0.35–0.5 / 0.55–0.8 / per view | How far the loudness opens the clouds; their shadows; their drift |
+| | `m_MistBand` / `m_MistDensity` / `m_MistByBass` | Storm Gorge: 520–820 m / 6 per km / 0.5 | The mist along the cliff tops |
+| | `m_Group` | Shelter, Space, Norway | Which group the world menu lists the world under |
+| `SimSurface` (Fjordland) | `m_Valleys` / `m_Peaks` / `m_Tarns` / `m_Coast` / `m_Bay` | per view | The landscape (see Norway above) |
+| | `m_Pad` / `m_Summit` / `m_ViewRadius` / `m_ViewSlope` | per view | The room's height over the ground and the summit it floats over; how the ground falls away |
+| `M_Glass_Norway_*_Land` | `_TreeLine` / `_FieldLine` / `_SnowLine` | per view | Heights above the water of the forest's edge, the fields, the snow |
+| | `_RockPatches` / `_Surf` / `_SnowGlint` | per view | Rock through the heath; the surf's beat; the snow's glints |
+| `M_Glass_Norway_*_Water` | `_DeepColor` / `_Reflectivity` / `_Rings` / `_RingRipple` | per view / 0.6 / 1 | Glacial turquoise or sea blue; the beat rings on it |
+| `M_Glass_Norway_Waterfall` | `_Speed` / `_SpeedByBand` / `_Band` / `_Swell` | 14 / 18 m/s / 0.08 / 0.35 | How fast the falls run at rest and with the bass, and how far they swell |
+| `SimLightning` | `m_Threshold` / `m_Gap` / `m_Brightness` | 0.65 / 1.6 s / 1 | Which beats strike, how often at most, how bright |
+| `WorldMenu` | `m_WandNode` / `m_SelectButton` | HandNode / 0 | The node the pointer reads; the button that picks |
 
 ## Where it stands
 
@@ -374,5 +551,17 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 - **Orbit** and its variants compile, and every glass room shader compiles with `fxc` against URP's
   headers. The scene has been rebuilt with Orbit in the editor, but nobody has checked it in
   renders yet.
+- **Sky Pool** compiles, and its shader (and the land shader's new billow) compile with `fxc`
+  against URP's headers. It was written while the editor was open, so it has not been built into
+  the scene or seen in renders yet: the composition (the cumulus' size and turrets, the pool's
+  width against the front wall, the gulls' circles) is set from the collage and the walls' angles,
+  not from a look.
+- **Norway** and the world menu compile (runtime and editor, with MSBuild), and every glass room
+  shader compiles with `fxc` against URP's headers. The nine views' layouts were checked against the
+  photographs with a rough height-field render of the three walls from the fixed eye, outside Unity.
+  That is why the room hovers and why Bird Cliffs stands at the edge. They have not been built into
+  the scene or seen in Unity yet: **Rebuild Glass Room** and save. The colours, clouds, mist and the
+  props' sizes are set by eye from the photographs, not from a look in the engine. The menu's
+  pointer has not been tried with the wand in the CAVE.
 - **More worlds** are a `SimWorld` and some children away. The film's flower field and city would
   both suit: a skyline whose lit windows are an equaliser is an obvious next one.

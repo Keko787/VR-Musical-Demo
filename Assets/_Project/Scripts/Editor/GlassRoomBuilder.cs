@@ -25,12 +25,15 @@ namespace VRShootingGallery.EditorTools
     /// room far past the window cameras' — so neither ever draws the other.
     /// </para>
     /// <para>
-    /// Five worlds are built, all round the same point (the room's place outside), only one awake at
+    /// Fifteen worlds are built, all round the same point (the room's place outside), only one awake at
     /// a time, running from day to night and out into space: <b>Red Rock</b>, the canyon and light
     /// pillar from the film's opening; <b>Above the Clouds</b>, the sea of cloud the room floats over in
-    /// the film; <b>Sunset Beach</b>, surf, palms, a lamp-lit pier and fireworks; <b>Aurora</b>, a night
-    /// lake; and <b>Orbit</b>, an alien meadow under planets and asteroids after Good Kid's video, with
-    /// three variants switched by a glitch on the glass.
+    /// the film; <b>Sky Pool</b>, a pool in the open sea whose water is sky, after a surreal collage;
+    /// <b>Sunset Beach</b>, surf, palms, a lamp-lit pier and fireworks; <b>Aurora</b>, a night lake;
+    /// and <b>Orbit</b>, an alien meadow under planets and asteroids after Good Kid's video, with
+    /// three variants switched by a glitch on the glass. Then nine views of Norway after photographs,
+    /// and the world menu on the front wall that picks between them all by group (both in
+    /// <c>GlassRoomBuilder.Norway.cs</c>).
     /// The land is generated at run time from the numbers here, so nothing large is saved.
     /// </para>
     /// <para>
@@ -38,7 +41,7 @@ namespace VRShootingGallery.EditorTools
     /// clears it; the <see cref="Simulation"/> on the root is reused, so its Inspector settings survive.
     /// </para>
     /// </remarks>
-    public static class GlassRoomBuilder
+    public static partial class GlassRoomBuilder
     {
         const string k_Tag = "GlassRoom";
         const string k_CreateMenu = "VR Shooting Gallery/Glass Room/Create Glass Room Scene";
@@ -78,6 +81,9 @@ namespace VRShootingGallery.EditorTools
 
         /// <summary>The beach's sea level, below the room's floor: the sand rises from it to the deck the room stands on.</summary>
         const float k_SeaLevel = -1.2f;
+
+        /// <summary>The sky pool's sea level, below the deck the room stands on.</summary>
+        const float k_PoolSeaLevel = -1f;
 
         // ================================================================== menus
 
@@ -142,14 +148,16 @@ namespace VRShootingGallery.EditorTools
             var outside = NewChild(root, "Outside");
             outside.localPosition = k_OutsideOffset;
             BuildSky(outside, p);
-            var worlds = new[]
+            var worlds = new List<SimWorld>
             {
                 BuildRedRock(outside, simulation, p),
                 BuildCloudSea(outside, simulation, p),
+                BuildSkyPool(outside, simulation, p),
                 BuildBeach(outside, simulation, p),
                 BuildAurora(outside, simulation, p),
                 BuildOrbit(outside, simulation, p),
             };
+            worlds.AddRange(BuildNorway(outside, simulation, p));
 
             BuildFloor(root, p);
             BuildFrame(root, p);
@@ -159,6 +167,7 @@ namespace VRShootingGallery.EditorTools
             var lamps = BuildPendants(root, simulation, p);
             var windows = BuildWindows(root, outside, p, tablet);
             var sign = BuildSign(root);
+            var menu = BuildMenu(root, simulation);
             var sun = Atmosphere(scene, room, root);
 
             var so = new SerializedObject(simulation);
@@ -170,6 +179,7 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_Sun", sun);
             SetArray(k_Tag, so, "m_Lamps", lamps);
             SetRef(k_Tag, so, "m_Sign", sign);
+            SetRef(k_Tag, so, "m_Menu", menu);
 
             // The furniture switch: what it covers, and whatever was decided by hand in the scene, so
             // a room someone emptied stays empty through the rebuild.
@@ -192,7 +202,7 @@ namespace VRShootingGallery.EditorTools
             AssetDatabase.SaveAssets();
             Selection.activeGameObject = root.gameObject;
 
-            Debug.Log($"[{k_Tag}] Built the glass room: {windows.Count} glass walls, {worlds.Length} worlds outside, " +
+            Debug.Log($"[{k_Tag}] Built the glass room: {windows.Count} glass walls, {worlds.Count} worlds outside, " +
                       $"{deck.Playlist?.Length ?? 0} track(s) in the playlist.", root);
             return true;
         }
@@ -864,6 +874,134 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>
+        /// After a surreal collage: a long swimming pool standing in the open sea under
+        /// one enormous cumulus, and the water in it is sky, blue with clouds drifting in it, as if the
+        /// pool were a hole through to the sky beneath. The room stands on the deck at the near end, a
+        /// springboard reaching out over the water from just past the glass. The music pours into the
+        /// pool under the board and drifts away down it as cloud, the bass down the middle and the
+        /// treble along the walls; each beat springs the board and spreads a diver's ripples across the
+        /// water; the cumulus billows turret by turret with its bands; the bass swells the sea; gulls
+        /// wheel overhead and flap with the mids.
+        /// </summary>
+        static SimWorld BuildSkyPool(Transform outside, Simulation simulation, Palette p)
+        {
+            const float poolNear = 2.4f;
+            const float boardAt = 1.2f;
+            var world = NewChild(outside, "World_SkyPool");
+
+            // The open sea: the beach's ocean with its shore put far behind the room, past the edge of
+            // the water, so only the swells are left, rolling in from the horizon.
+            var seaObject = MeshObject(world, "Sea", new Vector3(0f, k_PoolSeaLevel, 0f), Quaternion.identity, p.OpenSea);
+            var sea = Undo.AddComponent<SimSurface>(seaObject);
+            var so = new SerializedObject(sea);
+            SetEnum(k_Tag, so, "m_Profile", (int)SurfaceProfile.Flat);
+            SetFloat(k_Tag, so, "m_InnerRadius", 1f);
+            SetFloat(k_Tag, so, "m_OuterRadius", 8200f);
+            SetInt(k_Tag, so, "m_Rings", 240);
+            SetInt(k_Tag, so, "m_Segments", 420);
+            so.ApplyModifiedProperties();
+
+            // The pool's platform, and its water, which is sky.
+            var poolObject = MeshObject(world, "Pool", Vector3.zero, Quaternion.identity, p.PoolStone);
+            var water = MeshObject(poolObject.transform, "Water", Vector3.zero, Quaternion.identity, p.SkyPool);
+            var pool = Undo.AddComponent<SimPool>(poolObject);
+            so = new SerializedObject(pool);
+            SetRef(k_Tag, so, "m_Water", water.GetComponent<MeshFilter>());
+            SetFloat(k_Tag, so, "m_Near", poolNear);
+            SetFloat(k_Tag, so, "m_SeaLevel", k_PoolSeaLevel);
+            so.ApplyModifiedProperties();
+
+            // The springboard, from just past the front glass out over the water.
+            var springObject = MeshObject(world, "Springboard", new Vector3(0f, 0f, boardAt), Quaternion.identity, p.PoolStone);
+            var board = MeshObject(springObject.transform, "Board", Vector3.zero, Quaternion.identity, p.PoolStone);
+            var springboard = Undo.AddComponent<SimSpringboard>(springObject);
+            so = new SerializedObject(springboard);
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            SetRef(k_Tag, so, "m_Board", board.GetComponent<MeshFilter>());
+            SetFloat(k_Tag, so, "m_Length", 4.5f);
+            so.ApplyModifiedProperties();
+
+            // Where a diver off the board goes in: the beat's ripples spread from here.
+            var splash = NewChild(world, "Splash");
+            splash.localPosition = new Vector3(0f, -0.15f, boardAt + 4.5f + 1.5f);
+
+            // One enormous cumulus straight ahead, in turrets, each billowing with its own band: the
+            // bass in the great tower in the middle, the treble in the small turrets round its edges.
+            var white = new Color(0.98f, 0.98f, 1f);
+            var cloudList = new List<PuffCluster>();
+            foreach (var (x, y, z, radius, height, size, count, band) in new[]
+                     {
+                         (0f, -80f, 3300f, 1050f, 1700f, 460f, 170, 0.04f),
+                         (-350f, 900f, 3350f, 520f, 1150f, 300f, 70, 0.18f),
+                         (-1000f, -80f, 3100f, 640f, 1100f, 340f, 90, 0.32f),
+                         (1050f, -80f, 3250f, 720f, 950f, 340f, 90, 0.46f),
+                         (1850f, -80f, 3000f, 520f, 600f, 270f, 55, 0.62f),
+                         (-1750f, -80f, 3400f, 480f, 520f, 250f, 45, 0.78f),
+                         (450f, 1300f, 3300f, 360f, 650f, 190f, 40, 0.94f),
+                     })
+                cloudList.Add(new PuffCluster
+                {
+                    Centre = new Vector3(x, y, z), Spread = new Vector2(radius, height), Count = count, Size = size,
+                    Colour = white, Band = band, Glow = 1f,
+                });
+
+            // Fair-weather cumulus round the rest of the horizon, still.
+            foreach (var (azimuth, distance, height, width) in new[]
+                     {
+                         (-72f, 5200f, 520f, 380f), (-96f, 4700f, 640f, 420f), (-118f, 5400f, 480f, 360f), (-145f, 5000f, 560f, 400f),
+                         (-170f, 5600f, 420f, 340f), (68f, 5000f, 600f, 400f), (92f, 5500f, 480f, 380f), (115f, 4600f, 680f, 440f),
+                         (142f, 5300f, 520f, 380f), (165f, 5800f, 450f, 350f),
+                     })
+            {
+                float a = azimuth * Mathf.Deg2Rad;
+                cloudList.Add(new PuffCluster
+                {
+                    Centre = new Vector3(Mathf.Sin(a) * distance, -60f, Mathf.Cos(a) * distance), Spread = new Vector2(width, height),
+                    Count = 36, Size = width * 0.55f, Colour = white,
+                });
+            }
+
+            var cloudObject = MeshObject(world, "Cumulus", Vector3.zero, Quaternion.identity, p.PoolCumulus);
+            var puffs = Undo.AddComponent<SimPuffs>(cloudObject);
+            so = new SerializedObject(puffs);
+            SetEnum(k_Tag, so, "m_Kind", (int)PuffKind.Cumulus);
+            SetInt(k_Tag, so, "m_Seed", 17);
+            SetClusters(so, cloudList.ToArray());
+            so.ApplyModifiedProperties();
+
+            var gulls = MeshObject(world, "Gulls", Vector3.zero, Quaternion.identity, p.Gull);
+            so = new SerializedObject(Undo.AddComponent<SimGulls>(gulls));
+            SetRef(k_Tag, so, "m_Simulation", simulation);
+            so.ApplyModifiedProperties();
+
+            var sim = Undo.AddComponent<SimWorld>(world.gameObject);
+            so = new SerializedObject(sim);
+            SetString(k_Tag, so, "m_Title", "Sky Pool");
+            SetColor(k_Tag, so, "m_Zenith", new Color(0.13f, 0.38f, 0.86f));
+            SetColor(k_Tag, so, "m_Horizon", new Color(0.7f, 0.82f, 0.95f));
+            SetColor(k_Tag, so, "m_Ground", new Color(0.45f, 0.6f, 0.75f));
+            SetVector3(k_Tag, so, "m_SunDirection", new Vector3(-0.6f, 0.77f, -0.22f));
+            SetColor(k_Tag, so, "m_SunColour", new Color(1.15f, 1.12f, 1.05f));
+            SetFloat(k_Tag, so, "m_SunDegrees", 1.1f);
+            SetColor(k_Tag, so, "m_ShadowColour", new Color(0.6f, 0.66f, 0.82f));
+            SetFloat(k_Tag, so, "m_Clouds", 0.15f);
+            SetFloat(k_Tag, so, "m_CloudDrift", 0.002f);
+            SetFloat(k_Tag, so, "m_FogDistance", 6500f);
+            SetFloat(k_Tag, so, "m_FogAmount", 0.55f);
+            SetFloat(k_Tag, so, "m_FogSunGlow", 0.15f);
+            SetRef(k_Tag, so, "m_RingOrigin", splash);
+            SetColor(k_Tag, so, "m_RingColour", new Color(0.9f, 0.95f, 1f));
+            SetFloat(k_Tag, so, "m_RingSpeed", 4.5f);
+            SetFloat(k_Tag, so, "m_RingDelay", 0.12f);
+            SetColor(k_Tag, so, "m_RoomAmbient", new Color(0.66f, 0.7f, 0.78f));
+            SetColor(k_Tag, so, "m_RoomLight", new Color(1f, 0.97f, 0.92f));
+            SetFloat(k_Tag, so, "m_RoomLightIntensity", 1.2f);
+            SetFloat(k_Tag, so, "m_LampLevel", 0.35f);
+            so.ApplyModifiedProperties();
+            return sim;
+        }
+
+        /// <summary>
         /// Sunset on a sandy bay: the room on a low deck at the top of the beach, the sea in front with
         /// the sun going down over it, palms along the shore, a pier running out to sea, headlands at
         /// the ends of the bay and islands on the horizon. The bass swells the sea, a beat surges the
@@ -1215,6 +1353,7 @@ namespace VRShootingGallery.EditorTools
             var sim = Undo.AddComponent<SimWorld>(world.gameObject);
             so = new SerializedObject(sim);
             SetString(k_Tag, so, "m_Title", "Orbit");
+            SetString(k_Tag, so, "m_Group", "Space");
             SetColor(k_Tag, so, "m_Zenith", first.Zenith);
             SetColor(k_Tag, so, "m_Horizon", first.Horizon);
             SetColor(k_Tag, so, "m_Ground", first.Ground);
@@ -1579,6 +1718,7 @@ namespace VRShootingGallery.EditorTools
             public Material CloudSea, Cumulus, Lake, Mountain, Aurora, AuroraReflection, Snow;
             public Material Sand, Ocean, Palm, PierWood, Deck, Headland, Glint, GlintReflection;
             public Material Meadow, Grass, LeafLight, LeafDark, Accent, Asteroid, Satellite, PlanetRinged, PlanetSmall, Star;
+            public Material OpenSea, PoolStone, SkyPool, PoolCumulus, Gull;
         }
 
         static string MaterialPath(string name) => $"{k_Art}/Materials/M_Glass_{name}.mat";
@@ -1595,9 +1735,10 @@ namespace VRShootingGallery.EditorTools
             var ocean = LoadShader(k_Shaders, "SimOcean.shader");
             var glint = LoadShader(k_Shaders, "SimGlint.shader");
             var planet = LoadShader(k_Shaders, "SimPlanet.shader");
+            var skyPool = LoadShader(k_Shaders, "SimSkyPool.shader");
             var beam = AssetDatabase.LoadAssetAtPath<Shader>(k_BeamShaderPath);
             if (window == null || sky == null || land == null || cloudSea == null || water == null || aurora == null || pillar == null ||
-                ocean == null || glint == null || planet == null || beam == null)
+                ocean == null || glint == null || planet == null || skyPool == null || beam == null)
             {
                 Debug.LogError($"[{k_Tag}] Missing a shader in '{k_Shaders}' or '{k_BeamShaderPath}'.");
                 return null;
@@ -1908,6 +2049,59 @@ namespace VRShootingGallery.EditorTools
                     m.SetColor("_StarColor", new Color(1.6f, 1.15f, 0.35f));
                     m.SetColor("_CoronaColor", new Color(1.5f, 0.6f, 0.15f));
                     m.SetFloat("_Corona", 0.55f);
+                }),
+
+                // Sky Pool: the open sea (the beach's ocean with its shore put far behind the room, past
+                // the edge of the water), the platform painted by vertex colour, the water that is sky,
+                // a cumulus that billows with its bands, and the gulls.
+                OpenSea = ShaderMaterial("Open_Sea", ocean, m =>
+                {
+                    m.SetColor("_Deep", new Color(0.13f, 0.4f, 0.56f));
+                    m.SetColor("_Shallow", new Color(0.2f, 0.52f, 0.64f));
+                    m.SetFloat("_Swell", 0.25f);
+                    m.SetFloat("_SwellByBass", 0.6f);
+                    m.SetFloat("_Wavelength", 16f);
+                    m.SetFloat("_Speed", 4.5f);
+                    m.SetFloat("_Swash", 0f);
+                    m.SetFloat("_Surge", 0f);
+                    m.SetFloat("_Reflectivity", 0.65f);
+                    m.SetFloat("_Glitter", 1f);
+                    m.SetFloat("_Ripple", 0.45f);
+                    m.SetVector("_Shore", new Vector4(-9000f, 0.05f, 1e7f, k_PoolSeaLevel));
+                }),
+                PoolStone = ShaderMaterial("Pool_Stone", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", Color.white);
+                    m.SetFloat("_Detail", 0.18f);
+                    m.SetFloat("_DetailScale", 0.12f);
+                    m.SetFloat("_CelSoft", 0.2f);
+                    m.SetFloat("_Rim", 0.15f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                SkyPool = ShaderMaterial("Sky_Pool", skyPool, _ => { }),
+                PoolCumulus = ShaderMaterial("Pool_Cumulus", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetFloat("_CelSoft", 0.4f);
+                    m.SetFloat("_Rim", 0.6f);
+                    m.SetFloat("_Detail", 0.12f);
+                    m.SetFloat("_DetailScale", 60f);
+                    m.SetColor("_GlowColor", new Color(1.05f, 0.95f, 0.85f));
+                    m.SetFloat("_BandGlow", 0.25f);
+                    m.SetFloat("_Billow", 0.14f);
+                    m.SetFloat("_Rings", 0f);
+                }),
+                Gull = ShaderMaterial("Gull", land, m =>
+                {
+                    m.SetFloat("_Strata", 0f);
+                    m.SetColor("_BaseColor", Color.white);
+                    m.SetFloat("_Detail", 0f);
+                    m.SetFloat("_CelSoft", 0.25f);
+                    m.SetFloat("_Rim", 0.5f);
+                    m.SetFloat("_BandGlow", 0f);
+                    m.SetFloat("_Rings", 0f);
                 }),
             };
 

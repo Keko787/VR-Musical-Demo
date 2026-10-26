@@ -46,6 +46,16 @@ float4 _GR_Sky;                 // x: clouds, y: stars, z: milky way, w: cloud d
 float4 _GR_Moon;                // xyz toward the moon; w = cos of its angular radius (0 = no moon)
 float4 _GR_CloudColor;          // what the cirrus is lit to: white by day, pink and orange at sunset
 
+// A deck of heaped cloud over the world, and the shadows it throws on the land. The music opens it.
+float4 _GR_Clouds;              // x: cover, y: how dark the thick of it is (a storm), z: metres across a cloud, w: height of the deck
+float4 _GR_CloudMotion;         // xy: drift m/s, z: how far the loudness opens the clouds, w: how dark their shadows are
+
+// Lightning inside the cloud on a strong beat: xyz toward it, w how bright it is now.
+float4 _GR_Flash;
+
+// Mist lying in a band of height, as cloud does along a cliff top.
+float4 _GR_Mist;                // x: bottom, y: top (metres above the room's floor), z: density per km, w: how much the bass thickens it
+
 // Space (a world's variant): the nebula across the sky, the paint the flora takes, the planets' tints.
 float4 _GR_Nebula;              // x: amount, y: swirl scale, zw: where in the noise this variant's swirls are
 float4 _GR_NebulaA;
@@ -164,6 +174,30 @@ float GR_Rings(float3 positionWS)
 
 // ------------------------------------------------------------------ the sky
 
+/// The cloud deck over a point of it (metres across the outside, from the room): x how much cloud
+/// is there, 0–1, y how thick it is. The louder the music, the further the clouds open.
+float2 GR_CloudDeck(float2 xz)
+{
+    float2 q = (xz - _GR_CloudMotion.xy * _GR_Clock) / max(_GR_Clouds.z, 1.0);
+    float warp = GR_Fbm(q * 0.45 + 3.1);
+    float d = GR_Fbm(q + warp * 0.9) * 0.75 + GR_Fbm(q * 2.7 - warp * 1.3 + 7.7) * 0.25;
+    float cover = _GR_Clouds.x * (1.0 - _GR_CloudMotion.z * saturate(_GR_Music.w));
+    float edge = 1.0 - cover * 0.75 - 0.12;
+    return float2(smoothstep(edge, edge + 0.08, d), saturate((d - edge) / 0.22));
+}
+
+/// How much a cloud overhead shades a point of the land, 0–1: the deck looked up at along the sun.
+float GR_CloudShadow(float3 positionWS)
+{
+    if (_GR_Clouds.x <= 0.001 || _GR_CloudMotion.w <= 0.001)
+        return 0.0;
+
+    float3 p = positionWS - _GR_Origin.xyz;
+    float3 toSun = _GR_SunDir.xyz;
+    float t = max(0.0, _GR_Clouds.w - p.y) / max(toSun.y, 0.08);
+    return GR_CloudDeck(p.xz + toSun.xz * t).x * _GR_CloudMotion.w;
+}
+
 /// Sky colour in a direction: the gradient, a glow along the horizon toward the sun, cirrus, the
 /// night's stars and milky way, the moon, and the sun. The dome draws it, and the water reflects it.
 float3 GR_Sky(float3 dir, float sunGain)
@@ -245,6 +279,25 @@ float3 GR_Sky(float3 dir, float sunGain)
         col = lerp(col, cloud, cover * 0.8);
     }
 
+    // Heaped cloud: the deck seen from the eye, bright where the sun catches it, darker in the
+    // thick of it (storm-dark in a storm), thinning into the haze toward the horizon.
+    if (_GR_Clouds.x > 0.001 && y > 0.0)
+    {
+        float3 eye = _WorldSpaceCameraPos - _GR_Origin.xyz;
+        float t = max(1.0, _GR_Clouds.w - eye.y) / max(y, 0.015);
+        float2 deck = GR_CloudDeck(eye.xz + dir.xz * t);
+        float3 bright = _GR_CloudColor.rgb * (0.92 + 0.2 * pow(saturate(sd), 3.0)) + _GR_SunColor.rgb * pow(saturate(sd), 12.0) * 0.4;
+        float3 dark = lerp(bright * 0.78, _GR_ShadowColor.rgb * 0.55 + _GR_Horizon.rgb * 0.15, _GR_Clouds.y);
+        float3 cloud = lerp(bright, dark, smoothstep(0.1, 0.45, deck.y) * 0.6 + smoothstep(0.5, 0.9, deck.y) * 0.4);
+        cloud = lerp(_GR_Horizon.rgb, cloud, 0.35 + 0.65 * smoothstep(0.0, 0.3, y));
+        float fade = smoothstep(0.0, 0.06, y) * exp(-t / 60000.0);
+
+        // Lightning lights the cloud from inside round where it struck, and faintly all over.
+        float flash = _GR_Flash.w * (pow(saturate(dot(dir, _GR_Flash.xyz)), 12.0) * 1.6 + 0.12);
+        cloud += float3(0.85, 0.88, 1.0) * flash * (0.4 + 0.6 * deck.y);
+        col = lerp(col, cloud, deck.x * fade);
+    }
+
     // The sun, last, so it shines through thin cloud.
     float disc = smoothstep(_GR_SunDir.w, _GR_SunDir.w + 0.00015, sd);
     col += _GR_SunColor.rgb * (disc * 4.0 + pow(saturate(sd), 600.0) * 0.8 + pow(saturate(sd), 50.0) * 0.2) * sunGain;
@@ -261,7 +314,27 @@ float3 GR_ApplyFog(float3 col, float3 positionWS, float amount)
     float toward = saturate(dot(dir, _GR_SunDir.xyz));
     float3 haze = _GR_Horizon.rgb + _GR_SunColor.rgb * pow(toward, 8.0) * _GR_Fog.z;
     float f = (1.0 - exp(-dist / max(_GR_Fog.x, 1.0))) * _GR_Fog.y * amount;
-    return lerp(col, haze, saturate(f));
+    col = lerp(col, haze, saturate(f));
+
+    // Mist in its band of height: as much as the line of sight runs through the band, in wisps
+    // drifting across the world, thicker with the bass.
+    if (_GR_Mist.z > 0.001)
+    {
+        float y0 = _WorldSpaceCameraPos.y - _GR_Origin.y;
+        float y1 = positionWS.y - _GR_Origin.y;
+        float lo = min(y0, y1);
+        float hi = max(y0, y1);
+        float through = max(0.0, min(hi, _GR_Mist.y) - max(lo, _GR_Mist.x));
+        float inside = hi - lo > 1.0 ? through / (hi - lo) : step(_GR_Mist.x, y1) * step(y1, _GR_Mist.y);
+        float2 at = positionWS.xz - _GR_Origin.xz;
+        float wisps = 0.4 + 1.2 * GR_Fbm(at * 0.0012 + float2(_GR_Clock * 0.012, _GR_Clock * 0.004));
+        float density = _GR_Mist.z * (1.0 + _GR_Mist.w * _GR_Music.x) * wisps;
+        float mist = 1.0 - exp(-dist * 0.001 * inside * density);
+        float3 white = lerp(_GR_Horizon.rgb, _GR_CloudColor.rgb, 0.5) * (0.85 + 0.15 * toward);
+        col = lerp(col, white, saturate(mist) * amount);
+    }
+
+    return col;
 }
 
 /// Cel lighting: lit by the sun above a soft terminator, the world's shadow colour below it, and a
@@ -272,6 +345,7 @@ float3 GR_Light(float3 normalWS, float softness)
     float lit = smoothstep(-softness, softness, ndl - 0.05);
     float3 light = lerp(_GR_ShadowColor.rgb, _GR_SunColor.rgb, lit);
     light += _GR_Zenith.rgb * 0.12 * saturate(normalWS.y * 0.5 + 0.5);
+    light += float3(0.8, 0.85, 1.0) * (_GR_Flash.w * 0.12);
     return light;
 }
 

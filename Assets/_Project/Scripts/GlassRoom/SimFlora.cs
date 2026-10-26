@@ -182,7 +182,9 @@ namespace VRShootingGallery.GlassRoom
                 var spine = root + Vector3.up * (length * (upright * u + rise * u - 0.75f * u * u))
                                  + outward * (length * (0.25f + 0.75f * u) * u);
 
-                float w = width * Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Pow(u, 0.75f)), 0.9f);
+                // Floored at 0: the float Mathf.PI is a hair over π, so at the tip the sine is a hair
+                // below zero, and a fractional power of that is NaN, which takes the whole mesh's bounds with it.
+                float w = width * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.PI * Mathf.Pow(u, 0.75f))), 0.9f);
                 var fold = Vector3.up * (w * 0.35f);
                 var colour = new Color(shade * (0.75f + 0.35f * u), shade * (0.75f + 0.35f * u), shade * (0.75f + 0.35f * u), 1f);
                 var sway = new Vector2(u, phase);

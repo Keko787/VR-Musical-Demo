@@ -13,6 +13,9 @@ namespace VRShootingGallery.GlassRoom
 
         /// <summary>Rounded boulders, one squashed ball each, sunk a little into the ground.</summary>
         Boulders,
+
+        /// <summary>Spruces: tiers of flattened puffs narrowing to a point on a dark trunk, scattered like trees.</summary>
+        Spruces,
     }
 
     /// <summary>One group of puffs: where, how many, how big, what colour, and which part of the music lights it.</summary>
@@ -45,7 +48,8 @@ namespace VRShootingGallery.GlassRoom
     /// <summary>
     /// Trees and cloud towers, built out of balls: each puff is a small sphere, cel shading turns a
     /// heap of them into the blobby foliage and cumulus of a painted background, and the whole lot is
-    /// one mesh. A puff can be lit from inside by a band of the music.
+    /// one mesh. A puff can be lit from inside by a band of the music; a cumulus puff also carries its
+    /// radius (third UV channel), so a material that billows can swell it with that band.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class SimPuffs : MonoBehaviour
@@ -83,6 +87,8 @@ namespace VRShootingGallery.GlassRoom
                     Trees(b, cluster, band, Range);
                 else if (m_Kind == PuffKind.Boulders)
                     Boulders(b, cluster, band, Range);
+                else if (m_Kind == PuffKind.Spruces)
+                    Spruces(b, cluster, band, Range);
                 else
                     Cumulus(b, cluster, band, Range);
             }
@@ -149,6 +155,42 @@ namespace VRShootingGallery.GlassRoom
             }
         }
 
+        void Spruces(SimMeshes.Builder b, PuffCluster cluster, Vector2 band, System.Func<float, float, float> range)
+        {
+            for (int i = 0; i < cluster.Count; i++)
+            {
+                float angle = range(0f, Mathf.PI * 2f);
+                float reach = Mathf.Sqrt(range(0f, 1f));
+                var at = cluster.Centre + new Vector3(Mathf.Cos(angle) * cluster.Spread.x * reach, 0f,
+                    Mathf.Sin(angle) * cluster.Spread.y * reach);
+
+                if (cluster.OnGround && m_Ground != null)
+                {
+                    var local = m_Ground.transform.InverseTransformPoint(transform.TransformPoint(at));
+                    local.y = m_Ground.HeightAt(local.x, local.z);
+                    at = transform.InverseTransformPoint(m_Ground.transform.TransformPoint(local));
+                }
+
+                // Size is the tree's height; it is about a third as wide at the foot of its crown.
+                float height = cluster.Size * range(0.7f, 1.3f);
+                var shade = cluster.Colour * range(0.8f, 1.1f);
+                shade.a = 1f;
+                var trunk = new Color(0.22f, 0.16f, 0.12f, 1f);
+                SimMeshes.Icosphere(b, at + Vector3.up * (height * 0.1f), new Vector3(height * 0.04f, height * 0.12f, height * 0.04f), trunk, Vector2.zero);
+
+                const int tiers = 4;
+                for (int t = 0; t < tiers; t++)
+                {
+                    float up = t / (float)(tiers - 1);
+                    float radius = height * 0.19f * (1f - 0.75f * up);
+                    var tier = Color.Lerp(shade, Color.Lerp(shade, Color.white, 0.1f), up);
+                    tier.a = 1f;
+                    SimMeshes.Icosphere(b, at + Vector3.up * (height * (0.22f + 0.62f * up)),
+                        new Vector3(radius, height * 0.17f * (1f - 0.35f * up), radius), tier, band);
+                }
+            }
+        }
+
         void Cumulus(SimMeshes.Builder b, PuffCluster cluster, Vector2 band, System.Func<float, float, float> range)
         {
             float height = Mathf.Max(1f, cluster.Spread.y);
@@ -171,14 +213,14 @@ namespace VRShootingGallery.GlassRoom
                 var colour = Color.Lerp(cluster.Colour * 0.86f, cluster.Colour, up);
                 colour.a = 1f;
 
-                SimMeshes.Icosphere(b, at, new Vector3(radius, radius * 0.92f, radius), colour, band);
+                SimMeshes.Icosphere(b, at, new Vector3(radius, radius * 0.92f, radius), colour, band, new Vector2(radius, 0f));
 
                 // A smaller puff bulging out of the bigger one: the cauliflower edge cumulus have.
                 if (range(0f, 1f) < 0.6f)
                 {
                     float small = radius * range(0.35f, 0.55f);
                     var bulge = at + (outward * range(0.6f, 0.9f) + Vector3.up * range(0.1f, 0.6f)).normalized * (radius * 0.85f);
-                    SimMeshes.Icosphere(b, bulge, Vector3.one * small, colour, band);
+                    SimMeshes.Icosphere(b, bulge, Vector3.one * small, colour, band, new Vector2(small, 0f));
                 }
             }
         }
