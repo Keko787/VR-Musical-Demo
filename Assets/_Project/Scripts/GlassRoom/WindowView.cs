@@ -251,8 +251,9 @@ namespace VRShootingGallery.GlassRoom
 
             for (int i = 0; i < lamps.Length && i < m_LampSpots.Length; i++)
             {
+                // A hidden lamp (the furniture switched off) has no reflection to give.
                 var lamp = lamps[i];
-                if (lamp == null)
+                if (lamp == null || !lamp.isActiveAndEnabled)
                     continue;
 
                 var bulb = m_Room.InverseTransformPoint(lamp.BulbPosition);

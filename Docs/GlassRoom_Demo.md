@@ -89,6 +89,7 @@ survive a rebuild.
 | 3 | **N** | Next track |
 | 4 | **Space** | Pause / resume |
 | 6 | **V** | Next variant of the world outside, if it has variants (**Shift+V** goes back) |
+| — | **F** | Show or hide the furniture (no wand button by default; set `m_FurnitureButton`) |
 
 As in the other demos, the number-row keys stand in for the wand buttons with the same digit, and
 the keyboard stays on in builds.
@@ -234,6 +235,13 @@ variants: give its `SimWorld` some in **Variants**. A world without them ignores
   the bass. They never flicker. Their reflections show in the glass where the fixed eye would see
   them.
 - **The tablet** on the desk shows the front wall's view: the device the worlds are made on.
+- **The furniture can go.** Untick **Furniture** on `Glass_Room`'s `Simulation` component, or press
+  **F** in play mode, and the room is a bare glass box: the iron frame, the glass and the floor,
+  with nothing between the visitors and the world outside. This hides the desk (with its tablet,
+  glass and teddy bear), the cabinet, the bed, the rug and the pendant lamps. The lamps' light and
+  their reflections in the glass go with them, so at night the room is lit only by what is
+  outside. The setting is kept through a rebuild. A room whose furniture was switched off by hand
+  before this option existed stays empty through its next rebuild, with the box unticked.
 
 ## Safety
 
@@ -339,6 +347,7 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 | | `m_Sparks` / `m_Life` / `m_Speed` | 140 / 2.4 s / 38 m/s | A burst's size and length |
 | `M_Glass_Palm` | `_Sway` | 0.6 m | Frond tip sway at full mids |
 | `Simulation` | `m_GlitchSeconds` / `m_VariantEverySeconds` | 1.4 s / 0 (off) | The glitch between variants; hands-off variant changes |
+| | `m_Furniture` | on | The room's furniture; off for the bare glass box. Kept through a rebuild |
 | `SimWorld` (Orbit) | **Variants** | Orbit, Pink Nebula, Green Signal | Each look's sky, nebula, palette, tints and room light |
 | | `m_Nebula` / `m_NebulaScale` | 1 / 1.3 | Nebula brightness and swirl size |
 | `SimAsteroids` | `m_Count` / `m_Lift` / `m_Spin` | 420 / 0.05 / 6 + 60°/s | Rocks; how far they lift and how fast they spin with their bands |
@@ -362,10 +371,8 @@ leave it empty. `_WetDarken` darkens a ragged band of sand just above `_WetLevel
 - **Sunset Beach** has been compiled and its shaders imported cleanly, but it has not yet been
   checked in renders. It was written while the editor was open, so no batch preview ran; the scene
   was then rebuilt with it in the editor.
-- **The furniture is switched off** in the saved scene (bed, cabinet, rug, desk, pendant lamps). A
-  rebuild switches it back on.
 - **Orbit** and its variants compile, and every glass room shader compiles with `fxc` against URP's
-  headers. They have not yet been rendered: they were written while the editor was open. Run
-  **Rebuild Glass Room** to add Orbit to the scene; that also switches the furniture back on.
+  headers. The scene has been rebuilt with Orbit in the editor, but nobody has checked it in
+  renders yet.
 - **More worlds** are a `SimWorld` and some children away. The film's flower field and city would
   both suit: a skyline whose lit windows are an equaliser is an obvious next one.

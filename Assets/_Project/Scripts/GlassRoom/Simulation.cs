@@ -98,6 +98,14 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField] float m_MaxFlashesPerSecond = 3f;
         [SerializeField] float m_LowIntensityFlashesPerSecond = 2f;
 
+        [Header("Furniture")]
+        [SerializeField, Tooltip("The room's furniture: the desk with its tablet and teddy bear, the cabinet, the bed, the rug and the pendant " +
+            "lamps. Off leaves the bare glass box — the iron frame, the glass and the floor. Kept through a rebuild; F toggles it in play mode.")]
+        bool m_Furniture = true;
+
+        [SerializeField, Tooltip("What the furniture switch shows and hides. Filled in by the builder.")]
+        GameObject[] m_FurniturePieces;
+
         [Header("Wand")]
         [SerializeField, Tooltip("Wand button that changes the world outside. Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
         int m_WorldButton = 1;
@@ -109,8 +117,11 @@ namespace VRShootingGallery.GlassRoom
         [SerializeField, Tooltip("Wand button that glitches the world into its next variant, in a world that has them.")]
         int m_VariantButton = 6;
 
+        [SerializeField, Tooltip("Wand button that shows or hides the furniture. -1 for none.")]
+        int m_FurnitureButton = -1;
+
         [Header("Desk")]
-        [SerializeField, Tooltip("W changes the world (Shift+W goes back), V its variant (Shift+V goes back), L toggles low intensity, N skips, Space pauses, and the number-row keys " +
+        [SerializeField, Tooltip("W changes the world (Shift+W goes back), V its variant (Shift+V goes back), F shows or hides the furniture, L toggles low intensity, N skips, Space pauses, and the number-row keys " +
             "stand in for the wand buttons with the same digit. Stays on in builds so the room can be run from the server node.")]
         bool m_KeyboardControl = true;
 
@@ -226,6 +237,7 @@ namespace VRShootingGallery.GlassRoom
         void Awake()
         {
             CreateSpectrogram();
+            ApplyFurniture();
 
             // Wake every world once, so each generates its land now, at load, rather than in the
             // middle of the first change to it; then put them all to sleep.
@@ -568,6 +580,61 @@ namespace VRShootingGallery.GlassRoom
 
         // ---------------------------------------------------------------- the room
 
+        /// <summary>
+        /// Whether the room is furnished. Off leaves the bare glass box — the frame, the glass and the
+        /// floor — with nothing between the visitors and the worlds outside; the hidden lamps take their
+        /// light and their reflections in the glass with them.
+        /// </summary>
+        public bool Furniture
+        {
+            get => m_Furniture;
+            set
+            {
+                m_Furniture = value;
+                ApplyFurniture();
+                UpdateSign();
+            }
+        }
+
+        /// <summary>Shows or hides the furniture to match the switch. True if anything changed.</summary>
+        public bool ApplyFurniture()
+        {
+            bool changed = false;
+            if (m_FurniturePieces == null)
+                return false;
+
+            foreach (var piece in m_FurniturePieces)
+            {
+                if (piece == null || piece.activeSelf == m_Furniture)
+                    continue;
+
+                piece.SetActive(m_Furniture);
+                changed = true;
+            }
+
+            return changed;
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Ticking the box in the Inspector shows or hides the furniture straight away, in or out of
+        /// play mode. Deferred a frame: Unity does not allow objects to be switched on and off from
+        /// inside OnValidate itself.
+        /// </summary>
+        void OnValidate()
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null || !ApplyFurniture())
+                    return;
+
+                UpdateSign();
+                if (!Application.isPlaying && gameObject.scene.IsValid())
+                    UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+            };
+        }
+#endif
+
         void LightRoom(float dt)
         {
             var world = World;
@@ -634,10 +701,15 @@ namespace VRShootingGallery.GlassRoom
                 m_Deck?.TogglePause();
             if (m_VariantButton >= 0 && MiddleVRWand.PressedThisFrame(m_VariantButton))
                 NextVariant();
+            if (m_FurnitureButton >= 0 && MiddleVRWand.PressedThisFrame(m_FurnitureButton))
+                Furniture = !Furniture;
 
             var keyboard = m_KeyboardControl ? Keyboard.current : null;
             if (keyboard == null)
                 return;
+
+            if (keyboard.fKey.wasPressedThisFrame || DigitPressed(keyboard, m_FurnitureButton))
+                Furniture = !Furniture;
 
             if (keyboard.wKey.wasPressedThisFrame)
             {
@@ -700,6 +772,8 @@ namespace VRShootingGallery.GlassRoom
 
             if (m_LowIntensity)
                 m_Text.Append("   ·   LOW INTENSITY");
+            if (!m_Furniture)
+                m_Text.Append("   ·   NO FURNITURE");
 
             m_Text.Append("   ·   ");
             var clip = m_Deck != null ? m_Deck.Clip : null;

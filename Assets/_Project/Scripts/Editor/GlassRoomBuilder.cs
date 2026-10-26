@@ -130,6 +130,7 @@ namespace VRShootingGallery.EditorTools
                 return false;
 
             var root = FindOrCreateInstrument(room, k_Root, Vector3.zero, k_Tag);
+            bool hiddenByHand = FurnitureHiddenByHand(root);
             Clear(root);
 
             var simulation = root.GetComponent<Simulation>();
@@ -169,7 +170,22 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_Sun", sun);
             SetArray(k_Tag, so, "m_Lamps", lamps);
             SetRef(k_Tag, so, "m_Sign", sign);
+
+            // The furniture switch: what it covers, and whatever was decided by hand in the scene, so
+            // a room someone emptied stays empty through the rebuild.
+            var furniture = FurniturePieces(root);
+            SetArray(k_Tag, so, "m_FurniturePieces", furniture);
+            var furnished = so.FindProperty("m_Furniture");
+            if (hiddenByHand && furnished != null)
+                furnished.boolValue = false;
             so.ApplyModifiedProperties();
+
+            bool show = furnished == null || furnished.boolValue;
+            foreach (var piece in furniture)
+            {
+                Undo.RecordObject(piece, "Furniture switch");
+                piece.SetActive(show);
+            }
 
             Undo.CollapseUndoOperations(group);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -178,6 +194,41 @@ namespace VRShootingGallery.EditorTools
 
             Debug.Log($"[{k_Tag}] Built the glass room: {windows.Count} glass walls, {worlds.Length} worlds outside, " +
                       $"{deck.Playlist?.Length ?? 0} track(s) in the playlist.", root);
+            return true;
+        }
+
+        // ================================================================== furniture
+
+        /// <summary>
+        /// What the furniture switch covers: everything in the room but the frame, the glass, the floor
+        /// and the status line. The pendants' lights and reflections go with them.
+        /// </summary>
+        static readonly string[] k_Furniture = { "Rug", "Desk", "Cabinet", "Bed", "Pendants" };
+
+        static GameObject[] FurniturePieces(Transform root)
+        {
+            var pieces = new List<GameObject>();
+            foreach (var name in k_Furniture)
+            {
+                var piece = root.Find(name);
+                if (piece != null)
+                    pieces.Add(piece.gameObject);
+            }
+
+            return pieces.ToArray();
+        }
+
+        /// <summary>True if the room being rebuilt has furniture and all of it is switched off.</summary>
+        static bool FurnitureHiddenByHand(Transform root)
+        {
+            var pieces = FurniturePieces(root);
+            if (pieces.Length == 0)
+                return false;
+
+            foreach (var piece in pieces)
+                if (piece.activeSelf)
+                    return false;
+
             return true;
         }
 
