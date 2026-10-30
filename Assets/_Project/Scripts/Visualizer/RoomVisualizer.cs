@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine.InputSystem;
 
 namespace VRShootingGallery.Visualizer
 {
-    /// <summary>Which of the room's shows is on. The order is the order the mode button cycles through.</summary>
+    /// <summary>One of the room's shows. One is on, or several layered. The order is the order the menu lists them in.</summary>
     public enum VisualizerMode
     {
         /// <summary>Water tubes flat on the four screens. Reads from anywhere, no glasses needed.</summary>
@@ -27,40 +28,41 @@ namespace VRShootingGallery.Visualizer
     /// <summary>
     /// The room audio visualizer and the rave visualizer as one build, per the deck: the hands-off
     /// demo that runs first and needs nothing tracked. Five modes — 2D on the surfaces, and four
-    /// in the volume — cross-faded rather than cut, an intensity control with a low-intensity
-    /// setting for visitors who need it, and an auto-cycle so the room can run unattended between
-    /// visitors.
+    /// in the volume — cross-faded rather than cut and layered as well as switched, an intensity
+    /// control with a low-intensity setting for visitors who need it, and an auto-cycle so the room
+    /// can run unattended between visitors.
     /// </summary>
     /// <remarks>
-    /// This component owns the switches and the playlist; the analyser owns the numbers and each
-    /// layer owns its own look. Every layer has its own blend that eases toward 1 when its mode is
-    /// on and 0 otherwise, so any mode fades into any other, and the wash behind the tubes stays on
-    /// in all of them — the walls never go black.
+    /// This component owns the switches; the <see cref="MusicDeck"/> owns the playlist, the analyser
+    /// owns the numbers and each layer owns its own look. Every layer has its own blend that eases
+    /// toward 1 when its mode is on and 0 otherwise, so any mode fades into any other, any set of
+    /// them can be on together, and the wash behind the tubes stays on in all of them — the walls
+    /// never go black. The mode and track buttons open the <see cref="VisualizerMenu"/> on the front
+    /// wall: a pick there switches to one mode, a double pick layers it with the others.
     /// </remarks>
-    [DefaultExecutionOrder(-60)] // after the analyser, before the layers, so a fade lands the frame it is set
+    [DefaultExecutionOrder(-60)] // after the analyser, before the layers and the menu, so a fade or a press lands the frame it happens
     public class RoomVisualizer : MonoBehaviour
     {
         [Header("Audio")]
         [SerializeField] AudioAnalyser m_Analyser;
 
-        [SerializeField, Tooltip("Plays the playlist. 2D, so the room's speakers carry the mix as mastered; a spatial " +
-            "source that followed the tracked user is the deck's idea for later.")]
-        AudioSource m_Music;
+        [SerializeField, Tooltip("Plays the music folder: the playlist, play and pause, and the track that plays next, which the menu " +
+            "and the now-playing strip show. 2D, so the room's speakers carry the mix as mastered.")]
+        MusicDeck m_Deck;
 
-        [SerializeField, Tooltip("Tracks, in order. Filled from Assets/_Project/Audio/Music whenever that folder has anything " +
-            "in it: by the builder, again each time play starts in the editor, and at player build time.")]
-        AudioClip[] m_Playlist;
-
-        [SerializeField] bool m_PlayOnStart = true;
-        [SerializeField] bool m_LoopPlaylist = true;
+        [SerializeField, Tooltip("Opens on the first track, paused, so the room waits at its idle breathing until someone presses " +
+            "play (wand 4, Space) or picks a track. Off, and the music starts with the scene.")]
+        bool m_StartPaused = true;
 
         [Header("Mode")]
-        [SerializeField] VisualizerMode m_Mode = VisualizerMode.Surface2D;
+        [SerializeField, Tooltip("The mode the room opens on. The menu's double pick layers others with it.")]
+        VisualizerMode m_Mode = VisualizerMode.Surface2D;
 
         [SerializeField, Tooltip("Seconds the cross-fade between modes takes.")]
         float m_FadeSeconds = 1.5f;
 
-        [SerializeField, Tooltip("Seconds between automatic mode changes for a hands-off run. Zero leaves the mode where it is.")]
+        [SerializeField, Tooltip("Seconds between automatic mode changes for a hands-off run. Zero leaves the mode where it is. " +
+            "It waits while the menu is open.")]
         float m_AutoCycleSeconds = 0f;
 
         [Header("Intensity")]
@@ -95,29 +97,40 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Tooltip("A small line on the front wall with the mode and the track, for whoever is running the demo.")]
         TMP_Text m_Sign;
 
+        [Header("Menu")]
+        [SerializeField, Tooltip("The menu on the front wall the mode and track buttons open. None, and the mode button steps to the " +
+            "next mode and the track button skips to the next track instead.")]
+        VisualizerMenu m_Menu;
+
+        [SerializeField, Range(0f, 1f), Tooltip("How far the shows in the room's volume dim while the menu is open, so it can be " +
+            "read through them. The water, on the walls behind the panel, stays.")]
+        float m_MenuDim = 0.75f;
+
         [Header("Wand")]
-        [SerializeField, Tooltip("Wand button that steps to the next mode. Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
+        [SerializeField, Tooltip("Wand button that opens the modes on the front wall (or, without a menu, steps to the next mode). " +
+            "Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger, which picks in the menu.")]
         int m_ModeButton = 1;
 
         [SerializeField, Tooltip("Wand button that toggles low intensity.")]
         int m_IntensityButton = 2;
 
-        [SerializeField, Tooltip("Wand button that skips to the next track.")]
+        [SerializeField, Tooltip("Wand button that opens the tracks on the front wall (or, without a menu, skips to the next track).")]
         int m_NextTrackButton = 3;
 
         [SerializeField, Tooltip("Wand button that pauses and resumes.")]
         int m_PlayPauseButton = 4;
 
         [Header("Desk")]
-        [SerializeField, Tooltip("M steps to the next mode (Shift+M back), L toggles low intensity, N skips the track, Space " +
-            "pauses, and the number-row keys stand in for the wand buttons with the same digit. Stays on in builds so " +
-            "the room's audio routing can be checked from the server node.")]
+        [SerializeField, Tooltip("M opens the modes (Shift+M steps straight to the next), N opens the tracks (Shift+N skips straight " +
+            "to the next), L toggles low intensity, Space pauses, and the number-row keys stand in for the wand buttons with the " +
+            "same digit. In the menu: the arrows, Enter, and Backspace or Escape. Stays on in builds so the room's audio routing " +
+            "can be checked from the server node.")]
         bool m_KeyboardControl = true;
 
         /// <summary>Where tracks go. Every clip in here, by name, is the playlist.</summary>
         public const string MusicFolder = MusicDeck.MusicFolder;
 
-        static readonly VisualizerMode[] k_Cycle =
+        static readonly VisualizerMode[] k_Modes =
         {
             VisualizerMode.Surface2D, VisualizerMode.Room3D, VisualizerMode.PointCloud, VisualizerMode.AstralBody,
             VisualizerMode.Fireflies,
@@ -129,47 +142,101 @@ namespace VRShootingGallery.Visualizer
         float m_BlendCloud;
         float m_BlendBody;
         float m_BlendFlies;
+        float m_BlendMenu;
 
+        int m_On;                                     // the modes on, a bit each; m_Mode is always one of them
         float m_CycleTimer;
-        int m_Track = -1;
-        bool m_Paused;
+        MusicDeck m_Watched;
         readonly StringBuilder m_Text = new();
 
+        /// <summary>The mode on, or, with several layered, the one turned on last.</summary>
         public VisualizerMode Mode => m_Mode;
+
+        /// <summary>Whether <paramref name="mode"/> is on, alone or layered with others.</summary>
+        public bool IsOn(VisualizerMode mode) => (m_On & Bit(mode)) != 0;
+
+        /// <summary>More than one mode on.</summary>
+        public bool Layered => m_On != Bit(m_Mode);
+
         public bool LowIntensity => m_LowIntensity;
         public float Intensity => m_Intensity;
-        public int Track => m_Track;
-        public AudioClip CurrentClip => m_Music != null ? m_Music.clip : null;
-        public AudioClip[] Playlist { get => m_Playlist; set => m_Playlist = value; }
+        public MusicDeck Deck => m_Deck;
+
+        /// <summary>The modes, in the order the menu lists them.</summary>
+        public static IReadOnlyList<VisualizerMode> Modes => k_Modes;
 
 #if UNITY_EDITOR
         /// <summary>Every audio clip in <see cref="MusicFolder"/>, sorted by name. See <see cref="MusicDeck.ClipsInMusicFolder"/>.</summary>
         public static AudioClip[] ClipsInMusicFolder() => MusicDeck.ClipsInMusicFolder();
 #endif
 
+        void Awake()
+        {
+            m_On = Bit(m_Mode);
+
+            // Before the deck's Start, which plays or cues the first track.
+            if (m_StartPaused && m_Deck != null)
+                m_Deck.PlayOnStart = false;
+        }
+
+        void OnEnable()
+        {
+            m_Watched = m_Deck;
+            if (m_Watched != null)
+                m_Watched.Changed += UpdateSign;
+        }
+
+        void OnDisable()
+        {
+            if (m_Watched != null)
+                m_Watched.Changed -= UpdateSign;
+            m_Watched = null;
+        }
+
         void Start()
         {
-#if UNITY_EDITOR
-            // The folder is read again every time play starts, so a track dropped in after the
-            // scene was built plays without a rebuild. Player builds get the same refresh from
-            // VisualizerPlaylistProcessor at build time.
-            var folder = ClipsInMusicFolder();
-            if (folder.Length > 0)
-                m_Playlist = folder;
-#endif
+            if (m_Deck == null)
+                StandInDeck();
+
+            if (m_Menu == null)
+                Debug.LogWarning("[Visualizer] This scene was built before the visualizer had its menu, so the mode and track " +
+                                 "buttons step and skip instead of opening it, and there is no now-playing strip. Open the scene, " +
+                                 "run VR Shooting Gallery ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
 
             // Start on the chosen mode with no fade-in.
-            m_BlendTubes = m_Mode == VisualizerMode.Surface2D ? 1f : 0f;
-            m_BlendLasers = m_Mode == VisualizerMode.Room3D ? 1f : 0f;
-            m_BlendCloud = m_Mode == VisualizerMode.PointCloud ? 1f : 0f;
-            m_BlendBody = m_Mode == VisualizerMode.AstralBody ? 1f : 0f;
-            m_BlendFlies = m_Mode == VisualizerMode.Fireflies ? 1f : 0f;
+            m_BlendTubes = IsOn(VisualizerMode.Surface2D) ? 1f : 0f;
+            m_BlendLasers = IsOn(VisualizerMode.Room3D) ? 1f : 0f;
+            m_BlendCloud = IsOn(VisualizerMode.PointCloud) ? 1f : 0f;
+            m_BlendBody = IsOn(VisualizerMode.AstralBody) ? 1f : 0f;
+            m_BlendFlies = IsOn(VisualizerMode.Fireflies) ? 1f : 0f;
             ApplyLayers();
+            UpdateSign();
+        }
 
-            if (m_PlayOnStart)
-                PlayTrack(0);
-            else
-                UpdateSign();
+        /// <summary>
+        /// A scene built before the visualizer played through a <see cref="MusicDeck"/> still has its
+        /// music source — the one the analyser listens to — but no deck. Rather than fall silent until
+        /// someone rebuilds it, it gets a deck on that source for this run, which plays the music folder
+        /// as the built one would.
+        /// </summary>
+        void StandInDeck()
+        {
+            var source = m_Analyser != null ? m_Analyser.Source : null;
+            if (source == null && m_Analyser != null)
+                source = m_Analyser.GetComponentInChildren<AudioSource>();
+            if (source == null)
+                return;
+
+            m_Deck = source.GetComponent<MusicDeck>();
+            if (m_Deck == null)
+                m_Deck = source.gameObject.AddComponent<MusicDeck>();
+            m_Deck.Source = source;
+            if (m_StartPaused)
+                m_Deck.PlayOnStart = false;            // a deck added just now has not started yet
+
+            // OnEnable ran before there was a deck to listen to.
+            m_Watched = m_Deck;
+            m_Watched.Changed += UpdateSign;
         }
 
         void Update()
@@ -181,35 +248,59 @@ namespace VRShootingGallery.Visualizer
             AutoCycle();
             Fade();
             ApplyLayers();
-            AdvancePlaylist();
         }
 
         // ------------------------------------------------------------------ mode
 
+        /// <summary>Switches to <paramref name="mode"/> alone, cross-fading out whatever else was on.</summary>
         public void SetMode(VisualizerMode mode)
         {
-            if (m_Mode == mode)
+            if (m_Mode == mode && !Layered)
                 return;
 
             m_Mode = mode;
+            m_On = Bit(mode);
             m_CycleTimer = 0f;
             UpdateSign();
         }
 
+        /// <summary>
+        /// Turns <paramref name="mode"/> on alongside whatever is on, or off leaving the rest — the
+        /// menu's double pick. The last mode on stays on, so the room always has a show. Returns
+        /// whether it is on now.
+        /// </summary>
+        public bool ToggleMode(VisualizerMode mode)
+        {
+            if (!IsOn(mode))
+            {
+                m_On |= Bit(mode);
+                m_Mode = mode;
+            }
+            else if (Layered)
+            {
+                m_On &= ~Bit(mode);
+                if (m_Mode == mode)
+                    m_Mode = System.Array.Find(k_Modes, IsOn);
+            }
+
+            m_CycleTimer = 0f;
+            UpdateSign();
+            return IsOn(mode);
+        }
+
+        static int Bit(VisualizerMode mode) => 1 << (int)mode;
+
         public void NextMode() => StepMode(1);
         public void PreviousMode() => StepMode(-1);
 
-        /// <summary>Kept for anything wired to the old two-mode toggle; steps forward.</summary>
-        public void ToggleMode() => NextMode();
-
         void StepMode(int step)
         {
-            int index = System.Array.IndexOf(k_Cycle, m_Mode);
+            int index = System.Array.IndexOf(k_Modes, m_Mode);
             if (index < 0)
                 index = 0;
 
-            int next = ((index + step) % k_Cycle.Length + k_Cycle.Length) % k_Cycle.Length;
-            SetMode(k_Cycle[next]);
+            int next = ((index + step) % k_Modes.Length + k_Modes.Length) % k_Modes.Length;
+            SetMode(k_Modes[next]);
         }
 
         public void SetLowIntensity(bool low)
@@ -220,7 +311,8 @@ namespace VRShootingGallery.Visualizer
 
         void AutoCycle()
         {
-            if (m_AutoCycleSeconds <= 0f)
+            // Nothing changes under someone choosing from the menu, and a mix layered by hand is left as it is.
+            if (m_AutoCycleSeconds <= 0f || (m_Menu != null && m_Menu.IsOpen) || Layered)
                 return;
 
             m_CycleTimer += Time.deltaTime;
@@ -231,20 +323,25 @@ namespace VRShootingGallery.Visualizer
         void Fade()
         {
             float step = m_FadeSeconds > 0f ? Time.deltaTime / m_FadeSeconds : 1f;
-            m_BlendTubes = Mathf.MoveTowards(m_BlendTubes, m_Mode == VisualizerMode.Surface2D ? 1f : 0f, step);
-            m_BlendLasers = Mathf.MoveTowards(m_BlendLasers, m_Mode == VisualizerMode.Room3D ? 1f : 0f, step);
-            m_BlendCloud = Mathf.MoveTowards(m_BlendCloud, m_Mode == VisualizerMode.PointCloud ? 1f : 0f, step);
-            m_BlendBody = Mathf.MoveTowards(m_BlendBody, m_Mode == VisualizerMode.AstralBody ? 1f : 0f, step);
-            m_BlendFlies = Mathf.MoveTowards(m_BlendFlies, m_Mode == VisualizerMode.Fireflies ? 1f : 0f, step);
+            m_BlendTubes = Mathf.MoveTowards(m_BlendTubes, IsOn(VisualizerMode.Surface2D) ? 1f : 0f, step);
+            m_BlendLasers = Mathf.MoveTowards(m_BlendLasers, IsOn(VisualizerMode.Room3D) ? 1f : 0f, step);
+            m_BlendCloud = Mathf.MoveTowards(m_BlendCloud, IsOn(VisualizerMode.PointCloud) ? 1f : 0f, step);
+            m_BlendBody = Mathf.MoveTowards(m_BlendBody, IsOn(VisualizerMode.AstralBody) ? 1f : 0f, step);
+            m_BlendFlies = Mathf.MoveTowards(m_BlendFlies, IsOn(VisualizerMode.Fireflies) ? 1f : 0f, step);
+
+            bool menu = m_Menu != null && m_Menu.IsOpen;
+            m_BlendMenu = Mathf.MoveTowards(m_BlendMenu, menu ? 1f : 0f, Time.deltaTime / 0.25f);
         }
 
         /// <summary>
         /// Pushes each layer's blend and the intensity into it, and switches a volume layer's
-        /// objects off entirely once it has faded out so an idle layer costs nothing.
+        /// objects off entirely once it has faded out so an idle layer costs nothing. The volume's
+        /// layers also dim while the menu is open.
         /// </summary>
         void ApplyLayers()
         {
             float intensity = m_Intensity * (m_LowIntensity ? m_LowIntensityScale : 1f);
+            float volume = 1f - m_MenuDim * Mathf.SmoothStep(0f, 1f, m_BlendMenu);
 
             if (m_Analyser != null)
                 m_Analyser.MaxBeatsPerSecond = m_LowIntensity ? m_LowIntensityFlashesPerSecond : m_MaxFlashesPerSecond;
@@ -268,7 +365,7 @@ namespace VRShootingGallery.Visualizer
 
             if (m_Lasers != null)
             {
-                m_Lasers.Opacity = lasers;
+                m_Lasers.Opacity = lasers * volume;
                 m_Lasers.Intensity = intensity;
                 Show(m_Lasers.gameObject, showLasers);
             }
@@ -280,23 +377,23 @@ namespace VRShootingGallery.Visualizer
                     if (ribbon == null)
                         continue;
 
-                    ribbon.Opacity = lasers;
+                    ribbon.Opacity = lasers * volume;
                     ribbon.Intensity = intensity;
                     Show(ribbon.gameObject, showLasers);
                 }
             }
 
-            ApplyCloud(m_PointCloud, m_BlendCloud, intensity);
-            ApplyCloud(m_AstralBody, m_BlendBody, intensity);
-            ApplyCloud(m_Fireflies, m_BlendFlies, intensity);
+            ApplyCloud(m_PointCloud, m_BlendCloud, intensity, volume);
+            ApplyCloud(m_AstralBody, m_BlendBody, intensity, volume);
+            ApplyCloud(m_Fireflies, m_BlendFlies, intensity, volume);
         }
 
-        static void ApplyCloud(AudioPointCloud cloud, float blend, float intensity)
+        static void ApplyCloud(AudioPointCloud cloud, float blend, float intensity, float volume)
         {
             if (cloud == null)
                 return;
 
-            cloud.Opacity = Mathf.SmoothStep(0f, 1f, blend);
+            cloud.Opacity = Mathf.SmoothStep(0f, 1f, blend) * volume;
             cloud.Intensity = intensity;
             Show(cloud.gameObject, blend > 0f);
         }
@@ -307,84 +404,39 @@ namespace VRShootingGallery.Visualizer
                 go.SetActive(on);
         }
 
-        // ------------------------------------------------------------------ playlist
-
-        public void PlayTrack(int index)
-        {
-            if (m_Music == null || m_Playlist == null || m_Playlist.Length == 0)
-            {
-                if (m_Music != null && m_Music.clip != null && !m_Music.isPlaying)
-                    m_Music.Play();
-
-                UpdateSign();
-                return;
-            }
-
-            m_Track = ((index % m_Playlist.Length) + m_Playlist.Length) % m_Playlist.Length;
-            m_Music.clip = m_Playlist[m_Track];
-            m_Music.loop = false;
-            m_Paused = false;
-            m_Music.Play();
-            UpdateSign();
-        }
-
-        public void NextTrack() => PlayTrack(m_Track + 1);
-
-        public void TogglePause()
-        {
-            if (m_Music == null)
-                return;
-
-            if (m_Music.isPlaying)
-            {
-                m_Music.Pause();
-                m_Paused = true;
-            }
-            else
-            {
-                if (m_Music.clip == null)
-                    PlayTrack(0);
-                else
-                    m_Music.UnPause();
-
-                m_Paused = false;
-            }
-
-            UpdateSign();
-        }
-
-        void AdvancePlaylist()
-        {
-            if (m_Music == null || m_Paused || m_Playlist == null || m_Playlist.Length == 0 || m_Track < 0)
-                return;
-
-            // Stopped with the play head at zero is a clip that ran out; stopped part way through is
-            // Unity pausing audio because the window lost focus, which must not skip a track.
-            if (m_Music.isPlaying || m_Music.clip == null || m_Music.time > 0.01f)
-                return;
-
-            // A single track loops; a playlist walks on, or stops at the end.
-            if (m_Playlist.Length == 1 || m_LoopPlaylist || m_Track + 1 < m_Playlist.Length)
-                NextTrack();
-            else
-                m_Paused = true;
-        }
-
         // ------------------------------------------------------------------ input
+
+        /// <summary>The mode button opens the modes on the front wall, or closes them; with no menu it steps to the next mode.</summary>
+        void ModeButton()
+        {
+            if (m_Menu != null)
+                m_Menu.ToggleModes();
+            else
+                NextMode();
+        }
+
+        /// <summary>The track button opens the tracks on the front wall, or closes them; with no menu it skips to the next track.</summary>
+        void TrackButton()
+        {
+            if (m_Menu != null)
+                m_Menu.ToggleTracks();
+            else if (m_Deck != null)
+                m_Deck.NextTrack();
+        }
 
         void ReadWand()
         {
             if (m_ModeButton >= 0 && MiddleVRWand.PressedThisFrame(m_ModeButton))
-                NextMode();
+                ModeButton();
 
             if (m_IntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
 
             if (m_NextTrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_NextTrackButton))
-                NextTrack();
+                TrackButton();
 
-            if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
-                TogglePause();
+            if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton) && m_Deck != null)
+                m_Deck.TogglePause();
         }
 
         void ReadKeyboard()
@@ -393,26 +445,41 @@ namespace VRShootingGallery.Visualizer
             if (keyboard == null)
                 return;
 
+            // Shift skips the menu: straight to the next mode, straight to the next track.
             if (keyboard.mKey.wasPressedThisFrame)
             {
                 if (keyboard.shiftKey.isPressed)
-                    PreviousMode();
-                else
                     NextMode();
+                else
+                    ModeButton();
             }
             else if (DigitPressed(keyboard, m_ModeButton))
             {
-                NextMode();
+                ModeButton();
+            }
+
+            if (keyboard.nKey.wasPressedThisFrame)
+            {
+                if (keyboard.shiftKey.isPressed)
+                {
+                    if (m_Deck != null)
+                        m_Deck.NextTrack();
+                }
+                else
+                {
+                    TrackButton();
+                }
+            }
+            else if (DigitPressed(keyboard, m_NextTrackButton))
+            {
+                TrackButton();
             }
 
             if (keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
 
-            if (keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_NextTrackButton))
-                NextTrack();
-
-            if (keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton))
-                TogglePause();
+            if ((keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton)) && m_Deck != null)
+                m_Deck.TogglePause();
         }
 
         /// <summary>The number-row key printed with the same digit as a wand button, the way the other demos do it.</summary>
@@ -425,17 +492,45 @@ namespace VRShootingGallery.Visualizer
             return keyboard[key].wasPressedThisFrame;
         }
 
-        // ------------------------------------------------------------------ sign
+        // ------------------------------------------------------------------ names
 
-        static string NameOf(VisualizerMode mode)
+        /// <summary>A mode's name, as the menu lists it.</summary>
+        public static string TitleOf(VisualizerMode mode)
         {
             switch (mode)
             {
-                case VisualizerMode.Room3D: return "3D  LASERS";
-                case VisualizerMode.PointCloud: return "3D  POINT CLOUD";
-                case VisualizerMode.AstralBody: return "3D  MUSICA UNIVERSALIS";
-                case VisualizerMode.Fireflies: return "3D  FIREFLIES";
-                default: return "2D  WATER";
+                case VisualizerMode.Room3D: return "Lasers & Waveforms";
+                case VisualizerMode.PointCloud: return "Point Cloud";
+                case VisualizerMode.AstralBody: return "Musica Universalis";
+                case VisualizerMode.Fireflies: return "Fireflies";
+                default: return "Water Tubes";
+            }
+        }
+
+        /// <summary>What kind of show a mode is, in a few words, for the menu.</summary>
+        public static string KindOf(VisualizerMode mode)
+        {
+            switch (mode)
+            {
+                case VisualizerMode.Room3D: return "3D · wall to wall";
+                case VisualizerMode.PointCloud: return "3D · the song flowing past";
+                case VisualizerMode.AstralBody: return "3D · sun and spheres";
+                case VisualizerMode.Fireflies: return "3D · a swarm lit by the music";
+                default: return "2D · on the walls, for all";
+            }
+        }
+
+        // ------------------------------------------------------------------ sign
+
+        static string SignNameOf(VisualizerMode mode)
+        {
+            switch (mode)
+            {
+                case VisualizerMode.Room3D: return "LASERS";
+                case VisualizerMode.PointCloud: return "POINT CLOUD";
+                case VisualizerMode.AstralBody: return "MUSICA UNIVERSALIS";
+                case VisualizerMode.Fireflies: return "FIREFLIES";
+                default: return "WATER";
             }
         }
 
@@ -445,22 +540,55 @@ namespace VRShootingGallery.Visualizer
                 return;
 
             m_Text.Clear();
-            m_Text.Append(NameOf(m_Mode));
+            if (!Layered)
+            {
+                m_Text.Append(m_Mode == VisualizerMode.Surface2D ? "2D  " : "3D  ").Append(SignNameOf(m_Mode));
+            }
+            else
+            {
+                // A mix reads as its parts: "WATER + LASERS + FIREFLIES".
+                bool first = true;
+                foreach (var mode in k_Modes)
+                {
+                    if (!IsOn(mode))
+                        continue;
+                    if (!first)
+                        m_Text.Append(" + ");
+                    m_Text.Append(SignNameOf(mode));
+                    first = false;
+                }
+            }
+
             if (m_LowIntensity)
                 m_Text.Append("   ·   LOW INTENSITY");
 
             m_Text.Append("   ·   ");
-            if (m_Music == null || m_Music.clip == null)
+            var clip = m_Deck != null ? m_Deck.Clip : null;
+            if (m_Deck == null)
+            {
+                m_Text.Append("no music source — rebuild the scene: VR Shooting Gallery ▸ Visualizer ▸ Rebuild Visualizer");
+            }
+            else if (clip == null)
+            {
                 m_Text.Append("no track — drop a clip in ").Append(MusicFolder).Append(" and press Play again");
+            }
             else
             {
-                if (m_Playlist != null && m_Playlist.Length > 1)
-                    m_Text.Append(m_Track + 1).Append('/').Append(m_Playlist.Length).Append("  ");
+                if (m_Deck.TrackCount > 1)
+                    m_Text.Append(m_Deck.Track + 1).Append('/').Append(m_Deck.TrackCount).Append("  ");
 
-                m_Text.Append(m_Music.clip.name);
-                if (m_Paused)
+                m_Text.Append(TrackIndicator.TitleOf(clip));
+                if (m_Deck.Paused)
                     m_Text.Append("  (paused)");
+
+                var next = m_Deck.ClipAt(m_Deck.NextIndex);
+                if (next != null && m_Deck.TrackCount > 1)
+                    m_Text.Append("   ·   next: ").Append(TrackIndicator.TitleOf(next));
             }
+
+            // Said where the operator looks, not only in the console.
+            if (m_Menu == null)
+                m_Text.Append("   ·   NO MENU: REBUILD THE SCENE");
 
             m_Sign.text = m_Text.ToString();
         }

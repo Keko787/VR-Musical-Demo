@@ -60,7 +60,7 @@ namespace VRShootingGallery.EditorTools
         {
             CreateScene(k_Tag, k_ScenePath, "haunted room", Build,
                 "Drop a track into Assets/_Project/Audio/Music and enter play mode. G summons the ghost, L toggles low " +
-                "intensity, N skips, Space pauses.");
+                "intensity, N opens the tracks on the front wall (Shift+N skips), Space pauses.");
         }
 
         [MenuItem(k_BuildMenu, false, 710)]
@@ -149,12 +149,14 @@ namespace VRShootingGallery.EditorTools
             var ghost = BuildGhost(root, haunting, p);
             BuildShadows(root, haunting, p, (front, CaveScreens.Front), (left, CaveScreens.Left), (right, CaveScreens.Right));
             var sign = BuildSign(root);
+            var menu = BuildOverlays(root, deck);
 
             var so = new SerializedObject(haunting);
             SetRef(k_Tag, so, "m_Analyser", analyser);
             SetRef(k_Tag, so, "m_Deck", deck);
             SetRef(k_Tag, so, "m_Ghost", ghost);
             SetRef(k_Tag, so, "m_Sign", sign);
+            SetRef(k_Tag, so, "m_Menu", menu);
             so.ApplyModifiedProperties();
 
             Atmosphere(scene);
@@ -815,6 +817,39 @@ namespace VRShootingGallery.EditorTools
             for (int i = 0; i < sizes.Count; i++)
                 sizeArray.GetArrayElementAtIndex(i).vector2Value = sizes[i];
             so.ApplyModifiedProperties();
+        }
+
+        // ================================================================== the menu
+
+        /// <summary>
+        /// Metres the menu stands off the front screen: in front of the chimney breast, the mantel, and
+        /// the clock and candles on it, which stand up to 0.28 m out and would otherwise draw over it.
+        /// </summary>
+        const float k_MenuInset = 0.34f;
+
+        /// <summary>The track strip's middle: above the portrait, under the cornice.</summary>
+        const float k_IndicatorHeight = 2.06f;
+
+        /// <summary>The strip stands just clear of the portrait's frame, which its lower edge crosses.</summary>
+        const float k_IndicatorInset = 0.08f;
+
+        /// <summary>The menu's and the strip's materials, M_Haunt_Menu_Panel and the rest, beside the room's own.</summary>
+        const string k_MenuMaterialPrefix = k_Art + "/Materials/M_Haunt_";
+
+        /// <summary>
+        /// The tracks, which the track button opens on the front wall, and the now-playing strip above
+        /// the portrait: the shared <see cref="WallMenuBuilder"/>'s panel, the same as the other rooms',
+        /// standing far enough out from the wall to clear the mantelpiece.
+        /// </summary>
+        static TrackMenu BuildOverlays(Transform root, MusicDeck deck)
+        {
+            var menu = WallMenuBuilder.BuildMenu<TrackMenu>(k_Tag, root, k_MenuMaterialPrefix, WallMenuBuilder.MenuHeight, k_MenuInset);
+            var so = new SerializedObject(menu);
+            SetRef(k_Tag, so, "m_Deck", deck);
+            so.ApplyModifiedProperties();
+
+            WallMenuBuilder.BuildTrackIndicator(k_Tag, root, k_MenuMaterialPrefix, deck, menu, k_IndicatorHeight, k_IndicatorInset);
+            return menu;
         }
 
         /// <summary>A dim status line on the floor at the open back, readable by whoever runs the demo from the doorway.</summary>

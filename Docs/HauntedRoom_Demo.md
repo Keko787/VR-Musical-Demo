@@ -38,13 +38,62 @@ bought model can replace the looks later without touching the behaviour.
 | --- | --- | --- |
 | 1 | **G** | Summon the ghost, or send it away — a manual reveal for when the music will not oblige |
 | 2 | **L** | Toggle low intensity |
-| 3 | **N** | Next track |
+| 3 | **N** | Open or close the **tracks** on the front wall (**Shift+N** skips straight to the next track) |
 | 4 | **Space** | Pause / resume |
+| 0 (trigger) | **Enter** | In the menu: pick the row the wand points at, or the one selected |
 
 As in the other demos the number-row keys stand in for the wand buttons with the same digit, and
 the keyboard stays on in builds. A dim status line lies on the floor at the open back of the room,
-for whoever is running it from the doorway: how possessed the room is, the track, and whether the
-ghost is summoned or low intensity is on.
+for whoever is running it from the doorway: how possessed the room is, the track and the one up
+next, and whether the ghost is summoned or low intensity is on.
+
+### The tracks menu
+
+The track button opens the playlist on a dark glass panel in front of the chimney breast — the same
+menu as the visualizer's and the glass room's (`TrackMenu`, a `WallMenu` with only the tracks page),
+worked the same way. It opens at the track playing, marked in amber with "playing" (or "paused");
+the one that plays when it ends is marked in blue with "up next". Picking a track plays it from the
+start, and the haunting reads it ahead and begins its arc again, as it does for any new track. The
+haunting carries on while the panel is up.
+
+| Wand | Desk | In the menu |
+| --- | --- | --- |
+| Point at a row | — | Selects it; a ray shows where the wand points, a cursor where it meets the panel |
+| Joystick up / down | ↑ / ↓ | Step through the rows, repeating while held, scrolling past the edge |
+| Trigger (button 0) | **Enter** | Play the selected track |
+| Rest on a ▲ / ▼ strip | Mouse wheel | Scroll the list |
+| Trigger on a ▲ / ▼ strip | **Page Up** / **Page Down** | A page up or down |
+| Trigger on the scrollbar, held to drag | **Home** / **End** | Jump through the list; to the first or last track |
+| Joystick left, or button 3 | **Backspace**, **Esc**, ←, **N** | Close |
+
+**Scrolling.** The panel has eleven rows; a longer playlist scrolls, and the title says which part is
+showing ("TRACKS 3–13 of 25"). While there is more above or below, a strip just above or below the
+rows says so ("▲ 3 more ▲", "▼ 11 more ▼"). **Rest the wand on a strip** and, after a moment, the
+list scrolls that way a row at a time until the ray moves off it; **pull the trigger on a strip** to
+go a page at once. A **scrollbar** in the margin right of the rows shows how long the list is and
+which part is showing: pull the trigger on it to jump there, or hold the trigger and move the wand
+up and down to drag. Stepping past the top or bottom row with the joystick scrolls too. At the desk,
+the **mouse wheel** scrolls, **Page Up** / **Page Down** go a page, and **Home** / **End** go to the
+first and last track.
+
+**It stands off the wall.** The mantel, the clock and candles on it, and the chimney breast stand
+up to 0.28 m out from the front screen, and anything in front of the panel draws over it, so the
+panel hangs 0.34 m into the room (`k_MenuInset` in the builder) rather than flat on the wall as in
+the other rooms. From the tracked viewpoint it reads as a pane floating before the fireplace; an
+untracked onlooker sees it skew a little, as they see the furniture.
+
+### Now playing, up next
+
+A slim strip above the portrait says what is playing, what plays next, and has a bar for how far
+through the track the music is. It fades in for 8 s when a track starts, again for the last 20 s of
+a track (counting down: "UP NEXT IN 0:12"), and stays while the music is paused; in between it
+fades away, so the parlour has the wall to itself. It steps aside while the menu is open. It stands
+8 cm off the wall, just clear of the portrait's frame, whose top its lower edge crosses. **Always**
+on the `TrackIndicator` keeps it up all the time.
+
+A scene built before the menu existed still runs: the track button skips to the next track, as it
+used to, and the status line says NO MENU: REBUILD THE SCENE until **Rebuild Haunted Room** is run
+and the scene saved.
 
 ## How the haunting works
 
@@ -195,7 +244,8 @@ photosensitivity risk the deck warns about. So:
 | `SpectreGhost` | The ghost: travel, dance, and a body of points made of the music |
 | `GhostSilhouette` | The ghost's 2D outline, shared by the shadow texture and the TV face |
 | `MusicDeck`, `TrackEnvelope`, `ManualParticles` | Shared with the visualizer: playback, whole-track loudness, hand-written particles |
-| `HauntedRoomBuilder`, `HauntedTextures` | Editor: builds the room, paints the textures |
+| `TrackMenu`, `TrackIndicator` | Shared with the other rooms: the tracks on the front wall (a `WallMenu`), and the now-playing strip |
+| `HauntedRoomBuilder`, `HauntedTextures` | Editor: builds the room, paints the textures; `WallMenuBuilder` builds the menu and the strip |
 
 ## Tuning
 

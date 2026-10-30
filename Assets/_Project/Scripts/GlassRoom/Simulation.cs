@@ -112,11 +112,15 @@ namespace VRShootingGallery.GlassRoom
             "the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
         int m_WorldButton = 1;
 
-        [SerializeField, Tooltip("The menu on the front wall the world button opens. None, and the button steps to the next world instead.")]
-        WorldMenu m_Menu;
+        [SerializeField, Tooltip("The menu on the front wall the world and track buttons open. None, and they step to the next world and " +
+            "the next track instead.")]
+        RoomMenu m_Menu;
 
         [SerializeField] int m_IntensityButton = 2;
-        [SerializeField] int m_NextTrackButton = 3;
+
+        [SerializeField, Tooltip("Wand button that opens the list of tracks (or, without a menu, skips to the next track).")]
+        int m_NextTrackButton = 3;
+
         [SerializeField] int m_PlayPauseButton = 4;
 
         [SerializeField, Tooltip("Wand button that glitches the world into its next variant, in a world that has them.")]
@@ -126,7 +130,7 @@ namespace VRShootingGallery.GlassRoom
         int m_FurnitureButton = -1;
 
         [Header("Desk")]
-        [SerializeField, Tooltip("W opens the world menu (Shift+W goes back a world), V the world's variant (Shift+V goes back), F shows or hides the furniture, L toggles low intensity, N skips, Space pauses, and the number-row keys " +
+        [SerializeField, Tooltip("W opens the world menu (Shift+W goes back a world), V the world's variant (Shift+V goes back), F shows or hides the furniture, L toggles low intensity, N opens the tracks (Shift+N skips straight to the next), Space pauses, and the number-row keys " +
             "stand in for the wand buttons with the same digit. Stays on in builds so the room can be run from the server node.")]
         bool m_KeyboardControl = true;
 
@@ -704,7 +708,7 @@ namespace VRShootingGallery.GlassRoom
             if (m_IntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
             if (m_NextTrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_NextTrackButton))
-                m_Deck?.NextTrack();
+                TrackButton();
             if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
                 m_Deck?.TogglePause();
             if (m_VariantButton >= 0 && MiddleVRWand.PressedThisFrame(m_VariantButton))
@@ -745,8 +749,17 @@ namespace VRShootingGallery.GlassRoom
 
             if (keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
-            if (keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_NextTrackButton))
-                m_Deck?.NextTrack();
+            if (keyboard.nKey.wasPressedThisFrame)
+            {
+                if (keyboard.shiftKey.isPressed)
+                    m_Deck?.NextTrack();
+                else
+                    TrackButton();
+            }
+            else if (DigitPressed(keyboard, m_NextTrackButton))
+            {
+                TrackButton();
+            }
             if (keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton))
                 m_Deck?.TogglePause();
         }
@@ -755,9 +768,18 @@ namespace VRShootingGallery.GlassRoom
         void WorldButton()
         {
             if (m_Menu != null)
-                m_Menu.Toggle();
+                m_Menu.ToggleWorlds();
             else
                 NextWorld();
+        }
+
+        /// <summary>The track button opens the list of tracks on the front wall, or closes it; with no menu it skips to the next track.</summary>
+        void TrackButton()
+        {
+            if (m_Menu != null)
+                m_Menu.ToggleTracks();
+            else
+                m_Deck?.NextTrack();
         }
 
         /// <summary>The number-row key printed with the same digit as a wand button, the way the other demos do it.</summary>
@@ -798,9 +820,13 @@ namespace VRShootingGallery.GlassRoom
                 m_Text.Append("no track — drop a clip in ").Append(MusicDeck.MusicFolder);
             else
             {
-                m_Text.Append(clip.name);
+                m_Text.Append(TrackIndicator.TitleOf(clip));
                 if (m_Deck.Paused)
                     m_Text.Append("  (paused)");
+
+                var next = m_Deck.ClipAt(m_Deck.NextIndex);
+                if (next != null && m_Deck.TrackCount > 1)
+                    m_Text.Append("   ·   next: ").Append(TrackIndicator.TitleOf(next));
             }
 
             m_Sign.text = m_Text.ToString();

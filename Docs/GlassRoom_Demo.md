@@ -78,8 +78,9 @@ Glass_Room                 Simulation — worlds, transitions, music globals, ro
 ├─ Pendants                three PendantLamps, each with a point light
 ├─ Glass_Walls             Glass_Left / Glass_Front / Glass_Right: WindowView each
 ├─ Status_Sign             dim line on the floor at the open back
-└─ World_Menu              WorldMenu, on the front wall just inside the glass: Content (panel, highlight, title, rows,
-                           cursor) and Wand_Ray; hidden until the world button opens it
+├─ Menu                    RoomMenu, on the front wall just inside the glass: Content (panel, highlight, title, rows,
+│                          cursor) and Wand_Ray; hidden until the world or track button opens it
+└─ Track_Indicator         TrackIndicator, high on the front wall: now playing, up next, and a bar for the track
 ```
 
 A rebuild clears the children and reuses the `Simulation` on the root, so its Inspector settings
@@ -91,7 +92,7 @@ survive a rebuild.
 | --- | --- | --- |
 | 1 | **W** | Open or close the world menu (**Shift+W** goes straight back a world) |
 | 2 | **L** | Toggle low intensity |
-| 3 | **N** | Next track |
+| 3 | **N** | Open or close the track list (**Shift+N** skips straight to the next track) |
 | 4 | **Space** | Pause / resume |
 | 6 | **V** | Next variant of the world outside, if it has variants (**Shift+V** goes back) |
 | — | **F** | Show or hide the furniture (no wand button by default; set `m_FurnitureButton`) |
@@ -99,10 +100,12 @@ survive a rebuild.
 As in the other demos, the number-row keys stand in for the wand buttons with the same digit, and
 the keyboard stays on in builds.
 
-### The world menu
+### The menu: worlds and tracks
 
-The world button opens a menu on the front wall, a dark glass panel over the window at a little
-below eye height, above the desk. It lists the worlds by group first: **Shelter** (Red Rock, Above
+The world and track buttons open a menu on the front wall, a dark glass panel over the window at a
+little below eye height, above the desk.
+
+**Worlds** (button 1 / **W**). The worlds are listed by group first: **Shelter** (Red Rock, Above
 the Clouds, Sky Pool, Sunset Beach, Aurora), **Space** (Orbit) and **Norway** (nine views). Picking a
 group lists its worlds, with a way back at the bottom. Picking a world closes the menu and rebuilds
 the outside into it with the usual tile change. The world outside now, and its group, are marked in
@@ -115,13 +118,44 @@ amber.
 | Trigger (button 0) | **Enter** | Picks the row |
 | Joystick right | **→** | Opens the selected group |
 | Joystick left | **← / Backspace / Esc** | Back to the groups, or closes the menu from there |
-| Button 1 | **W** | Closes the menu |
+| Button 1 / button 3 | **W** / **N** | Closes the menu, or switches it to the other list |
+| Rest on a ▲ / ▼ strip | Mouse wheel | Scrolls a long list |
+| Trigger on a ▲ / ▼ strip | **Page Up** / **Page Down** | A page up or down |
+| Trigger on the scrollbar, held to drag | **Home** / **End** | Jumps through the list; to the first or last row |
+
+**Tracks** (button 3 / **N**). The playlist, in order, opened at the track playing. That track is
+marked in amber with "playing" (or "paused"), and the one that plays when it ends is marked in blue
+with "up next". Picking a track plays it from the start; the world outside stays as it is. Track
+names are shown without the uploader's tags, so "Good Kid - Orbit (Official Audio)" reads
+"Good Kid - Orbit".
+
+**Scrolling.** The panel has eleven rows; a longer list scrolls, and the title says which part is
+showing ("TRACKS 3–13 of 25"). While there is more above or below, a strip just above or below the
+rows says so ("▲ 3 more ▲", "▼ 11 more ▼"). **Rest the wand on a strip** and, after a moment, the
+list scrolls that way a row at a time until the ray moves off it; **pull the trigger on a strip** to
+go a page at once. A **scrollbar** in the margin right of the rows shows how long the list is and
+which part is showing: pull the trigger on it to jump there, or hold the trigger and move the wand
+up and down to drag. Stepping past the top or bottom row with the joystick scrolls too. At the desk,
+the **mouse wheel** scrolls, **Page Up** / **Page Down** go a page, and **Home** / **End** go to the
+first and last row.
+
+The panel is the shared one every room's menu uses (`WallMenu`, built by `WallMenuBuilder`), so the
+glass room's and the visualizer's menus look and work the same, scrolling included.
 
 The groups come from each world's **Group** on its `SimWorld`, in the order the worlds are listed,
-so a new world shows up in the menu by setting that field. Without a `WorldMenu` on the
-`Simulation`, the world button goes back to stepping to the next world. The other buttons and keys
-keep working while the menu is open. The pointer looks for MiddleVR's `HandNode`; at a desk with no
-wand, the keys work alone.
+so a new world shows up in the menu by setting that field. Without a `RoomMenu` on the
+`Simulation`, the world button goes back to stepping to the next world and the track button to
+skipping to the next track. The other buttons and keys keep working while the menu is open. The
+pointer looks for MiddleVR's `HandNode`; at a desk with no wand, the keys work alone.
+
+### Now playing, up next
+
+A slim strip high on the front wall, in the sky above the eye line, says what is playing, what plays
+next, and has a bar for how far through the track the music is. It fades in for 8 s when a track
+starts, again for the last 20 s of a track (counting down: "UP NEXT IN 0:12"), and stays while the
+music is paused. In between it fades away, so the world has the wall to itself. It steps aside while
+the menu is open, because the track list marks the same two tracks. **Always** on the
+`TrackIndicator` keeps it up all the time. The status line on the floor also names the next track.
 
 **A change of track leaves the world alone.** The world outside stays until someone picks another
 from the menu. Three hands-off options are all off by default: `m_WorldPerTrack` rebuilds the
@@ -433,7 +467,8 @@ a line in `BuildNorway`.
 | `SimProps` | Norway's houses (on level ground above the water), fish farms (rings with a band lamp each) and a cruise ship (windows along the spectrum) |
 | `SimWaterfall` | A waterfall traced down the steepest way from its source until the ground levels out or meets the water, as a ribbon on the rock |
 | `SimLightning` | Lightning in the clouds on the strongest beats (`_GR_Flash`) |
-| `WorldMenu` | The world menu on the front wall: groups, then worlds; wand pointer, joystick, trigger and keys |
+| `RoomMenu` | The menu on the front wall: groups then worlds, or the tracks; wand pointer, joystick, trigger and keys |
+| `TrackIndicator` | The strip that says what is playing and what is up next, with the track's progress |
 | `WorldVariant` (in `SimWorld`) | One look of a world: sky, nebula, palette, tints, room light |
 | `SimCelestial` | A planet or star: a quad that `SimPlanet` turns to face the room |
 | `SimAsteroids` | Faceted rocks round the room, lifted and spun by their bands |
@@ -443,7 +478,7 @@ a line in `BuildNorway`.
 | `SimMeteors` | Shooting stars on strong beats, as velocity-stretched glows |
 | `LightPillar`, `VoxelMesa`, `SimMotes` | The pillar, the cubes, the motes |
 | `SimMeshes` | Noise and mesh helpers |
-| `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards. The Norway views and the world menu are in `GlassRoomBuilder.Norway.cs` |
+| `GlassRoomBuilder`, `GlassRoomTextures` | Editor: builds everything, paints the floorboards. The Norway views are in `GlassRoomBuilder.Norway.cs`, the menu and the track strip in `GlassRoomBuilder.Menu.cs` |
 
 | Shader | Draws |
 | --- | --- |
@@ -534,7 +569,8 @@ leave it empty. A cumulus puff puts its radius there instead, for a material wit
 | `M_Glass_Norway_*_Water` | `_DeepColor` / `_Reflectivity` / `_Rings` / `_RingRipple` | per view / 0.6 / 1 | Glacial turquoise or sea blue; the beat rings on it |
 | `M_Glass_Norway_Waterfall` | `_Speed` / `_SpeedByBand` / `_Band` / `_Swell` | 14 / 18 m/s / 0.08 / 0.35 | How fast the falls run at rest and with the bass, and how far they swell |
 | `SimLightning` | `m_Threshold` / `m_Gap` / `m_Brightness` | 0.65 / 1.6 s / 1 | Which beats strike, how often at most, how bright |
-| `WorldMenu` | `m_WandNode` / `m_SelectButton` | HandNode / 0 | The node the pointer reads; the button that picks |
+| `RoomMenu` | `m_WandNode` / `m_SelectButton` | HandNode / 0 | The node the pointer reads; the button that picks |
+| `TrackIndicator` | `m_AfterStart` / `m_BeforeEnd` / `m_Always` | 8 s / 20 s / off | When the strip shows: after a track starts, before it ends, or all the time |
 
 ## Where it stands
 
@@ -556,6 +592,8 @@ leave it empty. A cumulus puff puts its radius there instead, for a material wit
   the scene or seen in renders yet: the composition (the cumulus' size and turrets, the pool's
   width against the front wall, the gulls' circles) is set from the collage and the walls' angles,
   not from a look.
+- **The track list and the now-playing strip** compile (runtime and editor), but they need a
+  **Rebuild Glass Room** to appear in the scene and have not been seen running yet.
 - **Norway** and the world menu compile (runtime and editor, with MSBuild), and every glass room
   shader compiles with `fxc` against URP's headers. The nine views' layouts were checked against the
   photographs with a rough height-field render of the three walls from the fixed eye, outside Unity.

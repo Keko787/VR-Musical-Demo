@@ -1,16 +1,13 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
 using VRShootingGallery.GlassRoom;
-using VRShootingGallery.Visualizer;
 using static VRShootingGallery.EditorTools.StringInstrumentBuilder;
 
 namespace VRShootingGallery.EditorTools
 {
     /// <summary>
-    /// The glass room's Norway group — nine views after photographs, each a world of its own — and the
-    /// world menu on the front wall that picks between every world outside.
+    /// The glass room's Norway group: nine views after photographs, each a world of its own.
     /// </summary>
     /// <remarks>
     /// The Norway worlds share one way of being built: a <see cref="SurfaceProfile.Fjordland"/>
@@ -728,99 +725,5 @@ namespace VRShootingGallery.EditorTools
             },
             Grass = new[] { Patch(new(0f, 0f, 30f), new(70f, 40f), 700, new(0.3f, 0.55f)) },
         };
-
-        // ================================================================== the world menu
-
-        /// <summary>Height of the menu's middle on the front wall: above the desk, a little below the eye.</summary>
-        const float k_MenuHeight = 1.5f;
-
-        /// <summary>Height of the top row and the step down to each next, in the menu's own space.</summary>
-        static readonly Vector2 k_MenuRows = new(0.36f, 0.082f);
-
-        const int k_MenuRowCount = 11;
-
-        /// <summary>
-        /// The world menu, on the front wall just inside the glass: a dark glass panel, a bar behind
-        /// the selected row, the title and the rows, the wand's ray and a cursor where it meets the
-        /// panel. Hidden until the world button opens it.
-        /// </summary>
-        static WorldMenu BuildMenu(Transform root, Simulation simulation)
-        {
-            var front = CaveScreens.Front;
-            var holder = NewChild(root, "World_Menu");
-            holder.localPosition = front.Point(0.5f, k_MenuHeight / Height, k_Inset + 0.03f);
-            holder.localRotation = front.FacingRotation;
-
-            var content = NewChild(holder, "Content");
-            var halfSize = new Vector2(0.75f, 0.56f);
-            var panel = Quad(content, "Panel", Vector3.zero, halfSize * 2f, MenuMaterial("Menu_Panel", new Color(0.04f, 0.06f, 0.1f, 0.78f), 2980));
-            Quiet(panel.GetComponent<Renderer>());
-            var edge = Quad(content, "Edge", new Vector3(0f, halfSize.y - 0.004f, -0.001f), new Vector2(halfSize.x * 2f, 0.008f),
-                MenuMaterial("Menu_Edge", new Color(0.75f, 0.9f, 1f, 0.9f), 2985));
-            Quiet(edge.GetComponent<Renderer>());
-            var highlight = Quad(content, "Highlight", new Vector3(0f, k_MenuRows.x, -0.002f), new Vector2(halfSize.x * 1.8f, k_MenuRows.y * 0.92f),
-                MenuMaterial("Menu_Highlight", new Color(0.45f, 0.7f, 1f, 0.35f), 2990));
-            Quiet(highlight.GetComponent<Renderer>());
-
-            var title = Text(k_Tag, content, "Title", new Vector3(0f, 0.475f, -0.004f), 0.7f, "WORLDS", new Color(0.75f, 0.9f, 1f),
-                new Vector2(halfSize.x * 1.8f, 0.1f));
-            var rows = new List<TMPro.TMP_Text>();
-            for (int i = 0; i < k_MenuRowCount; i++)
-                rows.Add(Text(k_Tag, content, $"Row_{i}", new Vector3(0f, k_MenuRows.x - i * k_MenuRows.y, -0.004f), 0.52f, "",
-                    new Color(0.86f, 0.9f, 0.96f), new Vector2(halfSize.x * 1.8f, k_MenuRows.y)));
-
-            var cursor = Quad(content, "Cursor", new Vector3(0f, 0f, -0.006f), Vector2.one * 0.025f,
-                MenuMaterial("Menu_Cursor", new Color(0.9f, 0.97f, 1f, 0.95f), 3010));
-            Quiet(cursor.GetComponent<Renderer>());
-
-            var rayObject = NewChild(holder, "Wand_Ray");
-            var ray = Undo.AddComponent<LineRenderer>(rayObject.gameObject);
-            ray.useWorldSpace = true;
-            ray.positionCount = 2;
-            ray.widthMultiplier = 0.005f;
-            ray.numCapVertices = 2;
-            ray.shadowCastingMode = ShadowCastingMode.Off;
-            ray.receiveShadows = false;
-            ray.sharedMaterial = MenuMaterial("Menu_Ray", new Color(0.7f, 0.9f, 1f, 0.55f), 3005);
-            ray.enabled = false;
-
-            var menu = Undo.AddComponent<WorldMenu>(holder.gameObject);
-            var so = new SerializedObject(menu);
-            SetRef(k_Tag, so, "m_Simulation", simulation);
-            SetRef(k_Tag, so, "m_Content", content);
-            SetRef(k_Tag, so, "m_Highlight", highlight);
-            SetRef(k_Tag, so, "m_Title", title);
-            SetArray(k_Tag, so, "m_Rows", rows);
-            SetVector2(so, "m_RowLayout", k_MenuRows);
-            SetVector2(so, "m_HalfSize", halfSize);
-            SetRef(k_Tag, so, "m_Ray", ray);
-            SetRef(k_Tag, so, "m_Cursor", cursor);
-            so.ApplyModifiedProperties();
-
-            // Closed until the world button opens it, in the editor too: it would cover the front window.
-            content.gameObject.SetActive(false);
-            cursor.gameObject.SetActive(false);
-            return menu;
-        }
-
-        /// <summary>URP Unlit, transparent, drawn at <paramref name="queue"/> so the panel, bar, text and cursor stack in order.</summary>
-        static Material MenuMaterial(string name, Color colour, int queue)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            return ShaderMaterial(name, shader, m =>
-            {
-                m.SetColor("_BaseColor", colour);
-                m.SetTexture("_BaseMap", Texture2D.whiteTexture);
-                m.SetFloat("_Surface", 1f);
-                m.SetFloat("_Blend", 0f);
-                m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-                m.SetFloat("_ZWrite", 0f);
-                m.SetFloat("_Cull", (float)CullMode.Off);
-                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                m.SetOverrideTag("RenderType", "Transparent");
-                m.renderQueue = queue;
-            });
-        }
     }
 }

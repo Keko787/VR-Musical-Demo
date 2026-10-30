@@ -42,21 +42,23 @@ MiddleVR setup, the copy is saved before anything is deleted from it, and Create
 **File ▸ Build Settings** switched off.
 
 **Put a track in.** The playlist is every audio clip in `Assets/_Project/Audio/Music`, sorted by
-name. The folder starts empty; drop an MP3/WAV/OGG in and press Play. The folder is read three
+name. The folder starts empty; drop an MP3/WAV/OGG in and press Play — the room opens on the first
+track, paused, and **Space** or wand button 4 starts it (see *It opens paused*). The folder is read three
 times, so the playlist is never stale: by the builder, **again each time play starts in the
-editor** (`RoomVisualizer.Start`), and **at player build time** (`VisualizerPlaylistProcessor`,
+editor** (`MusicDeck.Start`), and **at player build time** (`VisualizerPlaylistProcessor`,
 an `IProcessSceneWithReport`) so a CAVE build carries whatever is in the folder without anyone
 rebuilding the scene. A player has no asset database, which is why the list is serialized at all.
 With no clip the scene still runs — the water idles at a low breathing level and the status line
-on the front wall says so — and a clip can be dragged onto `Room_Visualizer ▸ Playlist` by hand,
-which holds only while the folder is empty.
+on the front wall says so — and a clip can be dragged onto the `MusicDeck`'s **Playlist** (under
+`Analyser/Music`) by hand, which holds only while the folder is empty. The deck is the same one the
+haunted room and the glass room play through.
 
 Everything lives under `CAVE_User_Room/Room_Visualizer`, all registered with Undo:
 
 ```
-Room_Visualizer            RoomVisualizer — modes, fade, intensity, playlist, input
+Room_Visualizer            RoomVisualizer — modes, fade, intensity, input
 ├─ Analyser                AudioAnalyser
-│  └─ Music                AudioSource, 2D, the playlist plays through it
+│  └─ Music                AudioSource (2D) + MusicDeck — the playlist, play, pause, the track up next
 ├─ Surfaces_2D
 │  ├─ Panel_Front          Quad on the front screen, WaterTubePanel, 24 tubes, bass in the middle
 │  ├─ Panel_Left           Quad on the left screen, 16 tubes, bass at the back
@@ -70,7 +72,11 @@ Room_Visualizer            RoomVisualizer — modes, fade, intensity, playlist, 
 ├─ PointCloud_3D           ParticleSystem + AudioPointCloud, SpectrumField
 ├─ AstralBody_3D           ParticleSystem + AudioPointCloud, AstralBody
 ├─ Fireflies_3D            ParticleSystem + AudioPointCloud, Fireflies
-└─ Status_Sign             TMP line along the bottom of the front wall: mode, track
+├─ Status_Sign             TMP line along the bottom of the front wall: mode, track, next track
+├─ Menu                    VisualizerMenu on the front wall: Content (panel, highlight, title, rows,
+│                          'more' strips, scrollbar, cursor) and Wand_Ray; hidden until the mode or
+│                          track button opens it
+└─ Track_Indicator         TrackIndicator, high on the front wall: now playing, up next, and a bar
 ```
 
 A rebuild clears the children; the `RoomVisualizer` on the root is reused, so **the mode, the
@@ -86,18 +92,93 @@ the base camera's settings onto its CAVE cameras.
 
 | Wand button | Key | Does |
 | --- | --- | --- |
-| 1 | **M** | Next mode — water → lasers → point cloud → astral body → fireflies → water — with a 1.5 s cross-fade (**Shift+M** goes back) |
+| 1 | **M** | Open or close the **modes** on the front wall (**Shift+M** steps straight to the next mode) |
 | 2 | **L** | Toggle low intensity |
-| 3 | **N** | Next track |
-| 4 | **Space** | Pause / resume |
+| 3 | **N** | Open or close the **tracks** on the front wall (**Shift+N** skips straight to the next track) |
+| 4 | **Space** | Play / pause. The room opens paused |
+| 0 (trigger) | **Enter** | In the menu: pick the row the wand points at, or the one selected. On a mode, twice quickly layers it with the others |
 
 The number-row keys stand in for wand buttons with the same digit, the way the other demos do it,
 and the keyboard stays on in builds (`m_KeyboardControl`) so the room's audio routing can be
 checked from the server node without the wand. Button indices are whatever the `.vrx` says; the
 VisBox wand has 0–4, 6–8, 11 and 15, and 0 is the trigger.
 
-**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the five modes on its own; with
-`m_LoopPlaylist` on it plays the folder round and round. When the music stops the analyser reports
+**It opens paused.** The room starts on the first track, cued at its top but not playing: the
+strip on the front wall says PAUSED with the track's name, the status line says "(paused)", and the
+show waits at its slow idle breathing. Play (button 4 / **Space**) starts the track; picking a track
+from the menu plays that one instead. `m_StartPaused` on the `RoomVisualizer` turns this off, and the
+music starts with the scene as it used to. It is on the visualizer rather than the `MusicDeck`, so
+the haunted room and the glass room, which share the deck, still start playing.
+
+### The menu: modes and tracks
+
+The mode and track buttons open a menu on the front wall, a dark glass panel at a little below eye
+height — the same menu as the glass room's, worked the same way. Both are a `WallMenu`, which owns
+the panel, the pointer, the joystick and the keys; this room's pages are `VisualizerMenu`, and
+`WallMenuBuilder` builds the panel and the strip below.
+
+**Modes** (button 1 / **M**). The five shows, in order: Water Tubes, Lasers & Waveforms, Point
+Cloud, Musica Universalis, Fireflies, each with a few words on what kind of show it is. The ones on
+are marked in amber. A mode can be picked two ways:
+
+- **Pick it once** and the room cross-fades (1.5 s) to that mode alone, and the menu closes.
+- **Pick it twice in quick succession** (the trigger or **Enter**, twice within 0.35 s) and it is
+  layered with whatever is on: it fades in beside them, or, if it was on, fades out and leaves the
+  rest. The menu stays open, so a few can be added in a row. Water on the walls with fireflies in
+  the room, or the astral body inside the point cloud, are combinations worth trying. The last mode
+  on stays on — the room always has a show — so a double pick on it does nothing.
+
+A single pick waits those 0.35 s before it acts, to be sure it is not the first of two; the track
+page has no double pick, so a track plays the moment it is picked. The status line names a mix by
+its parts: "WATER + LASERS + FIREFLIES".
+
+**Tracks** (button 3 / **N**). The playlist, in order, opened at the track playing. That track is
+marked in amber with "playing" (or "paused"), and the one that plays when it ends is marked in blue
+with "up next". Picking a track plays it from the start; the mode stays as it is. Track names are
+shown without the uploader's tags, so "Good Kid - Orbit (Official Audio)" reads "Good Kid - Orbit".
+
+**Scrolling.** The panel has eleven rows; a longer playlist scrolls, and the title says which part
+is showing ("TRACKS 3–13 of 25"). While there is more above or below, a strip just above or below
+the rows says so ("▲ 3 more ▲", "▼ 11 more ▼"). **Rest the wand on a strip** and, after a moment,
+the list scrolls that way a row at a time until the ray moves off it; **pull the trigger on a strip**
+to go a page at once. A **scrollbar** in the margin right of the rows shows how long the list is and
+which part is showing: pull the trigger on it to jump there, or hold the trigger and move the wand
+up and down to drag. Stepping past the top or bottom row with the joystick scrolls too. At the desk,
+the **mouse wheel** scrolls, **Page Up** / **Page Down** go a page, and **Home** / **End** go to the
+first and last track.
+
+| Wand | Desk | In the menu |
+| --- | --- | --- |
+| Point at a row | — | Selects it; a ray shows where the wand points, a cursor where it meets the panel |
+| Joystick up / down | ↑ / ↓ | Step through the rows, repeating while held, scrolling past the edge |
+| Rest on a ▲ / ▼ strip | Mouse wheel | Scroll the list |
+| Trigger on a ▲ / ▼ strip | **Page Up** / **Page Down** | A page up or down |
+| Trigger on the scrollbar, held to drag | **Home** / **End** | Jump through the list; to the first or last row |
+| Trigger (button 0) | **Enter** | Pick the selected row |
+| Trigger twice | **Enter** twice | On a mode: layer it with the others, or take it out; the menu stays open |
+| Joystick left | **Backspace**, **Esc**, ← | Close |
+| Button 1 / button 3 | **M** / **N** | Close, or switch to the other list |
+
+While the menu is open the shows in the room's volume — lasers, ribbons, the point clouds — dim to a
+quarter (`m_MenuDim`), so the panel can be read through them; the water, on the walls behind the
+panel, stays. The auto-cycle waits while it is open. The other buttons and keys keep working. The
+pointer looks for MiddleVR's `HandNode`; at a desk with no wand, the keys work alone. Without a
+`VisualizerMenu` on the `RoomVisualizer`, the buttons go back to stepping to the next mode and
+skipping to the next track.
+
+### Now playing, up next
+
+A slim strip high on the front wall says what is playing, what plays next, and has a bar for how
+far through the track the music is. It fades in for 8 s when a track starts, again for the last
+20 s of a track (counting down: "UP NEXT IN 0:12"), and stays while the music is paused. In between
+it fades away, so the show has the wall to itself. It steps aside while the menu is open, because
+the track list marks the same two tracks. **Always** on the `TrackIndicator` keeps it up all the
+time. The status line at the foot of the front wall also names the next track.
+
+**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the five modes on its own, one
+at a time; a mix someone layered from the menu is left alone until a single pick or **Shift+M**
+goes back to one mode. With `m_LoopPlaylist` on the `MusicDeck` it plays the folder round and
+round, and with `m_StartPaused` off it starts without anyone pressing play. When the music stops the analyser reports
 idle and every layer eases down to a slow, dim breathing rather than going dead, so an open house
 can leave it running.
 
@@ -310,10 +391,15 @@ Everything is in the Inspector, per component. The ones worth knowing:
 
 | Component | Field | Default | Effect |
 | --- | --- | --- | --- |
-| `RoomVisualizer` | `m_FadeSeconds` | 1.5 | Cross-fade between modes |
-| | `m_AutoCycleSeconds` | 0 (off) | Hands-off mode switching |
+| `RoomVisualizer` | `m_StartPaused` | on | Open on the first track, paused, until someone presses play |
+| | `m_FadeSeconds` | 1.5 | Cross-fade between modes, and a layered mode's fade in or out |
+| | `m_AutoCycleSeconds` | 0 (off) | Hands-off mode switching; waits while the menu is open or a mix is layered |
+| | `m_MenuDim` | 0.75 | How far the volume's shows dim while the menu is open |
 | | `m_Intensity` | 1 | Master brightness |
 | | `m_MaxFlashesPerSecond` / `m_LowIntensityFlashesPerSecond` | 3 / 2 | Beat rate cap |
+| `VisualizerMenu` | `m_DoublePickSeconds` | 0.35 | How quick a second pick must be to layer a mode; also how long a single pick waits |
+| | `m_HoverScroll` | 0.3 s / 0.12 s | How long the wand rests on a 'more' strip before the list scrolls, then the time per row |
+| `TrackIndicator` | `m_AfterStart` / `m_BeforeEnd` / `m_Always` | 8 s / 20 s / off | When the strip shows: after a track starts, before it ends, or all the time |
 | `AudioAnalyser` | `m_BandCount` | 24 | Bands; the tubes interpolate, so more tubes than bands is fine |
 | | `m_RangeDb` | 40 | Dynamic range of a tube, bottom to top |
 | | `m_GainHalfLife` | 3 s | How fast the auto-gain lets go after a loud passage |

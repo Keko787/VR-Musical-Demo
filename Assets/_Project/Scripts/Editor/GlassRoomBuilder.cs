@@ -31,9 +31,10 @@ namespace VRShootingGallery.EditorTools
     /// the film; <b>Sky Pool</b>, a pool in the open sea whose water is sky, after a surreal collage;
     /// <b>Sunset Beach</b>, surf, palms, a lamp-lit pier and fireworks; <b>Aurora</b>, a night lake;
     /// and <b>Orbit</b>, an alien meadow under planets and asteroids after Good Kid's video, with
-    /// three variants switched by a glitch on the glass. Then nine views of Norway after photographs,
-    /// and the world menu on the front wall that picks between them all by group (both in
-    /// <c>GlassRoomBuilder.Norway.cs</c>).
+    /// three variants switched by a glitch on the glass. Then nine views of Norway after photographs
+    /// (<c>GlassRoomBuilder.Norway.cs</c>). On the front wall are the menu that picks a world by group
+    /// or a track from the playlist, and the strip that says what is playing and what is up next
+    /// (<c>GlassRoomBuilder.Menu.cs</c>).
     /// The land is generated at run time from the numbers here, so nothing large is saved.
     /// </para>
     /// <para>
@@ -168,6 +169,7 @@ namespace VRShootingGallery.EditorTools
             var windows = BuildWindows(root, outside, p, tablet);
             var sign = BuildSign(root);
             var menu = BuildMenu(root, simulation);
+            BuildTrackIndicator(root, deck, menu);
             var sun = Atmosphere(scene, room, root);
 
             var so = new SerializedObject(simulation);

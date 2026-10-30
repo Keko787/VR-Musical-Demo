@@ -136,12 +136,21 @@ namespace VRShootingGallery.Haunted
         int m_SummonButton = 1;
 
         [SerializeField] int m_IntensityButton = 2;
-        [SerializeField] int m_NextTrackButton = 3;
+
+        [SerializeField, Tooltip("Wand button that opens the tracks on the front wall (or, without a menu, skips to the next track).")]
+        int m_NextTrackButton = 3;
+
         [SerializeField] int m_PlayPauseButton = 4;
 
+        [Header("Menu")]
+        [SerializeField, Tooltip("The tracks on the front wall, which the track button opens. None, and the track button skips to " +
+            "the next track instead.")]
+        TrackMenu m_Menu;
+
         [Header("Desk")]
-        [SerializeField, Tooltip("G summons the ghost, L toggles low intensity, N skips, Space pauses, and the number-row keys stand in " +
-            "for the wand buttons with the same digit. Stays on in builds so the room can be run from the server node.")]
+        [SerializeField, Tooltip("G summons the ghost, L toggles low intensity, N opens the tracks (Shift+N skips straight to the next), " +
+            "Space pauses, and the number-row keys stand in for the wand buttons with the same digit. In the menu: the arrows, Enter, " +
+            "and Backspace or Escape. Stays on in builds so the room can be run from the server node.")]
         bool m_KeyboardControl = true;
 
         [SerializeField, Tooltip("A dim line on the floor at the back of the room, for whoever is running the demo.")]
@@ -236,6 +245,12 @@ namespace VRShootingGallery.Haunted
         {
             HeadPosition = transform.TransformPoint(m_DeskHead);
             m_LastLowAt = Time.time;
+
+            if (m_Menu == null)
+                Debug.LogWarning("[Haunted] This scene was built before the haunted room had its track menu, so the track button " +
+                                 "skips instead of opening it, and there is no now-playing strip. Open the scene, run VR Shooting " +
+                                 "Gallery ▸ Haunted Room ▸ Rebuild Haunted Room, and save it.", this);
+
             UpdateSign();
         }
 
@@ -576,6 +591,15 @@ namespace VRShootingGallery.Haunted
             UpdateSign();
         }
 
+        /// <summary>The track button opens the tracks on the front wall, or closes them; with no menu it skips to the next track.</summary>
+        void TrackButton()
+        {
+            if (m_Menu != null)
+                m_Menu.Toggle();
+            else
+                m_Deck?.NextTrack();
+        }
+
         void ReadInput()
         {
             if (m_SummonButton >= 0 && MiddleVRWand.PressedThisFrame(m_SummonButton))
@@ -583,7 +607,7 @@ namespace VRShootingGallery.Haunted
             if (m_IntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
             if (m_NextTrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_NextTrackButton))
-                m_Deck?.NextTrack();
+                TrackButton();
             if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
                 m_Deck?.TogglePause();
 
@@ -595,8 +619,13 @@ namespace VRShootingGallery.Haunted
                 ToggleSummon();
             if (keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_IntensityButton))
                 SetLowIntensity(!m_LowIntensity);
-            if (keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_NextTrackButton))
+
+            // Shift skips the menu, straight to the next track.
+            if (keyboard.nKey.wasPressedThisFrame && keyboard.shiftKey.isPressed)
                 m_Deck?.NextTrack();
+            else if (keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_NextTrackButton))
+                TrackButton();
+
             if (keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton))
                 m_Deck?.TogglePause();
         }
@@ -629,10 +658,18 @@ namespace VRShootingGallery.Haunted
                 m_Text.Append("no track — drop a clip in ").Append(MusicDeck.MusicFolder);
             else
             {
-                m_Text.Append(clip.name);
+                m_Text.Append(TrackIndicator.TitleOf(clip));
                 if (m_Deck.Paused)
                     m_Text.Append("  (paused)");
+
+                var next = m_Deck.ClipAt(m_Deck.NextIndex);
+                if (next != null && m_Deck.TrackCount > 1)
+                    m_Text.Append("   ·   next: ").Append(TrackIndicator.TitleOf(next));
             }
+
+            // Said where the operator looks, not only in the console.
+            if (m_Menu == null)
+                m_Text.Append("   ·   NO MENU: REBUILD THE SCENE");
 
             m_Sign.text = m_Text.ToString();
         }

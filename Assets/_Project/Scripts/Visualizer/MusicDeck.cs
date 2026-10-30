@@ -28,11 +28,15 @@ namespace VRShootingGallery.Visualizer
             "in it: by the scene builders, again each time play starts in the editor, and at player build time.")]
         AudioClip[] m_Playlist;
 
-        [SerializeField] bool m_PlayOnStart = true;
+        [SerializeField, Tooltip("Plays the first track as the scene starts. Off, and the first track waits at its top, paused, " +
+            "for someone to press play or pick a track.")]
+        bool m_PlayOnStart = true;
+
         [SerializeField] bool m_LoopPlaylist = true;
 
         int m_Track = -1;
         bool m_Paused;
+        bool m_Cued;                                  // loaded but never started, so play starts it rather than resuming it
 
         /// <summary>Raised when a track starts from the top — not on resume. The haunting reads the whole track here.</summary>
         public event Action<AudioClip> TrackStarted;
@@ -40,13 +44,33 @@ namespace VRShootingGallery.Visualizer
         /// <summary>Raised on any change a status line would show: track, pause.</summary>
         public event Action Changed;
 
-        public AudioSource Source => m_Source;
+        public AudioSource Source { get => m_Source; set => m_Source = value; }
+
+        /// <summary>Whether the first track plays as the scene starts or waits, paused. Set it before <c>Start</c>: in <c>Awake</c>.</summary>
+        public bool PlayOnStart { get => m_PlayOnStart; set => m_PlayOnStart = value; }
+
         public AudioClip Clip => m_Source != null ? m_Source.clip : null;
         public AudioClip[] Playlist { get => m_Playlist; set => m_Playlist = value; }
         public int Track => m_Track;
         public int TrackCount => m_Playlist != null ? m_Playlist.Length : 0;
         public bool Paused => m_Paused;
         public bool IsPlaying => m_Source != null && m_Source.isPlaying;
+
+        /// <summary>The track that plays when this one ends: the next in the playlist, round to the first if it loops; −1 if none.</summary>
+        public int NextIndex
+        {
+            get
+            {
+                int count = TrackCount;
+                if (count == 0)
+                    return -1;
+                if (m_Track < 0)
+                    return 0;
+                return m_Track + 1 < count ? m_Track + 1 : m_LoopPlaylist || count == 1 ? 0 : -1;
+            }
+        }
+
+        public AudioClip ClipAt(int index) => m_Playlist != null && index >= 0 && index < m_Playlist.Length ? m_Playlist[index] : null;
 
         /// <summary>Seconds into the current track, from the audio clock rather than the frame clock.</summary>
         public float Time => m_Source != null && m_Source.clip != null
@@ -88,7 +112,7 @@ namespace VRShootingGallery.Visualizer
             if (m_PlayOnStart)
                 PlayTrack(0);
             else
-                Changed?.Invoke();
+                Cue(0);
         }
 
         void Update()
@@ -121,6 +145,8 @@ namespace VRShootingGallery.Visualizer
                 if (m_Source.clip != null && !m_Source.isPlaying)
                 {
                     m_Source.Play();
+                    m_Paused = false;
+                    m_Cued = false;
                     TrackStarted?.Invoke(m_Source.clip);
                 }
 
@@ -132,9 +158,32 @@ namespace VRShootingGallery.Visualizer
             m_Source.clip = m_Playlist[m_Track];
             m_Source.loop = false;
             m_Paused = false;
+            m_Cued = false;
             m_Source.Play();
 
             TrackStarted?.Invoke(m_Source.clip);
+            Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Loads a track without playing it: it waits at its top, paused, and play starts it. The
+        /// now-playing strip and the menu show it as paused.
+        /// </summary>
+        public void Cue(int index)
+        {
+            if (m_Source == null)
+                return;
+
+            m_Source.Stop();
+            if (m_Playlist != null && m_Playlist.Length > 0)
+            {
+                m_Track = ((index % m_Playlist.Length) + m_Playlist.Length) % m_Playlist.Length;
+                m_Source.clip = m_Playlist[m_Track];
+                m_Source.loop = false;
+            }
+
+            // A clip dragged onto the source by hand, with nothing in the folder, waits the same way.
+            m_Paused = m_Cued = m_Source.clip != null;
             Changed?.Invoke();
         }
 
@@ -153,6 +202,12 @@ namespace VRShootingGallery.Visualizer
             else if (m_Source.clip == null)
             {
                 PlayTrack(0);
+                return;
+            }
+            else if (m_Cued)
+            {
+                // Never started, so there is nothing to resume: start it.
+                PlayTrack(Mathf.Max(0, m_Track));
                 return;
             }
             else

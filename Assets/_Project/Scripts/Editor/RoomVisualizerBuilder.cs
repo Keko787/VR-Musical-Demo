@@ -48,6 +48,9 @@ namespace VRShootingGallery.EditorTools
         const string k_RibbonMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Ribbon.mat";
         const string k_PointMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Point.mat";
 
+        /// <summary>The menu's and the track strip's materials are named under this.</summary>
+        const string k_MenuMaterialPrefix = "Assets/_Project/Art/Materials/M_Visualizer_";
+
         // ---------------------------------------------------------------- layout
 
         /// <summary>
@@ -84,10 +87,8 @@ namespace VRShootingGallery.EditorTools
         static void CreateVisualizerScene()
         {
             CreateScene(k_Tag, k_ScenePath, "visualizer", Build,
-                "Drop a track into Assets/_Project/Audio/Music and enter play mode: M steps through the " +
-                "water walls, the lasers, the point cloud, the astral body and the fireflies; L toggles low " +
-                "intensity, N skips, " +
-                "Space pauses.");
+                "Drop a track into Assets/_Project/Audio/Music and enter play mode: M opens the modes on the front " +
+                "wall, N opens the tracks (Shift skips the menu), L toggles low intensity, Space pauses.");
         }
 
         [MenuItem(k_BuildMenu, false, 610)]
@@ -142,7 +143,7 @@ namespace VRShootingGallery.EditorTools
             });
 
             var playlist = Playlist();
-            var (analyser, music) = BuildAnalyser(root, playlist);
+            var (analyser, deck) = BuildAnalyser(root, playlist);
             var panels = BuildPanels(NewChild(root, k_SurfacesName), analyser, water);
             var lasers = BuildLasers(NewChild(root, k_LasersName), analyser, beam, spot);
             var ribbons = BuildRibbons(NewChild(root, k_WaveformsName), analyser, ribbon);
@@ -151,7 +152,8 @@ namespace VRShootingGallery.EditorTools
             var flies = BuildCloud(root, k_FirefliesName, CloudShape.Fireflies, analyser, point);
             var sign = BuildSign(root);
 
-            Wire(root, analyser, music, playlist, panels, lasers, ribbons, cloud, body, flies, sign);
+            var visualizer = Wire(root, analyser, deck, panels, lasers, ribbons, cloud, body, flies, sign);
+            BuildOverlays(root, visualizer, deck);
             DarkenCamera(scene);
 
             Undo.CollapseUndoOperations(group);
@@ -159,19 +161,19 @@ namespace VRShootingGallery.EditorTools
             Selection.activeGameObject = root.gameObject;
 
             Debug.Log($"[{k_Tag}] Built the visualizer: {panels.Count} water panels, {ribbons.Count} ribbons, " +
-                      $"three point clouds, {playlist.Count} track(s) in the playlist.", root);
+                      $"three point clouds, the menu and the track strip, {playlist.Count} track(s) in the playlist.", root);
 
             if (playlist.Count == 0)
                 Debug.LogWarning($"[{k_Tag}] No audio clips in '{k_MusicFolder}'. Drop a track there and press Play — " +
-                                 "the folder is read again each time play starts — or drag one onto Room_Visualizer's " +
-                                 "Playlist.", root);
+                                 "the folder is read again each time play starts — or drag one onto the MusicDeck's " +
+                                 "Playlist under Analyser/Music.", root);
 
             return true;
         }
 
         // ---------------------------------------------------------------- audio
 
-        static (AudioAnalyser, AudioSource) BuildAnalyser(Transform root, List<AudioClip> playlist)
+        static (AudioAnalyser, MusicDeck) BuildAnalyser(Transform root, List<AudioClip> playlist)
         {
             var analyserRoot = NewChild(root, k_AnalyserName);
             var analyser = Undo.AddComponent<AudioAnalyser>(analyserRoot.gameObject);
@@ -191,7 +193,15 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_Source", music);
             so.ApplyModifiedProperties();
 
-            return (analyser, music);
+            // The deck plays the folder: the playlist the menu lists, and the track up next the strip shows.
+            var deck = Undo.AddComponent<MusicDeck>(musicRoot.gameObject);
+            so = new SerializedObject(deck);
+            SetRef(k_Tag, so, "m_Source", music);
+            if (playlist.Count > 0)
+                SetArray(k_Tag, so, "m_Playlist", playlist);
+            so.ApplyModifiedProperties();
+
+            return (analyser, deck);
         }
 
         /// <summary>Every clip in the music folder, by name — the same scan the visualizer runs when play starts.</summary>
@@ -360,9 +370,9 @@ namespace VRShootingGallery.EditorTools
 
         // ---------------------------------------------------------------- wiring
 
-        static void Wire(Transform root, AudioAnalyser analyser, AudioSource music, List<AudioClip> playlist,
-            List<WaterTubePanel> panels, LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud,
-            AudioPointCloud body, AudioPointCloud flies, TMPro.TextMeshPro sign)
+        static RoomVisualizer Wire(Transform root, AudioAnalyser analyser, MusicDeck deck, List<WaterTubePanel> panels,
+            LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud, AudioPointCloud body, AudioPointCloud flies,
+            TMPro.TextMeshPro sign)
         {
             // Reused rather than re-added, so the mode, the buttons, the auto-cycle and anything else
             // tuned in the Inspector survive a rebuild.
@@ -372,7 +382,7 @@ namespace VRShootingGallery.EditorTools
 
             var so = new SerializedObject(visualizer);
             SetRef(k_Tag, so, "m_Analyser", analyser);
-            SetRef(k_Tag, so, "m_Music", music);
+            SetRef(k_Tag, so, "m_Deck", deck);
             SetArray(k_Tag, so, "m_Panels", panels);
             SetRef(k_Tag, so, "m_Lasers", lasers);
             SetArray(k_Tag, so, "m_Ribbons", ribbons);
@@ -380,12 +390,25 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_AstralBody", body);
             SetRef(k_Tag, so, "m_Fireflies", flies);
             SetRef(k_Tag, so, "m_Sign", sign);
+            so.ApplyModifiedProperties();
+            return visualizer;
+        }
 
-            // The music folder is the playlist's source of truth when it has anything in it; an
-            // empty folder leaves whatever was dragged onto the component by hand.
-            if (playlist.Count > 0)
-                SetArray(k_Tag, so, "m_Playlist", playlist);
+        /// <summary>
+        /// The front-wall overlays every room with music has, built the glass room's way: the menu the
+        /// mode and track buttons open, and the strip that says what is playing and what is up next.
+        /// </summary>
+        static void BuildOverlays(Transform root, RoomVisualizer visualizer, MusicDeck deck)
+        {
+            var menu = WallMenuBuilder.BuildMenu<VisualizerMenu>(k_Tag, root, k_MenuMaterialPrefix);
+            var so = new SerializedObject(menu);
+            SetRef(k_Tag, so, "m_Visualizer", visualizer);
+            so.ApplyModifiedProperties();
 
+            WallMenuBuilder.BuildTrackIndicator(k_Tag, root, k_MenuMaterialPrefix, deck, menu);
+
+            so = new SerializedObject(visualizer);
+            SetRef(k_Tag, so, "m_Menu", menu);
             so.ApplyModifiedProperties();
         }
 
