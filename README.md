@@ -23,6 +23,7 @@ under **VR Shooting Gallery ▸ …** that generates the scene from a template, 
 | --- | --- | --- |
 | `Visualizer MiddleVR` | Room audio visualizer — five modes: water tubes on the walls, lasers, point cloud, an astral body, fireflies | [RoomVisualizer_Demo.md](Docs/RoomVisualizer_Demo.md) |
 | `HauntedRoom MiddleVR` | Ghost in the machine: a Victorian parlour on the CAVE walls, possessed by the music, and the ghost doing it | [HauntedRoom_Demo.md](Docs/HauntedRoom_Demo.md) |
+| `PipeRig MiddleVR` | Self-playing pipe rig: pipes throw balls onto bars, strings and drums round the walls — play it with the wand, or let it play along with a track | [PipeRig_Demo.md](Docs/PipeRig_Demo.md) |
 | `HarpRoom` | Holographic harp the wand plucks | [HolographicHarp_Demo.md](Docs/HolographicHarp_Demo.md) |
 | `GuitarRoom` | Holographic guitar the wand strums, with chord shapes on wand buttons | [HolographicGuitar_Demo.md](Docs/HolographicGuitar_Demo.md) |
 | `ShootingGallery MiddleVR` | The original shooting gallery round | [ShootingGallery_Game.md](Docs/ShootingGallery_Game.md) |
