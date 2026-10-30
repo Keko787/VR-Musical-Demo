@@ -32,6 +32,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/_Project/Scenes/Demos/GlassRoom MiddleVR.unity
     guid: 7740544afecdf804ebcabfa1ff9ebaf3
+  - enabled: 0
+    path: Assets/_Project/Scenes/Demos/PipeRig MiddleVR.unity
+    guid: 48cf03bdc2ac16d4ba3ddbf92f6868d3
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}
