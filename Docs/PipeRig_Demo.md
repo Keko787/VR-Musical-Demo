@@ -41,17 +41,19 @@ synthesised as the scene starts.
 | --- | --- | --- | --- |
 | Trigger (0) | Mouse click | Strike what you point at | — |
 | 1 | M (Shift+M switches straight over) | Modes menu | Modes menu |
-| 2 | R | Loop records / stops recording | — |
+| 2 | R (C empties) | Tap: loop records / stops recording. Hold: empty the loop | — |
 | 3 | N (Shift+N plays the next track) | Tracks menu (picking one goes to visualize) | Tracks menu |
 | 4 | Space | Backing beat on/off | Pause / play the music |
-| 7 | C | Empty the loop | — |
 | — | B | Backing beat on/off | — |
 
 The number-row keys stand in for the wand buttons with the same digit. Button 2 is low intensity in
 the other rooms; the rig has no low-intensity mode, so it is the loop button here. In a menu: point
 and pull the trigger, or the joystick, or the arrows and Enter. The menu is the shared front-wall
 `WallMenu`, standing half a metre out so it clears the mallet shelf. A dim status line on the floor
-at the open back says what the room is doing, for whoever runs the demo.
+at the open back says what the room is doing, for whoever runs the demo. Wand buttons only count
+once they have settled for a moment without the trigger: the VisBox wand reports more indices than
+it has buttons, and if the trigger reports another one too (the console says which, once), a strike
+can no longer also empty the loop or open a menu.
 
 The room opens in **play mode** with the music waiting, paused, on the first track.
 
@@ -61,11 +63,13 @@ Point the wand at a bar, a string or a drum — it brightens — and pull the tr
 once, moves (the bar dips, the string swings, the drum head pumps, the cymbal rocks) and the wall
 or floor behind it glows. At a desk the mouse does the pointing through the main camera.
 
-The **loop** is two bars of 4/4 at 100 bpm. With it recording (button 2 or R, the red lamp at the left of the
-bank lights), every strike is kept, moved to the nearest sixteenth, and from the next pass on the
-pipes throw it back so it lands on time — the machine learning your riff. The eight lamps along the
-front of the bank walk the beats, brighter where the loop has notes. C empties it; balls already in
-the air still land, the ones waiting in their pipes are taken back with their sounds.
+The **loop** is two bars of 4/4 at 100 bpm. Tap button 2 (or R) and it records — the red lamp at the
+left of the bank lights — and every strike is kept, moved to the nearest sixteenth, alongside the
+ones already there; from the next pass on the pipes throw them all back so each lands on time, the
+machine learning your riff. Tap again to stop recording; the loop keeps playing. The eight lamps
+along the front of the bank walk the beats, brighter where the loop has notes. Hold button 2 (or
+press C) to empty it: the record lamp charges toward white and at 0.8 s the loop is gone. Balls
+already in the air still land; the ones waiting in their pipes are taken back with their sounds.
 
 The **backing beat** (Space or B) is an original two-bar groove — kick, snare, off-beat hats, a tom
 fill, and a bass line moving C–G–E then A–E–G — played by the machine for you to play over.

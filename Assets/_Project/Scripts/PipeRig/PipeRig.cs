@@ -125,18 +125,18 @@ namespace VRShootingGallery.Pipes
         [SerializeField, Tooltip("Opens the modes on the front wall. Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
         int m_ModeButton = 1;
 
-        [SerializeField, Tooltip("Play: the loop records what is played, or stops recording. It has the button the other rooms use for " +
-            "low intensity; the rig has no low-intensity mode.")]
+        [SerializeField, Tooltip("Play: a tap and the loop records what is played, or stops recording; held, it empties the loop. It has " +
+            "the button the other rooms use for low intensity; the rig has no low-intensity mode.")]
         int m_LoopButton = 2;
+
+        [SerializeField, Tooltip("Seconds the loop button is held to empty the loop.")]
+        float m_ClearHoldSeconds = 0.8f;
 
         [SerializeField, Tooltip("Opens the tracks on the front wall.")]
         int m_TrackButton = 3;
 
         [SerializeField, Tooltip("Visualize: pauses the music. Play: the backing beat on or off.")]
         int m_PlayPauseButton = 4;
-
-        [SerializeField, Tooltip("Play: empties the loop.")]
-        int m_ClearButton = 7;
 
         [Header("Menu")]
         [SerializeField] PipeRigMenu m_Menu;
@@ -211,6 +211,14 @@ namespace VRShootingGallery.Pipes
         double m_ScheduledTo;
         bool m_Recording;
         bool m_Groove;
+
+        // Wand buttons. The VisBox wand reports more indices than it has buttons, and the trigger may report
+        // others besides its own, so a press only counts once it has settled without the trigger coming too.
+        const float k_ButtonSettle = 0.08f;
+        readonly List<(int Button, float At)> m_PendingButtons = new();
+        int m_TriggerAliases;                        // a bit per wand button seen to come with the trigger, each reported once
+        float m_LoopPressedAt = -1f;                 // when the loop button went down, while it is held; -1 otherwise
+        bool m_LoopHoldCleared;
 
         // Voices
         AudioSource[] m_Voices = new AudioSource[0];
@@ -764,6 +772,8 @@ namespace VRShootingGallery.Pipes
         /// <summary>Empties the loop. Balls already thrown land; the ones still waiting in their pipes, and their sounds, are taken back.</summary>
         public void ClearLoop()
         {
+            if (m_Loop.Count > 0)
+                Debug.Log($"[PipeRig] Loop emptied: {m_Loop.Count} note(s).", this);
             m_Loop.Clear();
             Withdraw(RigShotSource.Loop);
             MarkBeats();
@@ -995,8 +1005,12 @@ namespace VRShootingGallery.Pipes
 
             if (m_RecordLamp != null)
             {
+                // Holding the loop button charges the lamp toward white; at full it empties the loop.
+                float hold = m_LoopPressedAt >= 0f && !m_LoopHoldCleared
+                    ? Mathf.Clamp01((Time.unscaledTime - m_LoopPressedAt) / Mathf.Max(0.1f, m_ClearHoldSeconds))
+                    : 0f;
                 float level = !play ? 0.02f : m_Recording ? (current == 0 ? 1f : 0.65f) : 0.04f;
-                Lamp(m_RecordLamp, m_RecordColour * level);
+                Lamp(m_RecordLamp, Color.Lerp(m_RecordColour * level, m_LampColour * 1.5f, hold));
             }
         }
 
@@ -1039,16 +1053,7 @@ namespace VRShootingGallery.Pipes
 
         void ReadInput()
         {
-            if (m_ModeButton >= 0 && MiddleVRWand.PressedThisFrame(m_ModeButton))
-                ModeButton();
-            if (m_LoopButton >= 0 && MiddleVRWand.PressedThisFrame(m_LoopButton))
-                ToggleRecord();
-            if (m_TrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_TrackButton))
-                TrackButton();
-            if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
-                PlayPause();
-            if (m_ClearButton >= 0 && MiddleVRWand.PressedThisFrame(m_ClearButton))
-                ClearLoop();
+            ReadWand();
 
             var keyboard = m_KeyboardControl ? Keyboard.current : null;
             if (keyboard == null)
@@ -1071,10 +1076,107 @@ namespace VRShootingGallery.Pipes
                 PlayPause();
             if (keyboard.rKey.wasPressedThisFrame || DigitPressed(keyboard, m_LoopButton))
                 ToggleRecord();
-            if (keyboard.cKey.wasPressedThisFrame || DigitPressed(keyboard, m_ClearButton))
+            if (keyboard.cKey.wasPressedThisFrame)
                 ClearLoop();
             if (keyboard.bKey.wasPressedThisFrame && m_Mode == RigMode.Play)
                 ToggleGroove();
+        }
+
+        /// <summary>
+        /// The wand's buttons. A press waits <see cref="k_ButtonSettle"/> before it counts, and is dropped
+        /// if the trigger is pulled in that time or was already down: on this wand the trigger may report
+        /// other indices too, and a strike must never also empty the loop or open a menu.
+        /// </summary>
+        void ReadWand()
+        {
+            if (!MiddleVRWand.Available)
+                return;
+
+            float now = Time.unscaledTime;
+            bool trigger = m_StrikeButton >= 0 && MiddleVRWand.Held(m_StrikeButton);
+            if (trigger)
+            {
+                foreach (var (button, _) in m_PendingButtons)
+                    Alias(button);
+                m_PendingButtons.Clear();
+            }
+
+            Watch(m_ModeButton, now, trigger);
+            Watch(m_LoopButton, now, trigger);
+            Watch(m_TrackButton, now, trigger);
+            Watch(m_PlayPauseButton, now, trigger);
+
+            for (int i = m_PendingButtons.Count - 1; i >= 0; i--)
+            {
+                var (button, at) = m_PendingButtons[i];
+                if (now - at < k_ButtonSettle)
+                    continue;
+
+                m_PendingButtons.RemoveAt(i);
+                if (button == m_LoopButton)
+                {
+                    m_LoopPressedAt = at;
+                    m_LoopHoldCleared = false;
+                }
+                else if (button == m_ModeButton)
+                {
+                    ModeButton();
+                }
+                else if (button == m_TrackButton)
+                {
+                    TrackButton();
+                }
+                else if (button == m_PlayPauseButton)
+                {
+                    PlayPause();
+                }
+            }
+
+            HoldLoop(now);
+        }
+
+        void Watch(int button, float now, bool trigger)
+        {
+            if (button < 0 || button == m_StrikeButton || !MiddleVRWand.PressedThisFrame(button))
+                return;
+
+            if (trigger)
+                Alias(button);
+            else
+                m_PendingButtons.Add((button, now));
+        }
+
+        /// <summary>The loop button: let go after a tap and recording starts or stops; held, it empties the loop instead.</summary>
+        void HoldLoop(float now)
+        {
+            if (m_LoopPressedAt < 0f)
+                return;
+
+            if (MiddleVRWand.Held(m_LoopButton))
+            {
+                if (!m_LoopHoldCleared && now - m_LoopPressedAt >= m_ClearHoldSeconds)
+                {
+                    m_LoopHoldCleared = true;
+                    ClearLoop();
+                }
+
+                return;
+            }
+
+            if (!m_LoopHoldCleared)
+                ToggleRecord();
+            m_LoopPressedAt = -1f;
+        }
+
+        /// <summary>Says once, in the console, that a wand button came with the trigger, so the room's real button map shows up.</summary>
+        void Alias(int button)
+        {
+            if (button < 0 || button > 30 || (m_TriggerAliases & (1 << button)) != 0)
+                return;
+
+            m_TriggerAliases |= 1 << button;
+            Debug.LogWarning($"[PipeRig] Wand button {button} came with the trigger, so the trigger seems to report it as well. It is " +
+                             "ignored whenever the trigger is pulled; give its action another button if this keeps happening.", this);
         }
 
         /// <summary>The number-row key printed with the same digit as a wand button, the way the other demos do it. Not the trigger's.</summary>
@@ -1103,7 +1205,7 @@ namespace VRShootingGallery.Pipes
                 if (m_Loop.Count > 0)
                     m_Text.Append(", ").Append(m_Loop.Count).Append(m_Loop.Count == 1 ? " note" : " notes");
                 m_Text.Append("   ·   beat ").Append(m_Groove ? "on" : "off");
-                m_Text.Append("   ·   R record  C clear  B beat  M modes");
+                m_Text.Append("   ·   wand 2: tap record, hold clear   ·   R record  C clear  B beat  M modes");
             }
             else
             {
