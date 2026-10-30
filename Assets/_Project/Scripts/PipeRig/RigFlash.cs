@@ -9,8 +9,8 @@ namespace VRShootingGallery.Pipes
     /// </summary>
     /// <remarks>
     /// A glow only comes up to full strength a few times a second (<see cref="MaxRate"/>, 3 Hz by
-    /// default, 2 in low intensity); strikes in between only top it up a little. That is the
-    /// photosensitivity cap: a fast part flickers the instrument, never the wall.
+    /// default); strikes in between only top it up a little. That is the photosensitivity cap: a
+    /// fast part flickers the instrument, never the wall.
     /// </remarks>
     public class RigFlash : MonoBehaviour
     {
@@ -21,9 +21,6 @@ namespace VRShootingGallery.Pipes
 
         [SerializeField, Tooltip("Seconds for the glow to fall to a third.")]
         float m_Decay = 0.22f;
-
-        /// <summary>Scales every glow; the director lowers it for low intensity.</summary>
-        public static float Intensity = 1f;
 
         /// <summary>Full-strength flashes a second, at most, per glow.</summary>
         public static float MaxRate = 3f;
@@ -89,7 +86,7 @@ namespace VRShootingGallery.Pipes
                 return;
 
             m_Renderer.GetPropertyBlock(m_Block);
-            m_Block.SetColor(k_Color, m_Colour * (m_Level * Intensity));
+            m_Block.SetColor(k_Color, m_Colour * m_Level);
             m_Renderer.SetPropertyBlock(m_Block);
         }
     }

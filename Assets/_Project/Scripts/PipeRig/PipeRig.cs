@@ -125,16 +125,15 @@ namespace VRShootingGallery.Pipes
         [SerializeField, Tooltip("Opens the modes on the front wall. Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger.")]
         int m_ModeButton = 1;
 
-        [SerializeField] int m_IntensityButton = 2;
+        [SerializeField, Tooltip("Play: the loop records what is played, or stops recording. It has the button the other rooms use for " +
+            "low intensity; the rig has no low-intensity mode.")]
+        int m_LoopButton = 2;
 
         [SerializeField, Tooltip("Opens the tracks on the front wall.")]
         int m_TrackButton = 3;
 
         [SerializeField, Tooltip("Visualize: pauses the music. Play: the backing beat on or off.")]
         int m_PlayPauseButton = 4;
-
-        [SerializeField, Tooltip("Play: the loop records what is played, or stops recording.")]
-        int m_RecordButton = 6;
 
         [SerializeField, Tooltip("Play: empties the loop.")]
         int m_ClearButton = 7;
@@ -147,19 +146,17 @@ namespace VRShootingGallery.Pipes
 
         [Header("Desk")]
         [SerializeField, Tooltip("M opens the modes (Shift+M switches straight over), N the tracks (Shift+N skips), Space pauses or " +
-            "starts the beat, R records the loop, C clears it, B the beat, L low intensity; the mouse points and clicks in play mode, and " +
+            "starts the beat, R records the loop, C clears it, B the beat; the mouse points and clicks in play mode, and " +
             "the number-row keys stand in for the wand buttons with the same digit.")]
         bool m_KeyboardControl = true;
 
         [SerializeField, Tooltip("A dim line on the floor at the back of the room, for whoever is running the demo.")]
         TMP_Text m_Sign;
 
-        [Header("Intensity")]
-        [SerializeField, Tooltip("The photosensitivity setting: the glows on the walls and floor a third as bright and capped lower. On for a school group.")]
-        bool m_LowIntensity;
-
-        [SerializeField] float m_MaxFlashesPerSecond = 3f;
-        [SerializeField] float m_LowIntensityFlashesPerSecond = 2f;
+        [Header("Flashes")]
+        [SerializeField, Tooltip("Times a second, at most, each glow on the walls and floor comes up to full strength: the photosensitivity cap. " +
+            "Strikes in between only top it up.")]
+        float m_MaxFlashesPerSecond = 3f;
 
         /// <summary>A note of the loop or the backing beat: where in the loop, on what, how hard.</summary>
         struct LoopNote
@@ -235,7 +232,6 @@ namespace VRShootingGallery.Pipes
         public MusicDeck Deck => m_Deck;
         public bool Recording => m_Recording;
         public bool Groove => m_Groove;
-        public bool LowIntensity => m_LowIntensity;
         public int LoopNotes => m_Loop.Count;
         public RigTarget[] Targets => m_Targets;
         public RigBalls Balls => m_Balls;
@@ -440,8 +436,7 @@ namespace VRShootingGallery.Pipes
         {
             float dt = Time.unscaledDeltaTime;
 
-            RigFlash.Intensity = m_LowIntensity ? 0.35f : 1f;
-            RigFlash.MaxRate = m_LowIntensity ? m_LowIntensityFlashesPerSecond : m_MaxFlashesPerSecond;
+            RigFlash.MaxRate = m_MaxFlashesPerSecond;
 
             ReadInput();
 
@@ -1016,12 +1011,6 @@ namespace VRShootingGallery.Pipes
 
         // ================================================================== input
 
-        public void SetLowIntensity(bool low)
-        {
-            m_LowIntensity = low;
-            UpdateSign();
-        }
-
         /// <summary>The mode button opens the modes on the front wall, or closes them; with no menu it switches straight over.</summary>
         void ModeButton()
         {
@@ -1052,14 +1041,12 @@ namespace VRShootingGallery.Pipes
         {
             if (m_ModeButton >= 0 && MiddleVRWand.PressedThisFrame(m_ModeButton))
                 ModeButton();
-            if (m_IntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_IntensityButton))
-                SetLowIntensity(!m_LowIntensity);
+            if (m_LoopButton >= 0 && MiddleVRWand.PressedThisFrame(m_LoopButton))
+                ToggleRecord();
             if (m_TrackButton >= 0 && MiddleVRWand.PressedThisFrame(m_TrackButton))
                 TrackButton();
             if (m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton))
                 PlayPause();
-            if (m_RecordButton >= 0 && MiddleVRWand.PressedThisFrame(m_RecordButton))
-                ToggleRecord();
             if (m_ClearButton >= 0 && MiddleVRWand.PressedThisFrame(m_ClearButton))
                 ClearLoop();
 
@@ -1080,11 +1067,9 @@ namespace VRShootingGallery.Pipes
             else if (keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_TrackButton))
                 TrackButton();
 
-            if (keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_IntensityButton))
-                SetLowIntensity(!m_LowIntensity);
             if (keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton))
                 PlayPause();
-            if (keyboard.rKey.wasPressedThisFrame || DigitPressed(keyboard, m_RecordButton))
+            if (keyboard.rKey.wasPressedThisFrame || DigitPressed(keyboard, m_LoopButton))
                 ToggleRecord();
             if (keyboard.cKey.wasPressedThisFrame || DigitPressed(keyboard, m_ClearButton))
                 ClearLoop();
@@ -1145,8 +1130,6 @@ namespace VRShootingGallery.Pipes
                 }
             }
 
-            if (m_LowIntensity)
-                m_Text.Append("   ·   LOW INTENSITY");
             if (m_Problems > 0)
                 m_Text.Append("   ·   LAYOUT: ").Append(m_Problems).Append(" PATH PROBLEM").Append(m_Problems == 1 ? "" : "S").Append(", SEE CONSOLE");
 
