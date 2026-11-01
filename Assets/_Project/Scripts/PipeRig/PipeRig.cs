@@ -94,9 +94,17 @@ namespace VRShootingGallery.Pipes
         [SerializeField, Tooltip("The first track waits, paused, for someone to press play.")]
         bool m_StartPaused = true;
 
-        [SerializeField, Tooltip("Seconds the machine runs behind the track's clock, to match the delay between the mixer and the room's " +
-            "speakers. Raise it if strikes land before their notes are heard.")]
+        [SerializeField, Tooltip("Seconds the machine runs behind the track's clock, for the speakers' delay less the projectors'. Raise it " +
+            "if strikes land before their notes are heard; lower it, below zero if need be, if they land after. [ and ] nudge it by " +
+            "10 ms while it plays (Shift: 50 ms); with the score heard (H), set it so each strike lands on its own sound.")]
         float m_VisualDelay;
+
+        [SerializeField, Tooltip("The machine's own sounds play with the track, quietly, each as its ball strikes: what it found in the " +
+            "music, to hear against the music. H switches it at the desk.")]
+        bool m_HearScore;
+
+        [SerializeField, Range(0f, 1f), Tooltip("How loud the machine's sounds are, against its play-mode loudness, while the score is heard.")]
+        float m_ScoreLoudness = 0.5f;
 
         [SerializeField, Tooltip("Least seconds between two throws at one target, so a dense part does not stack balls on top of each other.")]
         float m_MinGap = 0.09f;
@@ -167,8 +175,9 @@ namespace VRShootingGallery.Pipes
 
         [Header("Desk")]
         [SerializeField, Tooltip("M opens the modes (Shift+M switches straight over), N the tracks (Shift+N skips), Space pauses or " +
-            "starts the beat, R records the loop, C clears it, B the beat; the mouse points and clicks in play mode, and " +
-            "the number-row keys stand in for the wand buttons with the same digit.")]
+            "starts the beat, R records the loop, C clears it, B the beat; in visualize mode H lets the score be heard and [ and ] " +
+            "nudge the visual delay; the mouse points and clicks in play mode, and the number-row keys stand in for the wand " +
+            "buttons with the same digit.")]
         bool m_KeyboardControl = true;
 
         [SerializeField, Tooltip("A dim line on the floor at the back of the room, for whoever is running the demo.")]
@@ -219,6 +228,7 @@ namespace VRShootingGallery.Pipes
         readonly List<RigNote> m_Notes = new();
         int m_NotesCopied;
         int m_NextNote;
+        bool m_WasRunning;
 
         // Who plays what
         readonly int[] m_DrumTarget = new int[Enum.GetValues(typeof(RigDrum)).Length];
@@ -540,10 +550,17 @@ namespace VRShootingGallery.Pipes
             double truth = (m_Deck != null ? m_Deck.Time : 0f) - m_VisualDelay;
             bool running = m_Deck != null && m_Deck.IsPlaying;
 
+            // Paused: the score's sounds still waiting to be heard are taken back. The balls hang where they are; the
+            // notes they carry are heard again from the next ones thrown after the music starts.
+            if (m_WasRunning && !running)
+                StopScheduledVoices();
+            m_WasRunning = running;
+
             // Back to the top of a track, or a jump: the throws in the air are for music that will not play.
             if (m_ClockValid && (truth < m_Clock - 0.3 || truth > m_Clock + 1.5))
             {
                 m_Balls?.Clear();
+                StopScheduledVoices();
                 m_ClockValid = false;
                 m_NextNote = NoteAfter(truth);
                 for (int i = 0; i < m_TargetLast.Length; i++)
@@ -560,6 +577,7 @@ namespace VRShootingGallery.Pipes
         {
             m_ScoredClip = clip;
             m_Balls?.Clear();
+            StopScheduledVoices();
             m_Notes.Clear();
             m_NotesCopied = 0;
             m_NextNote = 0;
@@ -631,7 +649,27 @@ namespace VRShootingGallery.Pipes
                 return;
 
             m_TargetLast[target] = note.Time;
-            m_Balls.Add(new RigShot { Target = target, Pipe = pipe, Hit = note.Time, Strength = note.Strength, Source = RigShotSource.Track, Voice = -1 });
+            int voice = Hear(target, note);
+            m_Balls.Add(new RigShot { Target = target, Pipe = pipe, Hit = note.Time, Strength = note.Strength, Source = RigShotSource.Track, Voice = voice });
+        }
+
+        /// <summary>
+        /// While the score is heard, <paramref name="target"/>'s own sound, scheduled to play with the track at
+        /// <paramref name="note"/>'s moment in it, so what the machine found can be heard against the music. Returns its voice.
+        /// </summary>
+        /// <remarks>
+        /// The sound and the track leave through the same mixer, so a moment in the track maps straight onto the audio
+        /// clock, and both reach the speakers together whatever their delay. The visual delay is left out: it moves the balls.
+        /// </remarks>
+        int Hear(int target, RigNote note)
+        {
+            if (!m_HearScore || m_Deck == null || !m_Deck.IsPlaying)
+                return -1;
+
+            // A note found too late to sound on time is left silent rather than heard late.
+            double now = AudioSettings.dspTime;
+            double at = now + (note.Time - m_Deck.Time);
+            return at > now ? Schedule(m_Targets[target], note.Strength, at, m_ScoreLoudness) : -1;
         }
 
         /// <summary>
@@ -954,9 +992,10 @@ namespace VRShootingGallery.Pipes
 
         /// <summary>
         /// Plays <paramref name="target"/>'s sound at DSP time <paramref name="at"/>, or now for zero,
-        /// on the voice that comes free soonest. Returns the voice, so a scheduled sound can be taken back.
+        /// on the voice that comes free soonest, <paramref name="loudness"/> times the usual. Returns the
+        /// voice, so a scheduled sound can be taken back.
         /// </summary>
-        int Schedule(RigTarget target, float strength, double at)
+        int Schedule(RigTarget target, float strength, double at, float loudness = 1f)
         {
             if (target == null || target.Voice == null || m_Voices.Length == 0)
                 return -1;
@@ -971,7 +1010,7 @@ namespace VRShootingGallery.Pipes
             var source = m_Voices[voice];
             source.Stop();
             source.clip = target.Voice;
-            source.volume = Mathf.Clamp01(m_Loudness * Mathf.Lerp(0.45f, 1f, strength) * target.Gain);
+            source.volume = Mathf.Clamp01(m_Loudness * loudness * Mathf.Lerp(0.45f, 1f, strength) * target.Gain);
 
             // Low on the left, high on the right, as the instruments stand, so sound and sight agree.
             var local = transform.InverseTransformPoint(target.transform.position);
@@ -1222,6 +1261,39 @@ namespace VRShootingGallery.Pipes
                 ClearLoop();
             if (keyboard.bKey.wasPressedThisFrame && m_Mode == RigMode.Play)
                 ToggleGroove();
+
+            if (m_Mode == RigMode.Visualize)
+            {
+                if (keyboard.hKey.wasPressedThisFrame)
+                    ToggleHearScore();
+                if (keyboard.leftBracketKey.wasPressedThisFrame)
+                    NudgeVisualDelay(shift ? -0.05f : -0.01f);
+                if (keyboard.rightBracketKey.wasPressedThisFrame)
+                    NudgeVisualDelay(shift ? 0.05f : 0.01f);
+            }
+        }
+
+        /// <summary>
+        /// The machine's own sounds with the track, or not. The ones already waiting are taken back when it goes off;
+        /// when it comes on, the next notes thrown are heard, a flight time from now.
+        /// </summary>
+        public void ToggleHearScore()
+        {
+            m_HearScore = !m_HearScore;
+            if (!m_HearScore && m_Mode == RigMode.Visualize)
+                StopScheduledVoices();
+            UpdateSign();
+        }
+
+        /// <summary>
+        /// Moves the balls later (or earlier, for less than zero) against the music, for calibrating in the room. Logged,
+        /// since a change made in the editor's play mode is lost when it stops: copy it into the component.
+        /// </summary>
+        public void NudgeVisualDelay(float seconds)
+        {
+            m_VisualDelay = Mathf.Round((m_VisualDelay + seconds) * 1000f) / 1000f;
+            Debug.Log($"[PipeRig] Visual delay {m_VisualDelay * 1000f:+0;-0;0} ms. To keep it, set PipeRig ▸ Visual Delay to {m_VisualDelay:0.000}.", this);
+            UpdateSign();
         }
 
         /// <summary>
@@ -1372,6 +1444,9 @@ namespace VRShootingGallery.Pipes
                     if (next != null && m_Deck.TrackCount > 1)
                         m_Text.Append("   ·   next: ").Append(TrackIndicator.TitleOf(next));
                 }
+
+                m_Text.Append("   ·   H score sound ").Append(m_HearScore ? "ON" : "off");
+                m_Text.Append("   ·   [ ] visual delay ").Append(Mathf.RoundToInt(m_VisualDelay * 1000f).ToString("+0;-0;0")).Append(" ms");
             }
 
             if (m_Problems > 0)

@@ -46,6 +46,8 @@ synthesised as the scene starts.
 | 3 | N (Shift+N plays the next track) | Tracks menu (picking one goes to visualize) | Tracks menu |
 | 4 | Space | Backing beat on/off | Pause / play the music |
 | — | B | Backing beat on/off | — |
+| — | H | — | Hear the score: the machine's sounds with the track |
+| — | [ / ] | — | Visual delay −/+ 10 ms (Shift: 50 ms) |
 
 The number-row keys stand in for the wand buttons with the same digit. Button 2 is low intensity in
 the other rooms; the rig has no low-intensity mode, so it is the loop button here. In a menu: point
@@ -104,6 +106,23 @@ pitch-class matching as the parts themselves, each partner keeping its own octav
 far ahead of the music, so the first hit of a fill and the size of the biggest drop are known in time.
 
 The now-playing strip on the front wall is shown only in this mode.
+
+#### Checking it against the music
+
+If the balls do not seem to match the song, there are two different faults, and **H** tells them
+apart. It plays the machine's own sounds quietly with the track (`PipeRig ▸ Score Loudness`), each
+as its ball strikes, scheduled on the audio clock so it reaches the speakers with the music
+whatever their delay.
+
+- **The sounds are in time with the song, the balls are not**: it is latency. Nudge the visual
+  delay with **[** and **]** until each strike lands on its own sound; the status line and the
+  console show the value. Changes made in the editor's play mode are lost when it stops, so copy the
+  logged value into `PipeRig ▸ Visual Delay`.
+- **The sounds themselves are off** — hits between the beats, a drum where there is none, notes out
+  of key: it is the reading of the track (see *Reading a track ahead*), not the timing.
+
+Turning it off takes back the sounds still waiting. A pause does too; after it, the sounds come back
+with the next notes thrown, a second or so on. A note found too late to sound on time is left silent.
 
 ## How it works
 
@@ -224,8 +243,10 @@ the balls rolling home along the floor lanes.
 
 - **Measure first.** The volume's numbers are from `MVR.vrx`. Measure the real wall height and room
   extents in MiddleVR coordinates and adjust `PipeRig ▸ Room` before trusting the cap and insets.
-- **Latency.** If strikes land before their notes are heard in the room, raise
-  `PipeRig ▸ Visual Delay` (seconds) to match the speakers' delay.
+- **Latency.** Calibrate `PipeRig ▸ Visual Delay` in the room, with the score heard (**H**) and
+  **[** / **]** (see *Checking it against the music*). What it makes up for is the speakers' delay
+  less the projectors', so it can come out below zero when the projectors lag more. That is also why
+  it is not set from Unity's own audio buffering alone, which is only part of the speakers' side.
 - **Speakers.** The machine's voices are panned by where each instrument stands; confirm the room's
   speaker layout carries a left-to-right pan.
 
@@ -248,7 +269,7 @@ the balls rolling home along the floor lanes.
 ## Tuning
 
 On the `PipeRig` component: gravity, the room volume, tempo, loop length and quantize, loudness,
-visual delay, the least gap between throws at one target (0.09 s) and from one pipe (0.22 s), and
+visual delay, whether the score is heard and how loudly, the least gap between throws at one target (0.09 s) and from one pipe (0.22 s), and
 in visualize mode the accent margin (0.1) and least gap between doubled notes (0.3 s), the gap that
 makes tom hits a fill (0.6 s), and the gong's share of the biggest drop (0.85) and rest (8 s). On each
 `RigTarget`: its pipes, apex, hop, landing and roll home, pointer box and look. Rebuilding keeps the
