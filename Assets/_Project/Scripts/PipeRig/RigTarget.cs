@@ -9,17 +9,30 @@ namespace VRShootingGallery.Pipes
         String,
         Drum,
         Cymbal,
+
+        /// <summary>A tube hung from a rail: it swings on its cord.</summary>
+        Chime,
+
+        /// <summary>A disc hung in a frame: it swings slowly.</summary>
+        Gong,
     }
 
-    /// <summary>The four instrument groups round the room, low on the left to high on the right.</summary>
+    /// <summary>
+    /// The instrument groups round the room, each with its own ball colour. Kept in this order, since
+    /// scenes store them by number: the later ones were added after the first four.
+    /// </summary>
     public enum RigGroup
     {
         Bass,
         Mallets,
         Strings,
         Drums,
+        Guitar,
+        Chimes,
+        Glockenspiel,
     }
 
+    /// <summary>Which drum. Kept in this order, since scenes store them by number.</summary>
     public enum RigDrum
     {
         None,
@@ -28,13 +41,16 @@ namespace VRShootingGallery.Pipes
         Snare,
         HiHat,
         Crash,
+        RackTom,
+        FloorTom,
+        Gong,
     }
 
     /// <summary>
-    /// One thing on the machine that can be struck: a mallet bar, a string, a drum or a cymbal. It
-    /// knows where a ball must be to strike it, which pipes may throw at it, where the ball goes
-    /// after, and the box a pointer has to hit to play it by hand; and it moves, rings and glows
-    /// when it is struck, whichever did the striking.
+    /// One thing on the machine that can be struck: a mallet bar, a string, a drum, a cymbal, a chime
+    /// or the gong. It knows where a ball must be to strike it, which pipes may throw at it, where
+    /// the ball goes after, and the box a pointer has to hit to play it by hand; and it moves, rings
+    /// and glows when it is struck, whichever did the striking.
     /// </summary>
     /// <remarks>
     /// Keep the object itself unscaled — its scale is the hit test's — and put the visible pieces
@@ -81,7 +97,8 @@ namespace VRShootingGallery.Pipes
         [SerializeField] Vector3 m_BoxSize = new(0.1f, 0.1f, 0.1f);
 
         [Header("Look")]
-        [SerializeField, Tooltip("What moves when it is struck: the bar dips, the drum head pumps, the cymbal rocks.")]
+        [SerializeField, Tooltip("What moves when it is struck: the bar dips, the drum head pumps, the cymbal rocks, a chime or the gong " +
+            "swings from where it hangs.")]
         Transform m_Body;
 
         [SerializeField, Tooltip("Lit surfaces whose emission brightens with a strike.")]
@@ -239,6 +256,7 @@ namespace VRShootingGallery.Pipes
             float glow = m_Strength * Mathf.Exp(-since / Mathf.Max(0.02f, m_GlowDecay));
             float moving = m_Strength * Mathf.Exp(-since / 0.07f);
             bool active = glow > 0.002f || m_HoverLevel > 0f || (m_Kind == RigKind.Cymbal && since < 3f) ||
+                          (m_Kind is RigKind.Chime or RigKind.Gong && since < 8f) ||
                           (m_Kind == RigKind.String && since < m_StringDecay * 5f);
             if (!active && m_Settled && !force)
                 return;
@@ -261,6 +279,15 @@ namespace VRShootingGallery.Pipes
                         float rock = 9f * m_Strength * Mathf.Exp(-since / 0.7f);
                         float swing = 2f * Mathf.PI * 2.3f * since;
                         m_Body.localRotation = m_BodyRotation * Quaternion.Euler(rock * Mathf.Sin(swing), 0f, rock * 0.6f * Mathf.Cos(swing * 0.83f));
+                        break;
+                    case RigKind.Chime:
+                    case RigKind.Gong:
+                        // Hung from where the body's origin is, it swings about the body's own x, away from the strike and
+                        // back; the gong, heavier, slower.
+                        bool gong = m_Kind == RigKind.Gong;
+                        float sway = (gong ? 3f : 4f) * m_Strength * Mathf.Exp(-since / (gong ? 2.5f : 1.6f));
+                        float cycle = 2f * Mathf.PI * (gong ? 0.7f : 1.2f) * since;
+                        m_Body.localRotation = m_BodyRotation * Quaternion.Euler(sway * Mathf.Sin(cycle), 0f, 0f);
                         break;
                 }
             }

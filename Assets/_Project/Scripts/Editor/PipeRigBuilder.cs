@@ -12,20 +12,22 @@ namespace VRShootingGallery.EditorTools
 {
     /// <summary>
     /// Builds the pipe rig: a self-playing machine in the CAVE whose pipes throw balls in arcs onto
-    /// instruments round the walls, each landing on its note. A low bank of eight pipes stands at
-    /// the front in the middle; a bass frame of seven strings stands off the left wall, a shelf of
-    /// fifteen mallet bars runs along the front wall, a frame of eight strings stands off the right
-    /// wall, and a kick, a tom, a snare, a hi-hat and a crash stand on the floor either side of the
-    /// bank. The middle and back of the room are left to the people.
+    /// instruments all round the room, each landing on its note. A low bank of twelve pipes stands
+    /// just in front of the people, in the middle; a bass frame of seven strings stands off the left
+    /// wall, a shelf of fifteen mallet bars runs along the front wall, a frame of eight strings stands
+    /// off the right wall, a guitar lies on a stand in the middle past the bank, and a glockenspiel
+    /// stands beside the bank on the right. A kick and three toms stand on the left, a snare and a
+    /// crash on the right; beside the people, a floor tom and a gong on the left and a hi-hat and a
+    /// row of tubular chimes on the right. The middle of the back is left to the people.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The layout follows the design notes. Pitch runs low to high round the room — the bass from
     /// the back of the left wall forward, the bars left to right, the strings from the front of the
-    /// right wall back — so it matches the stereo pan. Every target is about the same throw from the
-    /// pipes, nothing stands in a corner, and every ball flies away from the people toward a wall.
-    /// After a strike a ball drops into a trough at the wall's foot, or onto the floor by a drum,
-    /// and rolls home to the bank along lanes drawn on the floor.
+    /// right wall back and on into the chimes — so it matches the stereo pan. Nothing stands in a
+    /// corner, and every ball flies away from the people toward a wall or the front. After a strike
+    /// a ball drops into a trough at a wall's foot, or onto the floor by a drum, and rolls home to
+    /// the bank along lanes drawn on the floor.
     /// </para>
     /// <para>
     /// Everything lives under <c>CAVE_User_Room/Pipe_Rig</c> and is registered with Undo. A rebuild
@@ -55,44 +57,73 @@ namespace VRShootingGallery.EditorTools
         const float k_Radius = 0.035f;
         const float k_Gravity = 4f;
 
-        // The bank.
-        const float k_BankZ = 0.42f;
+        // The bank, just in front of where the people stand.
+        const float k_BankZ = 0.12f;
         const float k_CabinetTop = 0.16f;
+        const float k_CabinetWidth = 1.4f;
         const float k_PipeRadius = 0.045f;
+        const float k_PipeSpacing = 0.11f;
         const float k_Nozzle = 0.07f;
-        static readonly float[] k_PipeTops = { 0.46f, 0.5f, 0.54f, 0.58f, 0.58f, 0.54f, 0.5f, 0.46f };
+        static readonly float[] k_PipeTops = { 0.44f, 0.48f, 0.52f, 0.56f, 0.6f, 0.62f, 0.62f, 0.6f, 0.56f, 0.52f, 0.48f, 0.44f };
 
-        // Which instrument group each pipe feeds, for its colour.
+        // Which instrument group each pipe feeds, for its colour: the left of the bank feeds the left of the room.
         static readonly RigGroup[] k_PipeGroups =
-            { RigGroup.Bass, RigGroup.Drums, RigGroup.Mallets, RigGroup.Mallets, RigGroup.Mallets, RigGroup.Drums, RigGroup.Drums, RigGroup.Strings };
+        {
+            RigGroup.Bass, RigGroup.Drums, RigGroup.Drums, RigGroup.Guitar, RigGroup.Mallets, RigGroup.Mallets, RigGroup.Mallets,
+            RigGroup.Glockenspiel, RigGroup.Drums, RigGroup.Drums, RigGroup.Chimes, RigGroup.Strings,
+        };
 
-        const int k_BassPipe = 0, k_LeftDrumPipe = 1, k_MalletLow = 2, k_MalletMid = 3, k_MalletHigh = 4, k_RightDrumPipe = 5, k_HatPipe = 6, k_StringPipe = 7;
+        const int k_BassPipe = 0, k_LeftDrumPipe = 1, k_BackDrumPipe = 2, k_GuitarPipe = 3, k_MalletLow = 4, k_MalletMid = 5, k_MalletHigh = 6,
+            k_GlockPipe = 7, k_RightDrumPipe = 8, k_HatPipe = 9, k_ChimePipe = 10, k_StringPipe = 11;
 
         // The instruments.
         static readonly int[] k_BassNotes = { 36, 38, 40, 41, 43, 45, 47 };                            // C2–B2
+        static readonly int[] k_GuitarNotes = { 40, 45, 50, 55, 59, 64 };                              // E2 A2 D3 G3 B3 E4, open
         static readonly int[] k_MalletNotes = { 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72 }; // C3–C5
         static readonly int[] k_StringNotes = { 74, 76, 77, 79, 81, 83, 84, 86 };                     // D5–D6
+        static readonly int[] k_ChimeNotes = { 72, 74, 76, 77, 79, 81, 83, 84 };                      // C5–C6
+        static readonly int[] k_GlockNotes = { 84, 86, 88, 89, 91, 93, 95, 96 };                      // C6–C7
 
         const float k_SideFrameX = 1.48f;    // 0.3 m off the side walls
         const float k_TroughX = 1.7f;
+        const float k_TroughBackZ = -0.85f;  // the side troughs run on past the people, for what stands beside them
         const float k_FrontTroughZ = 1.04f;
         const float k_BarBackZ = 0.92f;
         const float k_BarBackY = 1.33f;
         const float k_BarTilt = 10f;
 
-        // Lanes home: down the side troughs to their back ends, across in front of the people, up to the bank's sides.
-        const float k_LaneZ = -0.1f;
-        const float k_LaneX = 0.66f;
+        // The guitar, lying past the bank: the middle of its soundboard, and along it from there.
+        static readonly Vector3 k_GuitarAt = new(0f, 0.72f, 0.5f);
+        const float k_GuitarTilt = 25f;
+        const float k_BridgeX = -0.36f, k_NutX = 0.29f, k_StrikeX = -0.25f;
+        const float k_StringHeight = 0.02f;
+
+        // The glockenspiel, beside the bank on the right: its bars' outer ends, front to back.
+        const float k_GlockOuterX = 1.12f, k_GlockOuterY = 0.68f, k_GlockFrontZ = 0.41f, k_GlockStep = 0.05f;
+        const float k_GlockTilt = 15f;
+
+        // The chimes, beside the people on the right: the row of tubes, front to back, and the height of their caps.
+        const float k_ChimeX = 1.4f, k_ChimeFrontZ = -0.3f, k_ChimeStep = 0.07f, k_ChimeCap = 1.6f, k_ChimeRail = 1.86f;
+
+        // Lanes home: along the side troughs to where the lanes cross the floor in front of the bank, and into its sides.
+        const float k_LaneZ = 0.07f;
+        const float k_KitLaneX = 0.78f;      // the toms' and the snare's way down beside the bank
 
         static float R => k_Radius;
-        static Vector3 LeftIntake => new(-0.56f, R, k_BankZ);
-        static Vector3 RightIntake => new(0.56f, R, k_BankZ);
-        static Vector3 BackIntake => new(0f, R, 0.56f);
+        static Vector3 LeftIntake => new(-0.74f, R, k_LaneZ);
+        static Vector3 RightIntake => new(0.74f, R, k_LaneZ);
+        static Vector3 BackIntake => new(0f, R, k_BankZ + 0.14f);
+
+        static float PipeX(int pipe) => (pipe - (k_PipeTops.Length - 1) * 0.5f) * k_PipeSpacing;
 
         static readonly Color k_Bass = new(1f, 0.55f, 0.15f);
         static readonly Color k_Mallets = new(0.15f, 0.95f, 0.8f);
         static readonly Color k_Strings = new(1f, 0.25f, 0.75f);
         static readonly Color k_Drums = new(0.6f, 0.75f, 1f);
+        static readonly Color k_Guitar = new(0.45f, 1f, 0.3f);
+        static readonly Color k_Chimes = new(1f, 0.82f, 0.3f);
+        static readonly Color k_Glock = new(0.7f, 0.5f, 1f);
+        static readonly Color k_Gong = new(1f, 0.62f, 0.3f);
         static readonly Color k_SignColour = new(0.4f, 0.42f, 0.46f);
 
         static Color GroupColour(RigGroup group) => group switch
@@ -100,6 +131,9 @@ namespace VRShootingGallery.EditorTools
             RigGroup.Bass => k_Bass,
             RigGroup.Mallets => k_Mallets,
             RigGroup.Strings => k_Strings,
+            RigGroup.Guitar => k_Guitar,
+            RigGroup.Chimes => k_Chimes,
+            RigGroup.Glockenspiel => k_Glock,
             _ => k_Drums,
         };
 
@@ -174,8 +208,11 @@ namespace VRShootingGallery.EditorTools
             var (pipes, lamps, record) = BuildBank(root, p);
             var targets = new List<RigTarget>();
             BuildBass(root, p, targets);
+            BuildGuitar(root, p, targets);
             BuildMallets(root, p, targets);
+            BuildGlockenspiel(root, p, targets);
             BuildStrings(root, p, targets);
+            BuildChimes(root, p, targets);
             BuildDrums(root, p, targets);
 
             var balls = BuildBalls(root, p);
@@ -287,9 +324,10 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>
-        /// The way home: a trough at the foot of each wall, and lanes across the floor from the side
-        /// troughs' back ends and the front trough's middle to the bank. The rolling balls are surface
-        /// content too, seen by everyone on the floor screen.
+        /// The way home: a trough at the foot of each wall, the side ones running on past the people;
+        /// a lane across the floor from each side trough into the bank's side, and one down each side
+        /// of the bank for the drums by it; and a lane from the front trough's middle into the bank's
+        /// back. The rolling balls are surface content too, seen by everyone on the floor screen.
         /// </summary>
         static void Troughs(Transform root, Palette p)
         {
@@ -297,19 +335,14 @@ namespace VRShootingGallery.EditorTools
             foreach (float side in new[] { -1f, 1f })
             {
                 string name = side < 0f ? "Left" : "Right";
-                Trough(troughs, $"Trough_{name}", new Vector3(side * k_TroughX, 0f, -0.16f), new Vector3(side * k_TroughX, 0f, 0.88f), p);
-
-                var lane = new[]
-                {
-                    new Vector3(side * k_TroughX, 0f, k_LaneZ), new Vector3(side * k_LaneX, 0f, k_LaneZ),
-                    new Vector3(side * k_LaneX, 0f, 0.3f), new Vector3(side * 0.56f, 0f, k_BankZ),
-                };
-                for (int i = 1; i < lane.Length; i++)
-                    Strip(troughs, $"Lane_{name}_{i}", lane[i - 1], lane[i], 0.035f, 0.006f, p.Lane);
+                Trough(troughs, $"Trough_{name}", new Vector3(side * k_TroughX, 0f, k_TroughBackZ), new Vector3(side * k_TroughX, 0f, 0.88f), p);
+                Strip(troughs, $"Lane_{name}", new Vector3(side * k_TroughX, 0f, k_LaneZ), new Vector3(side * 0.74f, 0f, k_LaneZ), 0.035f, 0.006f, p.Lane);
+                Strip(troughs, $"Lane_{name}_Kit", new Vector3(side * k_KitLaneX, 0f, 0.4f), new Vector3(side * k_KitLaneX, 0f, k_LaneZ), 0.035f, 0.006f,
+                    p.Lane);
             }
 
             Trough(troughs, "Trough_Front", new Vector3(-1.22f, 0f, k_FrontTroughZ), new Vector3(1.22f, 0f, k_FrontTroughZ), p);
-            Strip(troughs, "Lane_Front", new Vector3(0f, 0f, k_FrontTroughZ), new Vector3(0f, 0f, 0.56f), 0.035f, 0.006f, p.Lane);
+            Strip(troughs, "Lane_Front", new Vector3(0f, 0f, k_FrontTroughZ), new Vector3(0f, 0f, BackIntake.z), 0.035f, 0.006f, p.Lane);
         }
 
         /// <summary>A shallow channel on the floor from <paramref name="from"/> to <paramref name="to"/>, with a glowing line down it.</summary>
@@ -331,27 +364,26 @@ namespace VRShootingGallery.EditorTools
         // ================================================================== the pipe bank
 
         /// <summary>
-        /// A low cabinet with eight pipes in an organ's rise and fall, each banded in the colour of what
+        /// A low cabinet with twelve pipes in an organ's rise and fall, each banded in the colour of what
         /// it feeds and capped with a swivelling nozzle; the beat lamps and the record lamp along its
         /// front; and an intake either side and behind, where balls roll home.
         /// </summary>
         static (List<RigPipe>, List<Renderer>, Renderer) BuildBank(Transform root, Palette p)
         {
             var bank = NewChild(root, "Pipe_Bank");
-            Box(bank, "Cabinet", new Vector3(0f, k_CabinetTop * 0.5f, k_BankZ), new Vector3(1.04f, k_CabinetTop, 0.2f), p.Cabinet);
-            Box(bank, "Cabinet_Top", new Vector3(0f, k_CabinetTop + 0.006f, k_BankZ), new Vector3(1.08f, 0.012f, 0.23f), p.Nozzle);
+            Box(bank, "Cabinet", new Vector3(0f, k_CabinetTop * 0.5f, k_BankZ), new Vector3(k_CabinetWidth, k_CabinetTop, 0.2f), p.Cabinet);
+            Box(bank, "Cabinet_Top", new Vector3(0f, k_CabinetTop + 0.006f, k_BankZ), new Vector3(k_CabinetWidth + 0.04f, 0.012f, 0.23f), p.Nozzle);
 
-            foreach (var intake in new[] { LeftIntake, RightIntake, BackIntake })
-            {
-                bool side = Mathf.Abs(intake.x) > 0.1f;
-                Box(bank, "Intake", new Vector3(intake.x * 0.97f, 0.035f, intake.z * (side ? 1f : 0.97f)),
-                    side ? new Vector3(0.05f, 0.07f, 0.1f) : new Vector3(0.1f, 0.07f, 0.05f), p.Intake);
-            }
+            // Each intake stands a little proud of its face of the cabinet.
+            foreach (var intake in new[] { LeftIntake, RightIntake })
+                Box(bank, "Intake", new Vector3(Mathf.Sign(intake.x) * (k_CabinetWidth * 0.5f + 0.02f), 0.035f, intake.z), new Vector3(0.05f, 0.07f, 0.1f),
+                    p.Intake);
+            Box(bank, "Intake", new Vector3(0f, 0.035f, k_BankZ + 0.12f), new Vector3(0.1f, 0.07f, 0.05f), p.Intake);
 
             var pipes = new List<RigPipe>();
             for (int i = 0; i < k_PipeTops.Length; i++)
             {
-                float x = -0.42f + 0.12f * i;
+                float x = PipeX(i);
                 float top = k_PipeTops[i];
                 var holder = NewChild(bank, $"Pipe_{i}_{k_PipeGroups[i]}");
                 holder.localPosition = new Vector3(x, 0f, k_BankZ);
@@ -429,15 +461,106 @@ namespace VRShootingGallery.EditorTools
             }
         }
 
-        static Vector3[] LeftRoll() => new[]
+        /// <summary>Along the left trough to the lane, and across into the bank's left side.</summary>
+        static Vector3[] LeftRoll() => new[] { new Vector3(-k_TroughX, R, k_LaneZ), LeftIntake };
+
+        static Vector3[] RightRoll() => new[] { new Vector3(k_TroughX, R, k_LaneZ), RightIntake };
+
+        /// <summary>From beside a drum near the bank down the kit lane on that side, and into the bank.</summary>
+        static Vector3[] KitRoll(float side) => new[]
         {
-            new Vector3(-k_TroughX, R, k_LaneZ), new Vector3(-k_LaneX, R, k_LaneZ), new Vector3(-k_LaneX, R, 0.3f), LeftIntake,
+            new Vector3(side * k_KitLaneX, R, 0.4f), new Vector3(side * k_KitLaneX, R, k_LaneZ), side < 0f ? LeftIntake : RightIntake,
         };
 
-        static Vector3[] RightRoll() => new[]
+        // ================================================================== the guitar, in the middle
+
+        /// <summary>
+        /// A guitar lying on a low stand in the middle, just past the bank, tipped toward the people so
+        /// they see its face: six steel strings tuned as a guitar's open strings, E2 to E4, the low one
+        /// farthest. A ball comes down on a string between the sound hole and the bridge, hops over the
+        /// far edge and drops into the front trough. Each string's tuning peg glows when it is struck,
+        /// and so does a line for it on the front wall, under the mallet shelf.
+        /// </summary>
+        /// <remarks>
+        /// The strings are three times as far apart as a real guitar's, and close in less toward the
+        /// nut, so a wand can pick one out; the pointing box of each covers it over the body.
+        /// </remarks>
+        static void BuildGuitar(Transform root, Palette p, List<RigTarget> targets)
         {
-            new Vector3(k_TroughX, R, k_LaneZ), new Vector3(k_LaneX, R, k_LaneZ), new Vector3(k_LaneX, R, 0.3f), RightIntake,
-        };
+            var guitar = NewChild(root, "Guitar");
+            guitar.localPosition = k_GuitarAt;
+            guitar.localRotation = Quaternion.Euler(-k_GuitarTilt, 0f, 0f);    // its face toward the people, the far edge up
+
+            // The body, in the guitar's own space with the soundboard at y = 0: the lower and upper bouts
+            // overlapping into the waist, a soundboard over them, the sound hole and the bridge.
+            const float depth = 0.09f;
+            foreach (var (name, x, radius) in new[] { ("Lower_Bout", -0.27f, 0.19f), ("Upper_Bout", -0.06f, 0.15f) })
+            {
+                Cyl(guitar, name, new Vector3(x, -depth * 0.5f - 0.003f, 0f), radius, depth, p.GuitarSides);
+                Cyl(guitar, name + "_Top", new Vector3(x, -0.0015f, 0f), radius - 0.006f, 0.003f, p.GuitarTop);
+            }
+
+            Cyl(guitar, "Sound_Hole", new Vector3(-0.13f, 0.0005f, 0f), 0.05f, 0.002f, p.SoundHole);
+            Box(guitar, "Bridge", new Vector3(k_BridgeX, 0.007f, 0f), new Vector3(0.025f, 0.014f, 0.24f), p.Neck);
+
+            // The neck and its frets, the nut, and the headstock.
+            const float neckStart = 0.05f, neckWidth = 0.19f;
+            Box(guitar, "Neck", new Vector3((neckStart + k_NutX) * 0.5f, -0.004f, 0f), new Vector3(k_NutX - neckStart, 0.024f, neckWidth), p.Neck);
+            for (int fret = 1; fret <= 12; fret++)
+            {
+                float x = k_NutX - (k_NutX - k_BridgeX) * (1f - Mathf.Pow(2f, -fret / 12f));
+                Box(guitar, $"Fret_{fret}", new Vector3(x, 0.009f, 0f), new Vector3(0.004f, 0.003f, x > neckStart ? neckWidth : 0.16f), p.Nozzle);
+            }
+
+            Box(guitar, "Nut", new Vector3(k_NutX, 0.011f, 0f), new Vector3(0.008f, 0.007f, neckWidth), p.Head);
+            Box(guitar, "Headstock", new Vector3(k_NutX + 0.095f, -0.006f, 0f), new Vector3(0.19f, 0.02f, 0.16f), p.Neck);
+
+            // The stand: a crossed pair of legs under the body and another under the neck, meeting under the guitar.
+            var stand = NewChild(root, "Guitar_Stand");
+            foreach (var (name, x, below) in new[] { ("Body", -0.28f, depth + 0.003f), ("Neck", 0.16f, 0.016f) })
+            {
+                var under = root.InverseTransformPoint(guitar.TransformPoint(new Vector3(x, -below, 0f)));
+                foreach (float side in new[] { -1f, 1f })
+                    Slab(stand, $"Leg_{name}_{(side < 0f ? "Near" : "Far")}", new Vector3(under.x, 0f, under.z + side * 0.2f), under, 0.018f, 0.018f, 0f,
+                        p.Frame);
+            }
+
+            float scale = k_NutX - k_BridgeX;
+            float along = (k_StrikeX - k_BridgeX) / scale;
+            for (int i = 0; i < k_GuitarNotes.Length; i++)
+            {
+                // Low strings farthest; three times a real guitar's spacing at the bridge, closing in toward the nut.
+                var bridge = new Vector3(k_BridgeX, k_StringHeight, (2.5f - i) * 0.04f);
+                var nut = new Vector3(k_NutX, k_StringHeight, (2.5f - i) * 0.028f);
+                var strike = Vector3.Lerp(bridge, nut, along);
+
+                var target = NewChild(guitar, $"Guitar_{RigTarget.NoteName(k_GuitarNotes[i])}");
+                target.localPosition = strike;
+
+                // The tuning pegs, three a side of the headstock, the low strings' on the far side.
+                bool far = i < 3;
+                var pegAt = new Vector3(k_NutX + 0.05f + 0.055f * (far ? i : 5 - i), 0.012f, far ? 0.05f : -0.05f);
+                var peg = Cyl(target, "Peg", pegAt - strike, 0.014f, 0.022f, p.PegGuitar);
+
+                var line = StringLine(target, p.StringGuitar, 0.006f);
+                var flash = WallFlash(root, $"Flash_Guitar_{i}", CaveScreens.Front, new Vector3(0f, 0.8f - 0.06f * i, CaveScreens.FrontZ - 0.006f),
+                    new Vector2(0.9f, 0.07f), p.FlashGuitar, k_Guitar * 1.1f);
+
+                // Pointing covers the string over the body, where the strings are well apart.
+                const float boxEnd = 0.05f;
+                targets.Add(Configure(target, new Spec
+                {
+                    Kind = RigKind.String, Group = RigGroup.Guitar, Midi = k_GuitarNotes[i],
+                    HitPoint = new Vector3(0f, R + 0.004f, 0f), Pipes = new[] { k_GuitarPipe, k_BackDrumPipe }, Apex = 1.5f, Hop = 0.2f,
+                    Landing = new Vector3(k_GuitarAt.x + k_StrikeX, R, k_FrontTroughZ), Roll = new[] { new Vector3(0f, R, k_FrontTroughZ), BackIntake },
+                    BoxCentre = new Vector3((k_BridgeX - 0.02f + boxEnd) * 0.5f - strike.x, 0f, 0f),
+                    BoxSize = new Vector3(boxEnd - k_BridgeX + 0.02f, 0.05f, 0.034f),
+                    Glow = new[] { peg.GetComponent<Renderer>() }, GlowColour = k_Guitar * 3f, RestGlow = 0.12f,
+                    String = line, StringFrom = bridge - strike, StringTo = nut - strike,
+                    StringSwing = new Vector3(0f, 0.012f, 0f), StringDecay = 0.9f, Flash = flash,
+                }));
+            }
+        }
 
         // ================================================================== the mallet bars, along the front wall
 
@@ -515,6 +638,64 @@ namespace VRShootingGallery.EditorTools
             }
         }
 
+        // ================================================================== the glockenspiel, beside the bank on the right
+
+        /// <summary>
+        /// Eight steel bars, C6 to C7, on a low stand beside the bank on the right, the low one at the
+        /// front, each tipped toward the people. A ball lands near a bar's outer end, hops over it and
+        /// drops, under the strings' frame, into the right trough. The floor past each bar's end glows.
+        /// </summary>
+        static void BuildGlockenspiel(Transform root, Palette p, List<RigTarget> targets)
+        {
+            var glock = NewChild(root, "Glockenspiel");
+            float s = Mathf.Sin(k_GlockTilt * Mathf.Deg2Rad);
+            float c = Mathf.Cos(k_GlockTilt * Mathf.Deg2Rad);
+            var toward = new Vector3(-c, -s, 0f);          // along a bar from its outer end toward the people
+            var up = new Vector3(-s, c, 0f);                // a bar's top surface faces this way
+            var rotation = Quaternion.LookRotation(toward, up);
+
+            int count = k_GlockNotes.Length;
+            var innerNodes = new List<Vector3>();
+            var outerNodes = new List<Vector3>();
+            for (int i = 0; i < count; i++)
+            {
+                float z = k_GlockFrontZ - k_GlockStep * i;
+                float length = Mathf.Lerp(0.22f, 0.15f, i / (float)(count - 1));
+                var origin = new Vector3(k_GlockOuterX, k_GlockOuterY, z);
+
+                var target = NewChild(glock, $"Glock_{RigTarget.NoteName(k_GlockNotes[i])}");
+                target.localPosition = origin;
+                target.localRotation = rotation;
+                var bar = Box(target, "Bar", new Vector3(0f, -0.006f, length * 0.5f), new Vector3(k_GlockStep - 0.008f, 0.012f, length), p.GlockBar);
+
+                outerNodes.Add(origin + toward * (length * 0.224f) - up * 0.02f);
+                innerNodes.Add(origin + toward * (length * 0.776f) - up * 0.02f);
+
+                var flash = FloorFlash(root, $"Flash_Glock_{i}", new Vector3(k_GlockOuterX + 0.09f, 0f, z), 0.15f, p.FlashGlock, k_Glock);
+
+                targets.Add(Configure(target, new Spec
+                {
+                    Kind = RigKind.Bar, Group = RigGroup.Glockenspiel, Midi = k_GlockNotes[i],
+                    HitPoint = new Vector3(0f, R, 0.04f), Pipes = new[] { k_GlockPipe, k_RightDrumPipe }, Apex = 1.6f, Hop = 0.05f,
+                    Landing = new Vector3(k_TroughX, R, z), Roll = RightRoll(),
+                    BoxCentre = new Vector3(0f, 0f, length * 0.5f), BoxSize = new Vector3(k_GlockStep - 0.004f, 0.07f, length + 0.03f),
+                    Body = bar, Glow = new[] { bar.GetComponent<Renderer>() }, GlowColour = k_Glock * 1.8f, RestGlow = 0.04f,
+                    GlowDecay = 0.6f, Flash = flash,
+                }));
+            }
+
+            // The rails along the bars' nodes, and legs down from them: the back pair two bars in, so the
+            // balls rolling along the lane under the last bars pass between them.
+            for (int i = 1; i < count; i++)
+            {
+                Slab(glock, $"Rail_Outer_{i}", outerNodes[i - 1], outerNodes[i], 0.018f, 0.022f, 0f, p.Rail);
+                Slab(glock, $"Rail_Inner_{i}", innerNodes[i - 1], innerNodes[i], 0.018f, 0.022f, 0f, p.Rail);
+            }
+
+            foreach (var node in new[] { outerNodes[0], outerNodes[count - 3], innerNodes[0], innerNodes[count - 3] })
+                Slab(glock, "Leg", new Vector3(node.x, 0f, node.z), node, 0.018f, 0.018f, 0f, p.Frame);
+        }
+
         // ================================================================== the strings, on the right wall
 
         /// <summary>
@@ -551,7 +732,7 @@ namespace VRShootingGallery.EditorTools
                 targets.Add(Configure(target, new Spec
                 {
                     Kind = RigKind.String, Group = RigGroup.Strings, Midi = k_StringNotes[i],
-                    HitPoint = new Vector3(0f, hit, 0f), Pipes = new[] { k_StringPipe, k_HatPipe }, Apex = 1.85f, Hop = 0f,
+                    HitPoint = new Vector3(0f, hit, 0f), Pipes = new[] { k_StringPipe, k_ChimePipe }, Apex = 1.85f, Hop = 0f,
                     Landing = new Vector3(k_TroughX, R, z), Roll = RightRoll(),
                     BoxCentre = new Vector3(0f, (bottom + top) * 0.5f, 0f), BoxSize = new Vector3(0.09f, top - bottom + 0.04f, 0.085f),
                     Glow = new[] { peg.GetComponent<Renderer>() }, GlowColour = k_Strings * 3f, RestGlow = 0.12f,
@@ -561,35 +742,152 @@ namespace VRShootingGallery.EditorTools
             }
         }
 
+        // ================================================================== the chimes, beside the people on the right
+
+        /// <summary>
+        /// Eight tubular chimes, C5 to C6, hung in a row from a rail beside the people on the right,
+        /// carrying the strings' line on toward the open back: the longest at the front. A ball lands
+        /// on a tube's cap, where a chime is struck, and the tube swings on its cord toward the wall
+        /// and back; the ball hops off toward the wall into the right trough. The wall behind each
+        /// tube glows.
+        /// </summary>
+        static void BuildChimes(Transform root, Palette p, List<RigTarget> targets)
+        {
+            var frame = NewChild(root, "Chimes");
+            int count = k_ChimeNotes.Length;
+            float x = k_ChimeX;
+            float front = k_ChimeFrontZ + 0.08f;
+            float back = k_ChimeFrontZ - k_ChimeStep * (count - 1) - 0.08f;
+            Box(frame, "Post_Front", new Vector3(x, k_ChimeRail * 0.5f, front), new Vector3(0.04f, k_ChimeRail, 0.04f), p.Frame);
+            Box(frame, "Post_Back", new Vector3(x, k_ChimeRail * 0.5f, back), new Vector3(0.04f, k_ChimeRail, 0.04f), p.Frame);
+            Box(frame, "Rail", new Vector3(x, k_ChimeRail + 0.02f, (front + back) * 0.5f), new Vector3(0.04f, 0.04f, front - back + 0.04f), p.Frame);
+            Box(frame, "Foot_Front", new Vector3(x, 0.01f, front), new Vector3(0.26f, 0.02f, 0.05f), p.Frame);
+            Box(frame, "Foot_Back", new Vector3(x, 0.01f, back), new Vector3(0.26f, 0.02f, 0.05f), p.Frame);
+
+            for (int i = 0; i < count; i++)
+            {
+                float z = k_ChimeFrontZ - k_ChimeStep * i;
+                float length = Mathf.Lerp(0.85f, 0.55f, i / (float)(count - 1));
+
+                var target = NewChild(frame, $"Chime_{RigTarget.NoteName(k_ChimeNotes[i])}");
+                target.localPosition = new Vector3(x, 0f, z);
+
+                // It hangs from the rail on a cord; turned so its own x runs along the row, it swings toward the wall and back.
+                var pivot = NewChild(target, "Pivot");
+                pivot.localPosition = new Vector3(0f, k_ChimeRail, 0f);
+                pivot.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                float drop = k_ChimeRail - k_ChimeCap;
+                Cyl(pivot, "Cord", new Vector3(0f, -drop * 0.5f, 0f), 0.004f, drop, p.Frame);
+                var cap = Cyl(pivot, "Cap", new Vector3(0f, -drop - 0.006f, 0f), 0.042f, 0.012f, p.Nozzle);
+                var tube = Cyl(pivot, "Tube", new Vector3(0f, -drop - 0.012f - length * 0.5f, 0f), 0.038f, length, p.Chime);
+
+                var flash = WallFlash(root, $"Flash_Chime_{i}", CaveScreens.Right, new Vector3(CaveScreens.HalfWidth - 0.006f, 1.25f, z),
+                    new Vector2(0.09f, 1f), p.FlashChimes, k_Chimes * 1.1f);
+
+                targets.Add(Configure(target, new Spec
+                {
+                    Kind = RigKind.Chime, Group = RigGroup.Chimes, Midi = k_ChimeNotes[i], Gain = 0.8f,
+                    HitPoint = new Vector3(0f, k_ChimeCap + 0.002f + R, 0f), Pipes = new[] { k_ChimePipe, k_StringPipe }, Apex = 1.85f, Hop = 0.06f,
+                    Landing = new Vector3(k_TroughX, R, z), Roll = RightRoll(),
+                    BoxCentre = new Vector3(0f, k_ChimeCap - length * 0.5f, 0f), BoxSize = new Vector3(0.1f, length + 0.04f, k_ChimeStep - 0.005f),
+                    Body = pivot, Glow = new[] { tube.GetComponent<Renderer>(), cap.GetComponent<Renderer>() }, GlowColour = k_Chimes * 1.4f,
+                    RestGlow = 0.05f, GlowDecay = 1.2f, Flash = flash,
+                }));
+            }
+        }
+
         // ================================================================== the drums, on the floor
 
         /// <summary>
-        /// A kick and a tom on the left of the bank, a snare, a hi-hat and a crash on the right, all
-        /// struck from above. The floor under each glows when it is hit; balls hop off and roll home.
+        /// On the left of the bank a kick, a rack tom and a tom, and behind them, beside the people, a
+        /// floor tom and a gong; on the right a snare and a crash, and a hi-hat beside the people. All
+        /// are struck from above but the gong, which is struck on its face. The floor under each drum
+        /// glows when it is hit; balls hop off and roll home.
         /// </summary>
         static void BuildDrums(Transform root, Palette p, List<RigTarget> targets)
         {
             var kit = NewChild(root, "Drums");
 
-            targets.Add(Drum(kit, root, p, RigDrum.Kick, new Vector3(-1.05f, 0f, 0.36f), 0.23f, 0.02f, 0.32f, false,
-                new Vector3(-1.05f, R, k_LaneZ), new[] { new Vector3(-k_LaneX, R, k_LaneZ), new Vector3(-k_LaneX, R, 0.3f), LeftIntake },
-                new[] { k_LeftDrumPipe, k_BassPipe }, 0.15f, 1.35f));
+            targets.Add(Drum(kit, root, p, RigDrum.Kick, new Vector3(-1.1f, 0f, 0.33f), 0.23f, 0.02f, 0.32f, false,
+                new Vector3(-1.1f, R, k_LaneZ), new[] { LeftIntake }, new[] { k_LeftDrumPipe, k_BackDrumPipe, k_BassPipe }, 0.15f, 1.35f));
 
-            targets.Add(Drum(kit, root, p, RigDrum.Tom, new Vector3(-0.7f, 0f, 0.6f), 0.16f, 0.19f, 0.4f, true,
-                new Vector3(-0.7f, R, 0.34f), new[] { LeftIntake }, new[] { k_LeftDrumPipe, k_BassPipe }, 0.12f, 1.35f));
+            targets.Add(Drum(kit, root, p, RigDrum.RackTom, new Vector3(-1.05f, 0f, 0.72f), 0.12f, 0.36f, 0.54f, true,
+                new Vector3(-0.9f, R, 0.52f), KitRoll(-1f), new[] { k_LeftDrumPipe, k_BackDrumPipe }, 0.1f, 1.35f));
 
-            targets.Add(Drum(kit, root, p, RigDrum.Snare, new Vector3(0.7f, 0f, 0.6f), 0.15f, 0.3f, 0.44f, true,
-                new Vector3(0.7f, R, 0.34f), new[] { RightIntake }, new[] { k_RightDrumPipe, k_HatPipe }, 0.12f, 1.35f));
+            targets.Add(Drum(kit, root, p, RigDrum.Tom, new Vector3(-0.72f, 0f, 0.66f), 0.15f, 0.19f, 0.4f, true,
+                new Vector3(-0.6f, R, 0.44f), KitRoll(-1f), new[] { k_LeftDrumPipe, k_BackDrumPipe }, 0.1f, 1.35f));
 
-            targets.Add(Cymbal(kit, root, p, RigDrum.HiHat, new Vector3(1.04f, 0f, 0.3f), 0.16f, 0.6f, Vector3.zero, true,
-                new Vector3(1.04f, R, k_LaneZ), new[] { new Vector3(k_LaneX, R, k_LaneZ), new Vector3(k_LaneX, R, 0.3f), RightIntake },
-                new[] { k_HatPipe, k_RightDrumPipe }, 0.1f, 1.4f));
+            targets.Add(Drum(kit, root, p, RigDrum.FloorTom, new Vector3(-0.95f, 0f, -0.15f), 0.18f, 0.08f, 0.44f, true,
+                new Vector3(-k_TroughX, R, -0.15f), LeftRoll(), new[] { k_BackDrumPipe, k_LeftDrumPipe }, 0.1f, 1.4f));
+
+            targets.Add(Gong(kit, root, p, new Vector3(-1.2f, 0f, -0.6f), 1.05f, 0.27f, new[] { k_BackDrumPipe, k_LeftDrumPipe }));
+
+            targets.Add(Drum(kit, root, p, RigDrum.Snare, new Vector3(0.78f, 0f, 0.6f), 0.15f, 0.3f, 0.44f, true,
+                new Vector3(0.64f, R, 0.42f), KitRoll(1f), new[] { k_RightDrumPipe, k_HatPipe }, 0.1f, 1.35f));
+
+            targets.Add(Cymbal(kit, root, p, RigDrum.HiHat, new Vector3(0.95f, 0f, -0.3f), 0.16f, 0.6f, Vector3.zero, true,
+                new Vector3(k_TroughX, R, -0.3f), RightRoll(), new[] { k_HatPipe, k_RightDrumPipe }, 0.1f, 1.4f));
 
             targets.Add(Cymbal(kit, root, p, RigDrum.Crash, new Vector3(1.2f, 0f, 0.66f), 0.21f, 0.86f, new Vector3(-12f, 0f, 8f), false,
-                new Vector3(1.45f, R, 0.62f),
-                new[] { new Vector3(k_TroughX, R, 0.62f), new Vector3(k_TroughX, R, k_LaneZ), new Vector3(k_LaneX, R, k_LaneZ),
-                        new Vector3(k_LaneX, R, 0.3f), RightIntake },
+                new Vector3(1.45f, R, 0.62f), new[] { new Vector3(k_TroughX, R, 0.62f), new Vector3(k_TroughX, R, k_LaneZ), RightIntake },
                 new[] { k_RightDrumPipe, k_HatPipe }, 0.1f, 1.5f));
+        }
+
+        /// <summary>
+        /// A gong of <paramref name="radius"/>, its middle <paramref name="height"/> up, hung in a frame
+        /// at <paramref name="at"/> and turned to face the first of its <paramref name="pipes"/>, so the
+        /// ball meets it face on. It swings on its cords when struck; the ball drops off its face and
+        /// rolls under it to the left trough. The left wall behind it glows.
+        /// </summary>
+        static RigTarget Gong(Transform kit, Transform root, Palette p, Vector3 at, float height, float radius, int[] pipes)
+        {
+            var target = NewChild(kit, "Gong");
+            target.localPosition = at;
+            var facing = new Vector3(PipeX(pipes[0]) - at.x, 0f, k_BankZ - at.z).normalized;
+            target.localRotation = Quaternion.LookRotation(facing, Vector3.up);
+
+            // The frame: a post either side on a foot, and a bar across the top.
+            float half = radius + 0.09f;
+            float top = height + radius + 0.14f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Box(target, side < 0f ? "Post_Left" : "Post_Right", new Vector3(side * half, top * 0.5f, 0f), new Vector3(0.04f, top, 0.04f), p.Frame);
+                Box(target, side < 0f ? "Foot_Left" : "Foot_Right", new Vector3(side * half, 0.01f, 0f), new Vector3(0.05f, 0.02f, 0.24f), p.Frame);
+            }
+
+            Box(target, "Bar", new Vector3(0f, top + 0.02f, 0f), new Vector3(half * 2f + 0.04f, 0.04f, 0.04f), p.Frame);
+
+            // The gong hangs from the bar on two cords and swings about it: a disc with a turned-back rim and a boss in the middle.
+            var pivot = NewChild(target, "Pivot");
+            pivot.localPosition = new Vector3(0f, top, 0f);
+            float centre = height - top;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var from = new Vector3(side * radius * 0.45f, 0f, 0f);
+                var to = new Vector3(side * radius * 0.5f, centre + radius * 0.86f, 0f);
+                Slab(pivot, side < 0f ? "Cord_Left" : "Cord_Right", from, to, 0.006f, 0.006f, 0f, p.Frame);
+            }
+
+            var disc = Cyl(pivot, "Disc", new Vector3(0f, centre, 0f), radius, 0.012f, p.GongMetal);
+            disc.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            var rim = Cyl(pivot, "Rim", new Vector3(0f, centre, -0.02f), radius + 0.008f, 0.04f, p.GongMetal);
+            rim.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            var boss = Cyl(pivot, "Boss", new Vector3(0f, centre, 0.012f), radius * 0.22f, 0.02f, p.GongMetal);
+            boss.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+            var landing = at + facing * 0.16f;
+            var flash = WallFlash(root, "Flash_Gong", CaveScreens.Left, new Vector3(-CaveScreens.HalfWidth + 0.006f, height, at.z),
+                new Vector2(1.1f, 1.1f), p.FlashDrums, k_Gong * 1.2f, 0.9f);
+            return Configure(target, new Spec
+            {
+                Kind = RigKind.Gong, Group = RigGroup.Drums, Drum = RigDrum.Gong, Gain = 1f,
+                HitPoint = new Vector3(0f, height, 0.022f + R), Pipes = pipes, Apex = 1.85f, Hop = 0.02f,
+                Landing = new Vector3(landing.x, R, landing.z),
+                Roll = new[] { new Vector3(-k_TroughX, R, landing.z), new Vector3(-k_TroughX, R, k_LaneZ), LeftIntake },
+                BoxCentre = new Vector3(0f, height, 0f), BoxSize = new Vector3(radius * 2f + 0.06f, radius * 2f + 0.06f, 0.12f),
+                Body = pivot, Glow = new[] { disc.GetComponent<Renderer>(), boss.GetComponent<Renderer>() }, GlowColour = k_Gong * 1.3f,
+                RestGlow = 0.03f, GlowDecay = 1.5f, Flash = flash,
+            });
         }
 
         /// <summary>A drum standing on the floor, head up: a shell from <paramref name="low"/> to <paramref name="high"/>, on legs or straight on the floor.</summary>
@@ -697,7 +995,7 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_BallPrototype", ball.gameObject);
             SetRef(k_Tag, so, "m_ShadowPrototype", shadow.gameObject);
             SetArray(k_Tag, so, "m_GroupMaterials", p.Balls);
-            SetColors(so, "m_TrailColours", new[] { k_Bass, k_Mallets, k_Strings, k_Drums });
+            SetColors(so, "m_TrailColours", new[] { k_Bass, k_Mallets, k_Strings, k_Drums, k_Guitar, k_Chimes, k_Glock });
             so.ApplyModifiedProperties();
             return balls;
         }
@@ -742,10 +1040,10 @@ namespace VRShootingGallery.EditorTools
             }
 
             var lamp = NewChild(root, "Machine_Light");
-            lamp.localPosition = new Vector3(0f, 2f, 0.4f);
+            lamp.localPosition = new Vector3(0f, 2f, 0.2f);
             var point = Undo.AddComponent<Light>(lamp.gameObject);
             point.type = LightType.Point;
-            point.range = 3.5f;
+            point.range = 4f;
             point.intensity = 0.8f;
             point.color = new Color(1f, 0.92f, 0.82f);
             point.shadows = LightShadows.None;
@@ -840,10 +1138,11 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>A soft glow on a wall screen at <paramref name="centre"/>, for <see cref="RigFlash"/> to light.</summary>
-        static RigFlash WallFlash(Transform root, string name, CaveScreen screen, Vector3 centre, Vector2 size, Material material, Color colour)
+        static RigFlash WallFlash(Transform root, string name, CaveScreen screen, Vector3 centre, Vector2 size, Material material, Color colour,
+            float decay = 0.22f)
         {
             var quad = Quad(FlashHolder(root), name, centre, size, material, screen.FacingRotation);
-            return Flash(quad, colour, 0.22f);
+            return Flash(quad, colour, decay);
         }
 
         static RigFlash FloorFlash(Transform root, string name, Vector3 at, float diameter, Material material, Color colour)
@@ -990,7 +1289,9 @@ namespace VRShootingGallery.EditorTools
             public Material Frame, PegBass, PegStrings, StringBass, StringStrings;
             public Material Bar, Resonator, Rail;
             public Material Shell, Head, Cymbal;
-            public Material FlashBass, FlashMallets, FlashStrings, FlashDrums;
+            public Material GuitarTop, GuitarSides, Neck, SoundHole, PegGuitar, StringGuitar;
+            public Material GlockBar, Chime, GongMetal;
+            public Material FlashBass, FlashMallets, FlashStrings, FlashDrums, FlashGuitar, FlashGlock, FlashChimes;
             public Material Trail, Ray, Cursor, Shadow;
             public Material[] Balls;
         }
@@ -1029,10 +1330,24 @@ namespace VRShootingGallery.EditorTools
                 Head = Lit("Head", new Color(0.82f, 0.8f, 0.74f), 0.3f, new Color(0.03f, 0.03f, 0.04f)),
                 Cymbal = Metal("Cymbal", new Color(0.72f, 0.54f, 0.22f), 0.85f, 0.55f),
 
+                GuitarTop = Lit("Guitar_Top", new Color(0.62f, 0.44f, 0.24f), 0.6f),
+                GuitarSides = Lit("Guitar_Sides", new Color(0.2f, 0.09f, 0.04f), 0.65f),
+                Neck = Lit("Neck", new Color(0.09f, 0.05f, 0.03f), 0.5f),
+                SoundHole = Lit("Sound_Hole", new Color(0.01f, 0.01f, 0.01f), 0.1f),
+                PegGuitar = Lit("Peg_Guitar", new Color(0.2f, 0.36f, 0.14f), 0.6f, k_Guitar * 0.3f),
+                StringGuitar = Glow("String_Guitar", beam, k_Guitar * 2.2f, 2f, 0.5f, false),
+
+                GlockBar = Metal("Glock_Bar", new Color(0.72f, 0.74f, 0.8f), 0.85f, 0.8f, new Color(0.03f, 0.02f, 0.05f)),
+                Chime = Metal("Chime", new Color(0.8f, 0.62f, 0.3f), 0.85f, 0.7f, new Color(0.04f, 0.03f, 0.01f)),
+                GongMetal = Metal("Gong", new Color(0.55f, 0.36f, 0.16f), 0.75f, 0.75f, new Color(0.03f, 0.015f, 0.005f)),
+
                 FlashBass = Glow("Flash_Bass", beam, k_Bass, 1.6f, 0.15f, true),
                 FlashMallets = Glow("Flash_Mallets", beam, k_Mallets, 1.6f, 0.15f, true),
                 FlashStrings = Glow("Flash_Strings", beam, k_Strings, 1.6f, 0.15f, true),
                 FlashDrums = Glow("Flash_Drums", beam, k_Drums, 1.4f, 0.1f, true),
+                FlashGuitar = Glow("Flash_Guitar", beam, k_Guitar, 1.6f, 0.15f, true),
+                FlashGlock = Glow("Flash_Glock", beam, k_Glock, 1.4f, 0.1f, true),
+                FlashChimes = Glow("Flash_Chimes", beam, k_Chimes, 1.6f, 0.15f, true),
 
                 Trail = Glow("Trail", beam, new Color(1.6f, 1.6f, 1.6f), 1.5f, 0.3f, false),
                 Ray = Glow("Ray", beam, new Color(0.7f, 0.95f, 1.2f), 2f, 0.6f, false),
@@ -1040,12 +1355,16 @@ namespace VRShootingGallery.EditorTools
                 Shadow = ShadowMaterial("Shadow", shadow),
             };
 
+            // In RigGroup order.
             p.Balls = new[]
             {
                 Ball("Ball_Bass", k_Bass),
                 Ball("Ball_Mallets", k_Mallets),
                 Ball("Ball_Strings", k_Strings),
                 Ball("Ball_Drums", k_Drums),
+                Ball("Ball_Guitar", k_Guitar),
+                Ball("Ball_Chimes", k_Chimes),
+                Ball("Ball_Glockenspiel", k_Glock),
             };
 
             foreach (var field in typeof(Palette).GetFields())
@@ -1066,9 +1385,9 @@ namespace VRShootingGallery.EditorTools
             return EnsureMaterial(k_Tag, MaterialPath(name), colour, emission, 1f, smoothness);
         }
 
-        static Material Metal(string name, Color colour, float smoothness, float metallic)
+        static Material Metal(string name, Color colour, float smoothness, float metallic, Color emission = default)
         {
-            var material = Lit(name, colour, smoothness);
+            var material = Lit(name, colour, smoothness, emission);
             if (material != null && material.HasProperty("_Metallic"))
             {
                 material.SetFloat("_Metallic", metallic);

@@ -19,9 +19,10 @@ namespace VRShootingGallery.Pipes
     }
 
     /// <summary>
-    /// The pipe rig's director: a self-playing machine in the CAVE, pipes at the front throwing balls
-    /// in arcs onto mallet bars, strings and drums round the walls, each ball solved backward from
-    /// the note it must hit. It owns the mode, the clock, what is thrown when, the pointer, the
+    /// The pipe rig's director: a self-playing machine in the CAVE, a bank of pipes just in front of
+    /// the people throwing balls in arcs onto the instruments round them — bass and guitar strings,
+    /// mallet and glockenspiel bars, strings, chimes, drums and a gong — each ball solved backward
+    /// from the note it must hit. It owns the mode, the clock, what is thrown when, the pointer, the
     /// machine's voices and the room's buttons.
     /// </summary>
     /// <remarks>
@@ -30,8 +31,11 @@ namespace VRShootingGallery.Pipes
     /// ahead into notes (<see cref="RigScore"/>), and every note becomes a throw at the instrument
     /// that plays that part — the kick and snare and hats on the drums, the bass line on the bass
     /// strings, the middle on the mallet bars, the top on the strings — leaving its pipe exactly its
-    /// flight time early. The track is the clock: pause it and every ball hangs in the air. The
-    /// machine is silent in this mode; the track is what is heard.
+    /// flight time early. Each tuned part has a partner that doubles its accents: the guitar the bass
+    /// line, the glockenspiel the mallets, the chimes the strings. Tom hits close together walk down
+    /// the toms as a fill, and the biggest drops ring the gong instead of the crash. The track is
+    /// the clock: pause it and every ball hangs in the air. The machine is silent in this mode; the
+    /// track is what is heard.
     /// </para>
     /// <para>
     /// <b>Play</b> stops the music and hands over the instruments: point at one with the wand (or
@@ -99,6 +103,23 @@ namespace VRShootingGallery.Pipes
 
         [SerializeField, Tooltip("Least seconds between two throws from one pipe before the next pipe in a target's list takes over.")]
         float m_PipeGap = 0.22f;
+
+        [SerializeField, Tooltip("How far over its part's recent average a tuned note's strength must be for the part's partner to double " +
+            "it: the guitar doubles the bass line, the glockenspiel the mallets, the chimes the strings.")]
+        float m_AccentMargin = 0.1f;
+
+        [SerializeField, Tooltip("Least seconds between two notes a partner doubles.")]
+        float m_AccentGap = 0.3f;
+
+        [SerializeField, Tooltip("Seconds between tom hits that make them a fill, walked down the toms from the highest. A tom hit on its own " +
+            "is the middle tom.")]
+        float m_FillGap = 0.6f;
+
+        [SerializeField, Range(0f, 1f), Tooltip("A crash rings the gong instead when its drop is at least this share of the track's biggest.")]
+        float m_GongShare = 0.85f;
+
+        [SerializeField, Tooltip("Least seconds between two strikes of the gong.")]
+        float m_GongRest = 8f;
 
         [Header("Pointer")]
         [SerializeField, Tooltip("The MiddleVR node the wand's pose is on. Its forward is where the wand points.")]
@@ -173,11 +194,15 @@ namespace VRShootingGallery.Pipes
             (1f, RigDrum.Snare, 0, 0.9f), (3f, RigDrum.Snare, 0, 0.9f), (5f, RigDrum.Snare, 0, 0.9f), (7f, RigDrum.Snare, 0, 0.9f),
             (0.5f, RigDrum.HiHat, 0, 0.6f), (1.5f, RigDrum.HiHat, 0, 0.5f), (2.5f, RigDrum.HiHat, 0, 0.6f), (3.5f, RigDrum.HiHat, 0, 0.5f),
             (4.5f, RigDrum.HiHat, 0, 0.6f), (5.5f, RigDrum.HiHat, 0, 0.5f), (6.5f, RigDrum.HiHat, 0, 0.6f),
-            (7.5f, RigDrum.Tom, 0, 0.7f), (7.75f, RigDrum.Tom, 0, 0.8f),
+            (7.25f, RigDrum.RackTom, 0, 0.7f), (7.5f, RigDrum.Tom, 0, 0.75f), (7.75f, RigDrum.FloorTom, 0, 0.85f),
             (0f, RigDrum.None, 36, 0.9f), (1.5f, RigDrum.None, 36, 0.7f), (2.5f, RigDrum.None, 43, 0.8f), (3.5f, RigDrum.None, 40, 0.7f),
             (4f, RigDrum.None, 45, 0.9f), (5.5f, RigDrum.None, 45, 0.7f), (6.5f, RigDrum.None, 40, 0.8f), (7f, RigDrum.None, 43, 0.7f),
         };
 
+        /// <summary>The toms, highest first: the way a fill walks.</summary>
+        static readonly RigDrum[] k_Toms = { RigDrum.RackTom, RigDrum.Tom, RigDrum.FloorTom };
+
+        static readonly int k_Groups = Enum.GetValues(typeof(RigGroup)).Length;
         static readonly int k_Emission = Shader.PropertyToID("_EmissionColor");
 
         RigPaths m_Paths;
@@ -196,11 +221,19 @@ namespace VRShootingGallery.Pipes
         int m_NextNote;
 
         // Who plays what
-        readonly int[] m_DrumTarget = new int[6];
-        readonly List<int>[] m_GroupTargets = new List<int>[4];
-        readonly int[] m_PreviousMidi = new int[4];
+        readonly int[] m_DrumTarget = new int[Enum.GetValues(typeof(RigDrum)).Length];
+        readonly List<int>[] m_GroupTargets = new List<int>[k_Groups];
+        readonly int[] m_PreviousMidi = new int[k_Groups];
         double[] m_TargetLast = new double[0];
         double[] m_PipeLast = new double[0];
+
+        // Accents, fills and drops
+        readonly float[] m_PartAverage = new float[3];              // the bass, mid and high parts' recent strength
+        readonly double[] m_PartnerLast = new double[k_Groups];     // when each partner last doubled a note
+        double m_LastTom;
+        int m_TomStep;
+        double m_LastGong;
+        float m_BiggestDrop;
 
         // Play
         readonly List<LoopNote> m_Loop = new();
@@ -408,6 +441,7 @@ namespace VRShootingGallery.Pipes
                 m_PipeLast[i] = double.NegativeInfinity;
             for (int i = 0; i < m_TargetLast.Length; i++)
                 m_TargetLast[i] = double.NegativeInfinity;
+            ResetParts();
             m_ClockValid = false;
             SetHover(null);
 
@@ -494,7 +528,13 @@ namespace VRShootingGallery.Pipes
             {
                 if (!m_Score.Done && !m_Score.Failed)
                     m_Score.Step(4f);
+
+                // The score is read far ahead of the music, so the biggest drop found so far is soon the track's.
+                int before = m_Notes.Count;
                 m_NotesCopied = m_Score.CopyNotes(m_Notes, m_NotesCopied);
+                for (int i = before; i < m_Notes.Count; i++)
+                    if (m_Notes[i].Lane == RigLane.Crash)
+                        m_BiggestDrop = Mathf.Max(m_BiggestDrop, m_Notes[i].Strength);
             }
 
             double truth = (m_Deck != null ? m_Deck.Time : 0f) - m_VisualDelay;
@@ -508,6 +548,7 @@ namespace VRShootingGallery.Pipes
                 m_NextNote = NoteAfter(truth);
                 for (int i = 0; i < m_TargetLast.Length; i++)
                     m_TargetLast[i] = double.NegativeInfinity;
+                ResetParts();
             }
 
             Advance(truth, dt, running);
@@ -522,6 +563,8 @@ namespace VRShootingGallery.Pipes
             m_Notes.Clear();
             m_NotesCopied = 0;
             m_NextNote = 0;
+            m_BiggestDrop = 0f;
+            ResetParts();
             m_ClockValid = false;
 
             if (clip == null)
@@ -569,23 +612,32 @@ namespace VRShootingGallery.Pipes
                 if (note.Time <= m_Clock + 0.02)
                     continue;
 
-                int target = TargetFor(note);
-                if (target < 0 || note.Time - m_TargetLast[target] < m_MinGap)
-                    continue;
+                Throw(TargetFor(note), note);
 
-                int pipe = PipeFor(target, note.Time);
-                if (pipe < 0)
-                    continue;
-
-                m_TargetLast[target] = note.Time;
-                m_Balls.Add(new RigShot { Target = target, Pipe = pipe, Hit = note.Time, Strength = note.Strength, Source = RigShotSource.Track, Voice = -1 });
+                // An accent in a tuned part is played by the part's partner as well.
+                if (note.Pitched && Accented(note))
+                    Throw(PartnerFor(note), note);
             }
         }
 
+        /// <summary>A ball at <paramref name="target"/> to strike as <paramref name="note"/> is heard, if the target has had its rest and a pipe can reach it.</summary>
+        void Throw(int target, RigNote note)
+        {
+            if (target < 0 || note.Time - m_TargetLast[target] < m_MinGap)
+                return;
+
+            int pipe = PipeFor(target, note.Time);
+            if (pipe < 0)
+                return;
+
+            m_TargetLast[target] = note.Time;
+            m_Balls.Add(new RigShot { Target = target, Pipe = pipe, Hit = note.Time, Strength = note.Strength, Source = RigShotSource.Track, Voice = -1 });
+        }
+
         /// <summary>
-        /// The instrument for a note: the drum for a drum part; for a tuned part, the bar or string of
-        /// that pitch class in its group, the octave nearest the last one it played so a line moves
-        /// like a line, or the nearest pitch class there is if the group has no such note.
+        /// The instrument for a note: the drum for a drum part, with tom fills walked down the toms and
+        /// the biggest drops on the gong; for a tuned part, the bar or string of that pitch class in
+        /// its group.
         /// </summary>
         int TargetFor(RigNote note)
         {
@@ -593,14 +645,104 @@ namespace VRShootingGallery.Pipes
             {
                 case RigLane.Kick: return m_DrumTarget[(int)RigDrum.Kick];
                 case RigLane.Snare: return m_DrumTarget[(int)RigDrum.Snare];
-                case RigLane.Tom: return m_DrumTarget[(int)RigDrum.Tom];
+                case RigLane.Tom: return TomFor(note);
                 case RigLane.HiHat: return m_DrumTarget[(int)RigDrum.HiHat];
-                case RigLane.Crash: return m_DrumTarget[(int)RigDrum.Crash];
+                case RigLane.Crash: return CrashFor(note);
             }
 
-            int group = note.Lane == RigLane.Bass ? (int)RigGroup.Bass : note.Lane == RigLane.Mid ? (int)RigGroup.Mallets : (int)RigGroup.Strings;
-            var list = m_GroupTargets[group];
-            if (list.Count == 0 || note.PitchClass < 0)
+            var group = note.Lane == RigLane.Bass ? RigGroup.Bass : note.Lane == RigLane.Mid ? RigGroup.Mallets : RigGroup.Strings;
+            return Tuned(group, note.PitchClass);
+        }
+
+        /// <summary>
+        /// Whether a tuned note stands out from its part: stronger, by <see cref="m_AccentMargin"/>,
+        /// than the part's recent notes. Every note of the part moves the average, so this follows
+        /// the music's own loud and quiet stretches.
+        /// </summary>
+        bool Accented(RigNote note)
+        {
+            int part = (int)note.Lane - (int)RigLane.Bass;
+            float average = m_PartAverage[part];
+            m_PartAverage[part] = Mathf.Lerp(average, note.Strength, 0.15f);
+            return note.Strength >= average + m_AccentMargin;
+        }
+
+        /// <summary>The partner's bar, string or chime for an accent — the guitar's for the bass line, the glockenspiel's for the mallets', the chimes' for the strings' — unless it doubled one just now.</summary>
+        int PartnerFor(RigNote note)
+        {
+            var group = note.Lane == RigLane.Bass ? RigGroup.Guitar : note.Lane == RigLane.Mid ? RigGroup.Glockenspiel : RigGroup.Chimes;
+            if (note.Time - m_PartnerLast[(int)group] < m_AccentGap)
+                return -1;
+
+            int target = Tuned(group, note.PitchClass);
+            if (target >= 0)
+                m_PartnerLast[(int)group] = note.Time;
+            return target;
+        }
+
+        /// <summary>
+        /// The tom for a tom hit. One on its own is the middle tom; hits within
+        /// <see cref="m_FillGap"/> of each other are a fill, which starts on the highest tom and walks
+        /// down. The score is read ahead, so whether a fill is starting is known at its first hit.
+        /// </summary>
+        int TomFor(RigNote note)
+        {
+            if (note.Time - m_LastTom <= m_FillGap)
+            {
+                m_TomStep = Mathf.Min(m_TomStep + 1, k_Toms.Length - 1);
+            }
+            else
+            {
+                m_TomStep = 1;
+                for (int i = m_NextNote; i < m_Notes.Count && m_Notes[i].Time - note.Time <= m_FillGap; i++)
+                {
+                    if (m_Notes[i].Lane == RigLane.Tom)
+                    {
+                        m_TomStep = 0;
+                        break;
+                    }
+                }
+            }
+
+            m_LastTom = note.Time;
+            int target = m_DrumTarget[(int)k_Toms[m_TomStep]];
+            return target >= 0 ? target : m_DrumTarget[(int)RigDrum.Tom];
+        }
+
+        /// <summary>The crash cymbal, or the gong for one of the track's biggest drops when the gong has rested.</summary>
+        int CrashFor(RigNote note)
+        {
+            int gong = m_DrumTarget[(int)RigDrum.Gong];
+            if (gong >= 0 && note.Strength >= m_BiggestDrop * m_GongShare && note.Time - m_LastGong >= m_GongRest)
+            {
+                m_LastGong = note.Time;
+                return gong;
+            }
+
+            return m_DrumTarget[(int)RigDrum.Crash];
+        }
+
+        /// <summary>Forgets the accents, fills and gong strikes of what played before: for a new track, a jump in it, or a change of mode.</summary>
+        void ResetParts()
+        {
+            for (int i = 0; i < m_PartAverage.Length; i++)
+                m_PartAverage[i] = 0.5f;
+            for (int i = 0; i < m_PartnerLast.Length; i++)
+                m_PartnerLast[i] = double.NegativeInfinity;
+            m_LastTom = double.NegativeInfinity;
+            m_TomStep = 1;
+            m_LastGong = double.NegativeInfinity;
+        }
+
+        /// <summary>
+        /// The bar, string or chime of <paramref name="pitchClass"/> in <paramref name="group"/>, the
+        /// octave nearest the last one the group played so a line moves like a line, or the nearest
+        /// pitch class there is if the group has no such note.
+        /// </summary>
+        int Tuned(RigGroup group, int pitchClass)
+        {
+            var list = m_GroupTargets[(int)group];
+            if (list.Count == 0 || pitchClass < 0)
                 return -1;
 
             for (int step = 0; step <= 6; step++)
@@ -610,10 +752,10 @@ namespace VRShootingGallery.Pipes
                 foreach (int i in list)
                 {
                     int midi = m_Targets[i].Midi;
-                    int away = (((midi - note.PitchClass) % 12) + 12) % 12;
+                    int away = (((midi - pitchClass) % 12) + 12) % 12;
                     if (away != step && 12 - away != step)
                         continue;
-                    int distance = Mathf.Abs(midi - m_PreviousMidi[group]);
+                    int distance = Mathf.Abs(midi - m_PreviousMidi[(int)group]);
                     if (distance < bestDistance)
                     {
                         best = i;
@@ -623,7 +765,7 @@ namespace VRShootingGallery.Pipes
 
                 if (best >= 0)
                 {
-                    m_PreviousMidi[group] = m_Targets[best].Midi;
+                    m_PreviousMidi[(int)group] = m_Targets[best].Midi;
                     return best;
                 }
             }

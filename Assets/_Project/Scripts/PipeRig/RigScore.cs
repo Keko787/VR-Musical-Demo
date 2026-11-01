@@ -378,7 +378,7 @@ namespace VRShootingGallery.Pipes
             int m_Hops;
             double m_BroadSum;
             readonly List<float> m_LongTerm = new();
-            readonly Queue<(int Hop, float Rise)> m_CrashCandidates = new();
+            readonly Queue<int> m_CrashCandidates = new();
             int m_LastCandidate = -100000;
             int m_LastCrash = -100000;
 
@@ -505,11 +505,8 @@ namespace VRShootingGallery.Pipes
                     Pick(decide);
 
                 // A crash candidate is judged once the second after it is in.
-                while (m_CrashCandidates.Count > 0 && m_CrashCandidates.Peek().Hop + window <= n)
-                {
-                    var (hop, rise) = m_CrashCandidates.Dequeue();
-                    JudgeCrash(hop, rise, n);
-                }
+                while (m_CrashCandidates.Count > 0 && m_CrashCandidates.Peek() + window <= n)
+                    JudgeCrash(m_CrashCandidates.Dequeue(), n);
             }
 
             /// <summary>Decides whether hop <paramref name="m"/> is an onset in each band, now that the hops after it are in.</summary>
@@ -537,7 +534,7 @@ namespace VRShootingGallery.Pipes
                 if ((kick > 0f || crack > 0f) && m - m_LastCandidate >= Mathf.RoundToInt(1f / HopSeconds))
                 {
                     m_LastCandidate = m;
-                    m_CrashCandidates.Enqueue((m, Mathf.Max(kick, crack)));
+                    m_CrashCandidates.Enqueue(m);
                 }
 
                 float hat = Onset(k_Hat, m);
@@ -591,8 +588,9 @@ namespace VRShootingGallery.Pipes
             /// <summary>
             /// A crash on a kick or snare that lands as the music jumps up — a drop, or a chorus coming
             /// in: the second after the hit is well louder than the quietest second of the three before it.
+            /// Its strength is how big that jump is, so the biggest drops can be told from the rest.
             /// </summary>
-            void JudgeCrash(int m, float rise, int now)
+            void JudgeCrash(int m, int now)
             {
                 if (m - m_LastCrash < Mathf.RoundToInt(4f / HopSeconds))
                     return;
@@ -604,11 +602,13 @@ namespace VRShootingGallery.Pipes
 
                 // m_LongTerm[i] is the second up to i, so the second after the hit is read at m + 1 s.
                 int after = Mathf.Min(now, m + Mathf.RoundToInt(1f / HopSeconds));
-                if (float.IsInfinity(quietest) || m_LongTerm[after] - quietest < 6f)
+                float jump = m_LongTerm[after] - quietest;
+                if (float.IsInfinity(quietest) || jump < 6f)
                     return;
 
+                // Given as a rise of jump − 2 dB: the least drop, 6 dB, is a strength of 0.35, and 12.5 dB or more is 1.
                 m_LastCrash = m;
-                Add(m, RigLane.Crash, rise + 3f, -1, k_Bands[k_Kick].Lag);
+                Add(m, RigLane.Crash, jump - 2f, -1, k_Bands[k_Kick].Lag);
             }
 
             void Add(int m, RigLane lane, float rise, int pitchLane, int lag)

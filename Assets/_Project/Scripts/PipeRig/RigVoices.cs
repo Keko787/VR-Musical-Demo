@@ -5,9 +5,10 @@ namespace VRShootingGallery.Pipes
 {
     /// <summary>
     /// The machine's own sounds, synthesised at load so they are tuned to exactly the notes the
-    /// builder lays out and nothing has to be recorded or bought: plucked strings by Karplus–Strong
-    /// (<see cref="PluckedStringSynth"/>, the harp's), mallet bars by a few decaying partials, and
-    /// the drums from swept sines, filtered noise and clangorous square waves.
+    /// builder lays out and nothing has to be recorded or bought: plucked strings and the guitar by
+    /// Karplus–Strong (<see cref="PluckedStringSynth"/>, the harp's), mallet bars, glockenspiel bars,
+    /// chimes and the gong by decaying partials at each one's own ratios, and the drums from swept
+    /// sines, filtered noise and clangorous square waves.
     /// </summary>
     /// <remarks>Rendering every voice takes a few tens of milliseconds, once, as the scene starts.</remarks>
     public static class RigVoices
@@ -31,16 +32,27 @@ namespace VRShootingGallery.Pipes
                     return PluckedStringSynth.Render(name, frequency, 2.6f, sampleRate, seed, 0.18f, 0.42f);
                 case RigGroup.Strings:
                     return PluckedStringSynth.Render(name, frequency, 2.2f, sampleRate, seed, 0.3f, 0.7f);
+                case RigGroup.Guitar:
+                    // Steel strings picked near the bridge: brighter than the harp's, the low ones ringing longest.
+                    return PluckedStringSynth.Render(name, frequency, Mathf.Lerp(3.2f, 2.2f, Mathf.InverseLerp(40f, 64f, target.Midi)),
+                        sampleRate, seed, 0.14f, 0.75f);
                 case RigGroup.Mallets:
                     return Mallet(name, frequency, sampleRate, seed);
+                case RigGroup.Glockenspiel:
+                    return Glockenspiel(name, frequency, sampleRate, seed);
+                case RigGroup.Chimes:
+                    return Chime(name, frequency, sampleRate, seed);
                 default:
                     return target.Drum switch
                     {
                         RigDrum.Kick => Kick(name, sampleRate, seed),
+                        RigDrum.RackTom => Tom(name, sampleRate, seed, 138f),
                         RigDrum.Tom => Tom(name, sampleRate, seed),
+                        RigDrum.FloorTom => Tom(name, sampleRate, seed, 70f),
                         RigDrum.Snare => Snare(name, sampleRate, seed),
                         RigDrum.HiHat => Metal(name, sampleRate, seed, 0.09f, 0.05f),
                         RigDrum.Crash => Metal(name, sampleRate, seed, 1.9f, 0.9f),
+                        RigDrum.Gong => Gong(name, sampleRate, seed),
                         _ => Tom(name, sampleRate, seed),
                     };
             }
@@ -107,10 +119,14 @@ namespace VRShootingGallery.Pipes
             return Finish(name, samples, sampleRate, 0.0005f);
         }
 
-        /// <summary>A tom: a shorter sweep, higher, with a little skin noise.</summary>
-        public static AudioClip Tom(string name, int sampleRate, int seed)
+        /// <summary>
+        /// A tom: a shorter sweep than the kick's, higher, settling on <paramref name="pitch"/> Hz, with
+        /// a little skin noise. A bigger, lower tom rings longer.
+        /// </summary>
+        public static AudioClip Tom(string name, int sampleRate, int seed, float pitch = 98f)
         {
-            int total = Mathf.CeilToInt(0.75f * sampleRate);
+            float ring = 0.3f * Mathf.Sqrt(98f / pitch);
+            int total = Mathf.CeilToInt(2.5f * ring * sampleRate);
             var samples = new float[total];
             var rng = new System.Random(seed);
             float phase = 0f;
@@ -118,14 +134,153 @@ namespace VRShootingGallery.Pipes
             for (int n = 0; n < total; n++)
             {
                 float t = n / (float)sampleRate;
-                float f = 98f + 70f * Mathf.Exp(-t / 0.07f);
+                float f = pitch * (1f + 0.71f * Mathf.Exp(-t / 0.07f));
                 phase += 2f * Mathf.PI * f / sampleRate;
                 float white = (float)(rng.NextDouble() * 2.0 - 1.0);
                 low += 0.3f * (white - low);
-                samples[n] = Mathf.Sin(phase) * Mathf.Exp(-t / 0.3f) + low * 0.35f * Mathf.Exp(-t / 0.05f);
+                samples[n] = Mathf.Sin(phase) * Mathf.Exp(-t / ring) + low * 0.35f * Mathf.Exp(-t / 0.05f);
             }
 
             return Finish(name, samples, sampleRate, 0.0005f);
+        }
+
+        /// <summary>
+        /// A glockenspiel bar: steel, so it rings long and bright, with the overtones of a bar free at
+        /// both ends (2.76 and 5.40 times the note), which a glockenspiel's bars are not tuned away
+        /// from as a marimba's are, and a hard tick where the ball lands.
+        /// </summary>
+        public static AudioClip Glockenspiel(string name, float frequency, int sampleRate, int seed)
+        {
+            const float ring = 1.6f;
+            int total = Mathf.CeilToInt((ring * 2.2f + 0.05f) * sampleRate);
+            var samples = new float[total];
+
+            float[] ratio = { 1f, 2.76f, 5.4f };
+            float[] level = { 1f, 0.25f, 0.08f };
+            float[] decay = { ring, ring * 0.2f, ring * 0.06f };
+            var gain = Partials(frequency, ratio, level, decay, sampleRate, out var fall);
+
+            var rng = new System.Random(seed);
+            float tick = 0f;
+            float previous = 0f;
+            for (int n = 0; n < total; n++)
+            {
+                float t = n / (float)sampleRate;
+                float s = 0f;
+                for (int k = 0; k < ratio.Length; k++)
+                {
+                    s += gain[k] * Mathf.Sin(2f * Mathf.PI * frequency * ratio[k] * t);
+                    gain[k] *= fall[k];
+                }
+
+                // The tick: a millisecond or two of noise with the low end taken out.
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                tick = 0.7f * (tick + white - previous);
+                previous = white;
+                s += 0.2f * tick * Mathf.Exp(-t / 0.0015f);
+
+                samples[n] = s;
+            }
+
+            return Finish(name, samples, sampleRate, 0.0005f);
+        }
+
+        /// <summary>
+        /// A tubular chime. A tube's own modes are far from harmonic, but the ones that carry, high up,
+        /// sit close to 2 : 3 : 4, and the ear hears the note they imply — the strike note, an octave
+        /// under the lowest of them. So the note is built from those, each a hair off its neighbour so
+        /// the tube shimmers, ringing for seconds, over a quickly gone metallic clang.
+        /// </summary>
+        public static AudioClip Chime(string name, float frequency, int sampleRate, int seed)
+        {
+            const float ring = 3.2f;
+            int total = Mathf.CeilToInt(ring * 1.6f * sampleRate);
+            var samples = new float[total];
+
+            float[] ratio = { 1f, 2f, 3.01f, 4.17f, 5.43f, 6.8f };
+            float[] level = { 0.35f, 1f, 0.7f, 0.45f, 0.25f, 0.15f };
+            float[] decay = { ring, ring * 0.9f, ring * 0.7f, ring * 0.45f, ring * 0.2f, ring * 0.1f };
+            var gain = Partials(frequency, ratio, level, decay, sampleRate, out var fall);
+
+            var rng = new System.Random(seed);
+            float clang = 0f;
+            for (int n = 0; n < total; n++)
+            {
+                float t = n / (float)sampleRate;
+                float s = 0f;
+                for (int k = 0; k < ratio.Length; k++)
+                {
+                    float f = frequency * ratio[k];
+                    s += gain[k] * Mathf.Sin(2f * Mathf.PI * f * t);
+                    gain[k] *= fall[k];
+                }
+
+                // The shimmer: the strike-note partials beat against a twin a fraction of a hertz away.
+                s += 0.4f * gain[1] * Mathf.Sin(2f * Mathf.PI * (frequency * 2f + 0.7f) * t);
+                s += 0.3f * gain[2] * Mathf.Sin(2f * Mathf.PI * (frequency * 3.01f + 1.1f) * t);
+
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                clang += 0.6f * (white - clang);
+                s += 0.3f * clang * Mathf.Exp(-t / 0.006f);
+
+                samples[n] = s;
+            }
+
+            return Finish(name, samples, sampleRate, 0.001f);
+        }
+
+        /// <summary>
+        /// A gong: a low hum and a cluster of inharmonic partials above it, each a little detuned at
+        /// random. The struck boss gives a soft thump; the higher partials take a moment to bloom and
+        /// then shimmer away over several seconds, which is the swell a gong is known for.
+        /// </summary>
+        public static AudioClip Gong(string name, int sampleRate, int seed)
+        {
+            const float ring = 4.5f;
+            const float root = 82f;
+            int total = Mathf.CeilToInt(ring * 1.5f * sampleRate);
+            var samples = new float[total];
+
+            float[] ratio = { 1f, 1.48f, 1.97f, 2.53f, 3.12f, 3.75f, 4.41f, 5.2f, 6.1f, 7.3f };
+            var rng = new System.Random(seed);
+            var level = new float[ratio.Length];
+            var decay = new float[ratio.Length];
+            var bloom = new float[ratio.Length];
+            for (int k = 0; k < ratio.Length; k++)
+            {
+                ratio[k] *= 1f + 0.012f * (float)(rng.NextDouble() * 2.0 - 1.0);
+                level[k] = 1f / (1f + 0.35f * k);
+                decay[k] = ring / (1f + 0.25f * k);
+
+                // The low partials sound at once; the higher, the later they bloom, and the sooner they go.
+                bloom[k] = Mathf.Exp(-1f / ((0.05f + 0.06f * k) * sampleRate));
+            }
+
+            var gain = Partials(root, ratio, level, decay, sampleRate, out var fall);
+            var unbloomed = new float[ratio.Length];
+            for (int k = 0; k < ratio.Length; k++)
+                unbloomed[k] = 1f;
+
+            float low = 0f;
+            for (int n = 0; n < total; n++)
+            {
+                float t = n / (float)sampleRate;
+                float s = 0f;
+                for (int k = 0; k < ratio.Length; k++)
+                {
+                    s += gain[k] * (1f - unbloomed[k]) * Mathf.Sin(2f * Mathf.PI * root * ratio[k] * t);
+                    gain[k] *= fall[k];
+                    unbloomed[k] *= bloom[k];
+                }
+
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                low += 0.08f * (white - low);
+                s += 1.2f * low * Mathf.Exp(-t / 0.04f);
+
+                samples[n] = s;
+            }
+
+            return Finish(name, samples, sampleRate, 0.002f);
         }
 
         /// <summary>A snare: a short drum tone under a burst of bright noise, the wires.</summary>
@@ -196,6 +351,24 @@ namespace VRShootingGallery.Pipes
             }
 
             return Finish(name, samples, sampleRate, 0.0005f);
+        }
+
+        /// <summary>
+        /// Each partial's starting level and what it is multiplied by every sample to die away over its
+        /// decay: cheaper than an exponential per sample, for voices with many partials ringing for
+        /// seconds. A partial over the clip's highest frequency starts silent.
+        /// </summary>
+        static float[] Partials(float frequency, float[] ratio, float[] level, float[] decay, int sampleRate, out float[] fall)
+        {
+            var gain = new float[ratio.Length];
+            fall = new float[ratio.Length];
+            for (int k = 0; k < ratio.Length; k++)
+            {
+                gain[k] = frequency * ratio[k] < sampleRate * 0.45f ? level[k] : 0f;
+                fall[k] = Mathf.Exp(-1f / (Mathf.Max(0.001f, decay[k]) * sampleRate));
+            }
+
+            return gain;
         }
 
         /// <summary>A ramp in, a fade over the last tenth so the clip ends silent, a peak normalise, and the clip.</summary>
