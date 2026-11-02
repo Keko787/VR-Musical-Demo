@@ -127,8 +127,9 @@ namespace VRShootingGallery.AnimalOrchestra
             {
                 string side = s < 0f ? "L" : "R";
                 kit.Ball(m_Head, "Face_" + side, new Vector3(0.040f * s, 0.035f, 0.030f), new Vector3(0.035f, 0.055f, 0.06f), white);
-                kit.Ball(m_Head, "Eye_" + side, new Vector3(0.055f * s, 0.050f, 0.035f), Vector3.one * 0.02f, charcoal);
-                kit.Ball(m_Head, "Eye_Glint_" + side, new Vector3(0.062f * s, 0.056f, 0.042f), Vector3.one * 0.007f, Color.white);
+                // Set into the front of the white patch, so the eye is framed by it from the front and the side.
+                kit.Ball(m_Head, "Eye_" + side, new Vector3(0.047f * s, 0.045f, 0.050f), Vector3.one * 0.02f, charcoal);
+                kit.Ball(m_Head, "Eye_Glint_" + side, new Vector3(0.051f * s, 0.050f, 0.057f), Vector3.one * 0.007f, Color.white);
             }
 
             // Hooked upper beak, pale with a dark tip; the lower beak hangs from its own hinge.

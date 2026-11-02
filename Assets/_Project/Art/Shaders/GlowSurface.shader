@@ -118,7 +118,10 @@ Shader "VRMusic/Glow Surface"
 
                 // Premultiplied: body light weighted by its opacity, rim and emission added on top.
                 half3 color = baseColor.rgb * (body * (0.35h + ambient) + rim) + emission;
-                half alpha = saturate(body + rim * 0.5h);
+                // The rim covers what is behind it only as much as it has colour of its own, so an emission-only
+                // part with its glow off (the woodpecker's peck spot) is truly invisible, not a dark ring.
+                half rimCover = rim * 0.5h * max(baseColor.r, max(baseColor.g, baseColor.b));
+                half alpha = saturate(body + rimCover);
 
                 color = MixFog(color, IN.fogFactor);
                 return half4(color, alpha);

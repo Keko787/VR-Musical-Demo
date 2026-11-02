@@ -92,6 +92,12 @@ namespace VRShootingGallery.EditorTools
         /// <summary>Least distance between a wall animal and the glass, metres.</summary>
         const float k_WallClearance = 0.1f;
 
+        // The conductor's wand buttons, set on every build: a rebuild keeps the conductor component, and with
+        // it whatever buttons an older build saved — 3 and 2 before the view modes took 1–3, which made wand 2
+        // switch to 2D and toggle low intensity at once.
+        const int k_NextSongButton = 4;
+        const int k_LowIntensityButton = 6;
+
         static readonly Color k_Bank = new(0.17f, 0.23f, 0.15f);
         static readonly Color k_HillNear = new(0.12f, 0.10f, 0.19f);
         static readonly Color k_HillFar = new(0.09f, 0.08f, 0.15f);
@@ -182,11 +188,13 @@ namespace VRShootingGallery.EditorTools
             new("Starling_Flock", typeof(StarlingFlock), Part.Arp, false, b => Vector3.zero, Facing.Room),
             new("Fireflies", typeof(FireflySwarm), Part.Texture, false, b => Vector3.zero, Facing.Room),
 
-            new("Parrot", typeof(ParrotPerformer), Part.Vocal, true, b => new Vector3(-0.30f, 0f, 0.50f), Facing.Viewer),
-            new("Bullfrog", typeof(BullfrogPerformer), Part.Bass, true, b => new Vector3(-0.62f, 0f, 0.05f), Facing.Viewer),
-            new("Woodpecker", typeof(WoodpeckerPerformer), Part.HiHat, true, b => new Vector3(0.66f, 0f, 0.12f), Facing.Profile),
-            new("Jellyfish", typeof(JellyfishPerformer), Part.Pads, true, b => Vector3.zero, Facing.Room),
-            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.10f, 0f, 0.15f), Facing.Viewer),
+            // The inner five where Kevin placed them by hand in the scene (2026-11-02). Their yaws are the ones
+            // they had there, kept as they are, so they no longer turn to face the default eye from their new spots.
+            new("Parrot", typeof(ParrotPerformer), Part.Vocal, true, b => new Vector3(-0.656f, 0f, 0.42f), Facing.Yaw, 160.56f),
+            new("Bullfrog", typeof(BullfrogPerformer), Part.Bass, true, b => new Vector3(-0.634f, 0f, -0.571f), Facing.Yaw, 122.829f),
+            new("Woodpecker", typeof(WoodpeckerPerformer), Part.HiHat, true, b => new Vector3(0.826f, 0f, 0.485f), Facing.Yaw, 144.545f),
+            new("Jellyfish", typeof(JellyfishPerformer), Part.Pads, true, b => new Vector3(0.098f, 0f, 0.13f), Facing.Room),
+            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Yaw, -168.69f),
         };
 
         // ================================================================== menus
@@ -269,6 +277,11 @@ namespace VRShootingGallery.EditorTools
             var conductor = root.GetComponent<OrchestraConductor>();
             if (conductor == null)
                 conductor = Undo.AddComponent<OrchestraConductor>(root.gameObject);
+
+            var conductorSettings = new SerializedObject(conductor);
+            conductorSettings.FindProperty("m_NextSongButton").intValue = k_NextSongButton;
+            conductorSettings.FindProperty("m_LowIntensityButton").intValue = k_LowIntensityButton;
+            conductorSettings.ApplyModifiedProperties();
 
             kit.Floor = BuildWater(root, kit.Box, waterMaterial);
             BuildLagoon(root, kit.Box, waterMaterial);
@@ -368,16 +381,30 @@ namespace VRShootingGallery.EditorTools
                 Whale = whale,
                 Firefly = firefly,
                 Starling = starling,
-                Sphere = Resources.GetBuiltinResource<Mesh>("Sphere.fbx"),
-                Capsule = Resources.GetBuiltinResource<Mesh>("Capsule.fbx"),
-                Cylinder = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx"),
-                Cube = Resources.GetBuiltinResource<Mesh>("Cube.fbx"),
+                Sphere = PrimitiveMesh(PrimitiveType.Sphere),
+                Capsule = PrimitiveMesh(PrimitiveType.Capsule),
+                Cylinder = PrimitiveMesh(PrimitiveType.Cylinder),
+                Cube = PrimitiveMesh(PrimitiveType.Cube),
                 Cone = SaveMesh(BuildCone(24), "Cone"),
                 Bell = SaveMesh(BuildBell(24, 10), "Bell"),
                 Room = room,
                 Box = box,
                 ViewerEye = new Vector3(box.CentreX, k_ViewerEyeHeight, k_ViewerZ),
             };
+        }
+
+        /// <summary>
+        /// The mesh Unity's own primitive of that type uses: diameter 1, and a capsule or cylinder 2 long, as
+        /// every animal is designed against. Not <c>Resources.GetBuiltinResource&lt;Mesh&gt;("Sphere.fbx")</c>
+        /// and its kin: those are older meshes twice the size (a sphere of radius 1), which swelled every
+        /// part to double and buried the animals' eyes, beaks and limbs inside their own bodies.
+        /// </summary>
+        static Mesh PrimitiveMesh(PrimitiveType type)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            var mesh = go.GetComponent<MeshFilter>().sharedMesh;
+            Object.DestroyImmediate(go);
+            return mesh;
         }
 
         /// <summary>A cone along +Y: base diameter 1 at y = 0, apex at y = 1, smooth sides and a capped base.</summary>
@@ -401,10 +428,13 @@ namespace VRShootingGallery.EditorTools
                 normals.Add(normal);
             }
 
+            // Base, next base, apex: the order that faces outward in Unity (the angle runs from +Z toward +X).
+            // The other order turned the cone inside out, so from outside only its far half drew, and a
+            // cone seen tip-on — a beak pointed at the viewer — did not draw at all.
             for (int i = 0; i < segments; i++)
             {
                 int b0 = 2 * i, a0 = b0 + 1, b1 = b0 + 2;
-                triangles.Add(b0); triangles.Add(a0); triangles.Add(b1);
+                triangles.Add(b0); triangles.Add(b1); triangles.Add(a0);
             }
 
             int centre = positions.Count;

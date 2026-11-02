@@ -286,7 +286,8 @@ namespace VRShootingGallery.AnimalOrchestra
             }
 
             // Tail: back along the rock, tip curling up.
-            m_Tails[w] = kit.Limb(wolf, "Tail", new Vector3(0f, 0.07f, -0.19f), new Vector3(70f, 0f, 0f), 0.17f, 0.07f, k_Fur);
+            // The tail's fur runs 3 cm past the tip's joint, so the pale tip grows out of it.
+            m_Tails[w] = kit.Limb(wolf, "Tail", new Vector3(0f, 0.07f, -0.19f), new Vector3(70f, 0f, 0f), 0.2f, 0.07f, k_Fur);
             kit.Limb(m_Tails[w], "Tail_Tip", new Vector3(0f, -0.17f, 0f), new Vector3(20f, 0f, 0f), 0.13f, 0.06f, k_FurLight);
 
             // Neck → head → jaw: the howl lifts the neck and tilts the head, the jaw opens with the sound.

@@ -38,7 +38,8 @@ namespace VRShootingGallery.AnimalOrchestra
 
         // Pitch of each joint (degrees about its X; positive bends down). Resting: draped over the pedestal's
         // edge with the tip curled out. Playing: raised and curling up toward the viewer.
-        static readonly float[] k_Rest = { 8f, 6f, 30f, 30f, 18f, 0f, -25f, -35f };
+        // The first two stay nearly level so an arm clears the rim's edge (by about 1.4 cm) before it bends down.
+        static readonly float[] k_Rest = { 4f, 4f, 34f, 32f, 18f, 0f, -25f, -35f };
         static readonly float[] k_Play = { -35f, -15f, -10f, -5f, 0f, 5f, 10f, 15f };
 
         [Header("Playing")]
@@ -144,7 +145,7 @@ namespace VRShootingGallery.AnimalOrchestra
                 place[a] = sweep < 0f ? sweep + 360f : sweep;
 
                 var parent = octopus;
-                var position = new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians)) * 0.075f + new Vector3(0f, 0.045f, 0f);
+                var position = new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians)) * 0.075f + new Vector3(0f, 0.06f, 0f);
                 for (int k = 0; k < k_Segments; k++)
                 {
                     float length = k_SegmentLength[k];

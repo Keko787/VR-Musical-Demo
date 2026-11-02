@@ -4,20 +4,20 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The pads: three jellyfish drifting overhead and forward, toward the front wall. Each chord change
+    /// The pads: three jellyfish drifting in the room — one high by the left wall, one lower by the right,
+    /// one at chest height in front of the viewer, where Kevin placed them. Each chord change
     /// makes every bell contract — a quick squeeze, a slow release — and the squeeze lifts the jelly a
     /// few centimetres before it sinks back; between chords the bells throb with the pad's envelope. Their
     /// colour is the chord's: the root's pitch class picks the hue, so the harmony is visible as the
-    /// colour of the room's ceiling.
+    /// colour of the jellies.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Why overhead, and why not straight overhead.</b> Pads are slow and forgiving of parallax error,
-    /// so they go where the stereo is weakest. But the CAVE has no ceiling screen: a jelly straight above
-    /// the viewer would be drawn on no screen at all. These sit forward, high enough to read as overhead
-    /// but low enough that the line from the viewer's default eye through each bell's crown still lands
-    /// on the front wall — the root position is the bell's rim at the top of its lift, and nothing rises
-    /// above it, so the crowns stay at or under about 2.05 m.
+    /// <b>Why never straight overhead.</b> The plan hangs the pads overhead, but the CAVE has no ceiling
+    /// screen: a jelly straight above the viewer would be drawn on no screen at all. A jelly up high has
+    /// to stay low enough that the line from the viewer's eye through its crown still lands on a wall — the
+    /// position is the bell's rim at the top of its lift, and nothing rises above it. The ones placed now
+    /// keep their crowns under about 1.9 m.
     /// </para>
     /// <para>
     /// <b>Why beads for tentacles.</b> A chain of small glowing spheres sways as a chain of joints and
@@ -50,13 +50,18 @@ namespace VRShootingGallery.AnimalOrchestra
         // "Overhead" in a CAVE has a ceiling: there is no screen above, so a crown is seen only while the
         // line from the eye through it still lands on the front wall. The nearer a jelly is to the viewer,
         // the lower it has to hang; these clear the wall's top edge for eyes from 1.5 to 1.75 m.
-        [SerializeField, Tooltip("Rim centres at the top of each jelly's lift, room coordinates. Used by Build. Keep the " +
-            "nearer ones lower: higher, and their crowns pass over the top of the front wall and vanish.")]
+        // These are where Kevin placed the jellies by hand in the scene (2026-11-02): one high by the left
+        // wall, one lower by the right, and one at chest height just in front of the viewer's spot. Each
+        // jelly can still be dragged in the scene afterwards: at runtime it moves about wherever it was left,
+        // not about these.
+        [SerializeField, Tooltip("Rim centres at the top of each jelly's lift, in this object's frame. Used by Build; " +
+            "at runtime each jelly moves about where it stands in the scene. Keep the nearer ones lower: higher, and " +
+            "their crowns pass over the top of the front wall and vanish.")]
         Vector3[] m_Positions =
         {
-            new(-0.5f, 1.74f, 0.52f),
-            new(0.4f, 1.82f, 0.70f),
-            new(-0.05f, 1.88f, 0.90f),
+            new(-1.462f, 1.74f, 0.595f),
+            new(1.231f, 1.323f, 0.598f),
+            new(0f, 1.141f, -0.075f),
         };
 
         [SerializeField, Range(0.1f, 0.5f), Tooltip("Bell diameter, metres. Used by Build.")]
@@ -103,7 +108,23 @@ namespace VRShootingGallery.AnimalOrchestra
         readonly float[] m_Pulse = new float[3];
         readonly Color[] m_Colours = { new(0.45f, 0.8f, 1f), new(0.45f, 0.8f, 1f), new(0.45f, 0.8f, 1f) };
 
+        // Where each jelly's lift tops out, taken from where it stands when the scene starts, so a jelly
+        // moved by hand in the scene stays where it was put rather than snapping back to m_Positions.
+        Vector3[] m_Base;
+
         float m_Live;
+
+        void Awake()
+        {
+            if (m_Jellies == null)
+                return;
+
+            m_Base = new Vector3[m_Jellies.Length];
+            for (int j = 0; j < m_Jellies.Length; j++)
+                m_Base[j] = m_Jellies[j] != null
+                    ? m_Jellies[j].localPosition + Vector3.up * m_Rise
+                    : m_Positions[Mathf.Min(j, m_Positions.Length - 1)];
+        }
 
         // ================================================================== body
 
@@ -164,7 +185,9 @@ namespace VRShootingGallery.AnimalOrchestra
                         var position = k == 0 ? at : new Vector3(0f, -k_TentacleSegment, 0f);
                         var joint = kit.Node(parent, $"Tentacle_{t}_{k}", position, k == 0 ? new Vector3(0f, yaw, 0f) : Vector3.zero);
                         float size = Mathf.Lerp(0.024f, 0.009f, k / (float)(k_TentacleBeads - 1));
-                        AddTint(kit.Glowing(joint, "Bead", kit.Sphere, Vector3.zero, Vector3.one * size,
+                        // Stretched along the tentacle to a little more than the spacing, so neighbours overlap
+                        // into one strand.
+                        AddTint(kit.Glowing(joint, "Bead", kit.Sphere, Vector3.zero, new Vector3(size, k_TentacleSegment * 1.2f, size),
                             new Color(colour.r, colour.g, colour.b, 0.5f), colour), j, 0.5f, 1.2f);
 
                         joints.Add(joint);
@@ -250,7 +273,7 @@ namespace VRShootingGallery.AnimalOrchestra
                 // The squeeze lifts it to its position; it sinks back as the bell relaxes, and bobs a
                 // little — only ever downward, so the crown never rises past where Build put it.
                 float bob = 0.01f * (0.5f + 0.5f * Motion.Wave(Clock, 0.13f, j * 0.4f));
-                var position = m_Positions[Mathf.Min(j, m_Positions.Length - 1)];
+                var position = m_Base != null && j < m_Base.Length ? m_Base[j] : m_Positions[Mathf.Min(j, m_Positions.Length - 1)];
                 m_Jellies[j].localPosition = position + Vector3.up * (m_Rise * (pulse - 1f) - bob);
             }
 

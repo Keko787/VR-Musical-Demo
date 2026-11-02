@@ -360,8 +360,10 @@ namespace VRShootingGallery.AnimalOrchestra
             var at = Vector3.zero;
             for (int i = 0; i < k_TrunkLength.Length; i++)
             {
-                var joint = kit.Limb(parent, $"Trunk_{i}", at, new Vector3(k_TrunkRest[i], 0f, 0f), k_TrunkLength[i],
-                    k_TrunkThickness[i], k_Skin);
+                // Each segment runs a little past the next joint, so the trunk is one smooth length that bends,
+                // not a string of beads.
+                var joint = kit.Limb(parent, $"Trunk_{i}", at, new Vector3(k_TrunkRest[i], 0f, 0f),
+                    k_TrunkLength[i] + k_TrunkThickness[i] * 0.7f, k_TrunkThickness[i], k_Skin);
                 m_Trunk[i] = joint;
                 parent = joint;
                 at = new Vector3(0f, -k_TrunkLength[i], 0f);

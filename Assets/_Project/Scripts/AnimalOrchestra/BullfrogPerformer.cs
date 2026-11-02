@@ -94,13 +94,23 @@ namespace VRShootingGallery.AnimalOrchestra
             kit.Ball(m_Frog, "Head", new Vector3(0f, 0.09f, 0.08f), new Vector3(0.22f, 0.11f, 0.16f), skin);
             kit.Ball(m_Frog, "Mouth", new Vector3(0f, 0.079f, 0.148f), new Vector3(0.17f, 0.012f, 0.03f), mouth);
 
-            var spots = new[]
-            {
-                new Vector3(-0.05f, 0.14f, -0.05f), new Vector3(0.06f, 0.138f, -0.02f), new Vector3(0f, 0.145f, -0.09f),
-                new Vector3(-0.08f, 0.12f, -0.11f), new Vector3(0.085f, 0.12f, -0.1f),
-            };
+            // Spots sit on the body's curve, each turned to lie along the skin there: given across and along
+            // the back, the height and the tilt come from the body's ellipsoid, so none floats off it.
+            var bodyCentre = new Vector3(0f, 0.075f, -0.03f);
+            var bodyRadii = new Vector3(0.12f, 0.07f, 0.12f);
+            var spots = new[] { new Vector2(-0.05f, -0.05f), new Vector2(0.06f, -0.02f), new Vector2(0f, -0.09f),
+                new Vector2(-0.075f, -0.10f), new Vector2(0.08f, -0.09f) };
             for (int i = 0; i < spots.Length; i++)
-                kit.Ball(m_Frog, $"Spot_{i}", spots[i], new Vector3(0.05f, 0.015f, 0.045f), spot, new Vector3(0f, i * 40f, 0f));
+            {
+                float u = spots[i].x / bodyRadii.x, w = (spots[i].y - bodyCentre.z) / bodyRadii.z;
+                float y = bodyCentre.y + bodyRadii.y * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u - w * w)) - 0.001f;
+                var at = new Vector3(spots[i].x, y, spots[i].y);
+                var d = at - bodyCentre;
+                var normal = new Vector3(d.x / (bodyRadii.x * bodyRadii.x), d.y / (bodyRadii.y * bodyRadii.y),
+                    d.z / (bodyRadii.z * bodyRadii.z)).normalized;
+                var lie = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0f, i * 40f, 0f);
+                kit.Ball(m_Frog, $"Spot_{i}", at, new Vector3(0.05f, 0.012f, 0.045f), spot, lie.eulerAngles);
+            }
 
             // Folded hind legs and broad feet, and front legs propping the chest up.
             foreach (float s in new[] { -1f, 1f })

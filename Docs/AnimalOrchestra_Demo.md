@@ -18,10 +18,10 @@ seen from above, front wall at the top            hills on the horizon, the suns
                             ELEPHANT, wading (1 m beyond the wall)         moon, far out
               ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈ rippling water runs in under the wall ≈≈≈≈≈≈≈≈
  GORILLA    ┌────────────────────────── front wall ───────────────────────┐   ridge,
- on a bank  │            jellyfish ~  ~  ~ (overhead, forward)            │   WOLVES
- (beyond    │                  parrot                                     │   (beyond
- the left   │     bullfrog             octopus           woodpecker       │   the right
- wall)      │                    ◉ viewer                                 │   wall)
+ on a bank  │ jellyfish ~ (high)                     jellyfish ~ (lower)  │   WOLVES
+ (beyond    │          parrot                        woodpecker           │   (beyond
+ the left   │                       jellyfish ~ (chest height)            │   the right
+ wall)      │      bullfrog         ◉ viewer                 octopus      │   wall)
             │         ~~~~~~~~~~~ WHALE in the water ~~~~~~~~~~~          │
             └──────────────────── open back: audience ────────────────────┘
        still lagoon all round, out to the horizon; fireflies in the room
@@ -52,11 +52,11 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Wolf_Pack           WolfPackPerformer     Choir     beyond the right wall: ridge, three wolves, the moon far out, ×1.15
 ├── Starling_Flock      StarlingFlock         Arp       the sky 1.2 m beyond the front wall
 ├── Fireflies           FireflySwarm          Texture   every free surface; the idle state
-├── Parrot              ParrotPerformer       Vocal     eye level, nearest the front wall, on a stand
-├── Bullfrog            BullfrogPerformer     Bass      waist height, left of the viewer, on a stump
-├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, right of the viewer, on a trunk
-├── Jellyfish           JellyfishPerformer    Pads      overhead (three)
-└── Octopus             OctopusPerformer      Keys      low centre, on a pedestal
+├── Parrot              ParrotPerformer       Vocal     eye level, front left, on a stand
+├── Bullfrog            BullfrogPerformer     Bass      waist height, left, beside the viewer's spot, on a stump
+├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
+├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
+└── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
 
 CAVE_User_Room/CAVE_View    3D / 2D / 2D-Fixed on wand buttons 1–3 (CAVE_View_Modes.md)
 ```
@@ -270,7 +270,15 @@ eyes.
 
 The jellyfish are why the visibility check exists. "Overhead" in this CAVE has a ceiling: a crown is
 seen only while the line from the eye through it still lands on the front wall, so the nearer a jelly
-is to the viewer, the lower it has to hang. Their heights were set by this rule.
+is to the viewer, the lower it has to hang. Their first heights were set by this rule; where they hang
+now was chosen by hand, and still passes it.
+
+**The inner five were placed by hand** in the scene (Kevin, 2026-11-02) and saved into the builder as
+they stood, rotations included, so they no longer turn to face the default eye. The bullfrog and the
+octopus now stand beside the default spot, a little behind it, where the CAVE has no back screen: from
+that spot the room check finds parts of them out of sight. The jellies are no longer overhead: one hangs
+high by the left wall, one lower by the right, and one at chest height 40 cm in front of the viewer's
+spot. They can be dragged in the scene too; each moves about wherever it was left.
 
 The tracked viewer's default spot is 35 cm behind the room centre, so the inner volume is in front of
 them. The inner animals are fixed in room coordinates and don't follow the head, so if the tracker

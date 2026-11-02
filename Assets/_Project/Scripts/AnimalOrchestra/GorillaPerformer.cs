@@ -323,6 +323,9 @@ namespace VRShootingGallery.AnimalOrchestra
             string side = s < 0f ? "L" : "R";
             shoulder = kit.Limb(m_Body, "Arm_" + side, new Vector3(k_Shoulder.x * s, k_Shoulder.y, k_Shoulder.z), Vector3.zero, k_UpperArm, 0.17f, k_Fur);
             elbow = kit.Limb(shoulder, "Forearm_" + side, new Vector3(0f, -k_UpperArm, 0f), Vector3.zero, k_Forearm, 0.15f, k_Fur);
+
+            // A ball at the elbow closes the gap the two capsules leave whenever the arm bends.
+            kit.Ball(shoulder, "Elbow_" + side, new Vector3(0f, -k_UpperArm, 0f), Vector3.one * 0.165f, k_Fur);
             kit.Ball(elbow, "Fist_" + side, new Vector3(0f, -k_Forearm, 0f), new Vector3(0.17f, 0.15f, 0.17f), k_Hand);
         }
     }
