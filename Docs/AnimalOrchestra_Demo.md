@@ -8,6 +8,8 @@ glasses. Five more stand in a bounded volume within arm's reach of the tracked v
 stereo pays off. Between songs, fireflies fill the room, so the demo can run unattended as the idle
 state for open houses and school groups. For the audience there are Sit-Rep-CAVE's three views,
 **3D**, **2D** and **2D-Fixed**, on wand buttons 1–3 ([CAVE_View_Modes.md](CAVE_View_Modes.md)).
+The **visualize mode**, joystick right, has the animals play the room's own music folder instead,
+reading each track's parts off its mix ([The music folder](#the-music-folder-the-visualize-mode)).
 
 Built from *Animal Orchestra: CAVE Build and Plan* (Nov 2026). It covers all five of the plan's
 phases in code. Each phase gate is still to be passed **in the room**; see [Against the plan](#against-the-plan).
@@ -56,7 +58,9 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Bullfrog            BullfrogPerformer     Bass      waist height, left, beside the viewer's spot, on a stump
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
-└── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
+├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
+└── Menu                OrchestraTrackMenu: the music folder's tracks on the front wall, hidden until
+                        the joystick brings it up; on the CaveOverlay layer
 
 CAVE_User_Room/CAVE_View    3D / 2D / 2D-Fixed on wand buttons 1–3 (CAVE_View_Modes.md)
 ```
@@ -116,7 +120,9 @@ the animals edges their silhouettes.
 ## The songs
 
 The plan leaves the songs open (*"pick two or three demo songs with clean stems and MIDI"*), and the
-music folder the other rooms play has neither stems nor MIDI, so the demo brings its own. It has three lab-made songs, written note by note in `DemoSongs.cs` and
+music folder the other rooms play has neither stems nor MIDI, so the demo brings its own (and its
+visualize mode reads the folder's tracks off their mixes, [below](#the-music-folder-the-visualize-mode)).
+It has three lab-made songs, written note by note in `DemoSongs.cs` and
 synthesised by `SongSynth.cs`, so there is nothing to license and nothing to load:
 
 | Song | Key, tempo | Character | Parts |
@@ -172,6 +178,53 @@ support SMPTE time division, which no DAW exports by default. It was checked aga
 with a tempo change, running status, velocity-0 note-offs and overlapping notes of one pitch. **No
 real song folder has been run yet**, so the first one is worth watching in the Console.
 
+### The music folder: the visualize mode
+
+The other music rooms' tracks (`Assets/_Project/Audio/Music`) are finished mixes, with no stems and no
+MIDI. The visualize mode plays them anyway, and reads every part off the mix (`MixedSong.cs`):
+
+- **The notes** are the pipe rig's score (`RigScore`, the pipe rig's Visualize mode), which turns a mix
+  into onsets per band, with a pitch class for the tuned ones. They are dealt out like this:
+
+  | The score finds | Goes to |
+  | --- | --- |
+  | Kick | The elephant |
+  | Snare, tom | The gorilla: chest on the snare, alternating fists on the toms |
+  | Hi-hat | The woodpecker, and a firefly flicker |
+  | Crash, where the music jumps up | The elephant's trumpet, the woodpecker's open hat, a burst of fireflies |
+  | Bass note | The bullfrog; the strongest, at most two a second, the whale too |
+  | Mid note (the chords' and keys' range) | The octopus |
+  | High note (the melody's range) | The starlings and the parrot; the strongest, firefly glints |
+
+  Pitches are pitch classes only, so each part plays in one octave of its own. A velocity is how hard
+  the note is against the rest of its part, plus how loud the song is there, so choruses hit harder.
+- **The beat** is the length the onsets repeat at, at one, two, three and four beats, weighed toward the
+  usual tempos, then the grid they line up on exactly. One tempo per track. On eleven of the folder's
+  tracks it found the published tempo for every one that has a known one (Hey, Soul Sister 97, Faded 90,
+  Happier 100, Shelter 100, Am I Wrong 120 …). It can still land on twice or half the tempo, which only
+  makes the animals bob twice a beat or every other one, still on it.
+- **The chords** are a chroma every eighth of a second, averaged per beat, matched to the major and minor
+  triads, then smoothed so a chord holds until the harmony moves. Hey, Soul Sister comes out E–B–C#m–A
+  and Faded E♭m–B–F♯–C♯. The jellyfish's pads play every chord. The wolves' choir sings them only where
+  the song is in its loudest two fifths, so they howl in the choruses (a third to a half of most tracks).
+- **The loudness** of each part is `StemAnalysis` on that part's band of the mix: under 150 Hz for the
+  elephant, under 90 Hz for the whale, 300 Hz–3.4 kHz for the parrot, above 6 kHz for the woodpecker,
+  250 Hz–2 kHz for the pads, keys and choir, and the whole mix for the fireflies.
+
+Reading a four-minute track takes about 8 s (5–11 s on the eleven tried, in batch Unity on this PC),
+in the background. The first track picked waits that long, with the fireflies up; the next track is read
+while one plays, so walking on through the folder doesn't wait, and the last eight read are kept, so going
+back to one starts at once. The mode plays on through the folder, round to the start, until it is left.
+The conductor's list of tracks is filled by the builder, again when Play starts in the editor, and by
+`VisualizerPlaylistProcessor` in a player build, as the other rooms' decks are. Only clips that hand back
+their samples can be read: **Decompress On Load**, a dropped-in MP3's default.
+
+The track list is the other rooms' front-wall panel (`WallMenu`). The joystick push that brings it up is
+also the first step through it: down from the track playing selects the next one. It goes on the
+`CaveOverlay` layer, so in 2D-Fixed it is drawn live under the wand's ray rather than into the fixed
+pictures, and it sorts after the room's other see-through things, so the starlings behind it don't draw
+over it.
+
 ## How the animals keep time
 
 The audio clock is the only timeline. `OrchestraConductor` starts every stem with `PlayScheduled` on
@@ -224,18 +277,26 @@ scale, so chords a fifth apart get neighbouring hues and a song's colours drift 
 
 ## Controls
 
-On the wand, with nothing drawn on the screens:
+On the wand. Nothing is drawn on the screens but the track list, and that only while it is up:
 
 | Wand | Key | Does |
 | --- | --- | --- |
 | 1 / 2 / 3 | 1 / 2 / 3 | 3D / 2D / 2D-Fixed views ([CAVE_View_Modes.md](CAVE_View_Modes.md)) |
-| 4 | N or 4 | Skip to the next song |
+| Joystick right | → | The visualize mode: the music folder, from the track it was last on (the first, the first time) |
+| Joystick left | ← | Back to the orchestra's own songs |
+| Joystick up / down | ↑ / ↓ | Bring up the music folder's tracks on the front wall, one up or down from the track playing |
+| *with the list up:* up / down, right or trigger, left | ↑ / ↓, → or Enter, ← or Esc | Move through it (held, it repeats); play the one selected in the visualize mode; put the list away |
+| 4 | N or 4 | Skip to the next song (the next track in the visualize mode) |
 | 6 | L or 6 | Low intensity mode on/off |
+
+A joystick push counts once: holding it does nothing more, and the next push counts once the stick has
+come back to the middle. So the push right that picks a track doesn't also do anything once the list has
+closed.
 
 The views are on 1–3 as in Sit-Rep-CAVE and VR-Demo's bounded volumes, so skip and low intensity are
 not on 3 and 2 as in the other music rooms. Button indices are Inspector fields on the conductor and on
 `CAVE_View`, because they are the `.vrx`'s, not standardised; `MiddleVRWandButtonProbe` lists them. The
-skip and intensity keys go through Unity's keyboard, so the Editor or the build needs focus; the view
+skip, intensity and arrow keys go through Unity's keyboard, so the Editor or the build needs focus; the view
 keys also read MiddleVR's keyboard (`MiddleVRKeyboard`, brought over from VR-Demo with the views), which
 works without focus.
 
@@ -304,6 +365,14 @@ its chest on 2 and 4. Pads come in first, so the jellyfish pulse from the openin
 wolves howl in the intro. Press **N** to skip and **L** for low intensity. Press **2** for 2D and
 **3** for 2D-Fixed: the stereo collapses, then every screen holds steady however the head moves; **1**
 brings 3D back.
+
+For the visualize mode, press **↓**: the track list comes up on the front wall with the first track
+selected. **↓** again moves down, and **→** plays the one selected: the Console logs
+`Visualize mode: '…', reading it`, then `Read '…' in 8 s: 90 BPM, 2780 notes over 11 parts` and
+`Now playing …`. **N** skips to the next track, which starts at once (it was read while the last one
+played); **←** goes back to the orchestra's songs and **→** returns to the track it was on. Checked like
+this in batch Unity with a virtual keyboard, on a copy of the project, every step as described. The
+joystick itself has only been read through the same code, not pushed in the room.
 
 If the animals are magenta, a shader didn't compile and the Console will say why; the builder logs an
 error rather than building if `Shader.Find` can't see one. If a screen shows the old coloured wall

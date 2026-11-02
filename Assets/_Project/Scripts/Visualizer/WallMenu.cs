@@ -187,6 +187,10 @@ namespace VRShootingGallery.Visualizer
             {
                 m_OpenedFrame = Time.frameCount;
                 m_Pop = 0f;
+
+                // A joystick push that brought the menu up is not also a step through it; held, it repeats as usual.
+                m_StickDirection = StickDirection(MiddleVRWand.Axis);
+                m_RepeatAt = Time.time + 0.45f;
             }
 
             m_Open = true;
@@ -459,11 +463,7 @@ namespace VRShootingGallery.Visualizer
         /// <summary>The joystick steps through the rows, repeating while held; right goes into a row that leads somewhere, left back out.</summary>
         void ReadStick()
         {
-            var axis = MiddleVRWand.Axis;
-            int direction = axis.y > 0.6f ? -1 : axis.y < -0.6f ? 1 : axis.x > 0.7f ? 2 : axis.x < -0.7f ? -2 : 0;
-            if (Mathf.Abs(axis.y) < 0.3f && Mathf.Abs(axis.x) < 0.3f)
-                direction = 0;
-
+            int direction = StickDirection(MiddleVRWand.Axis);
             if (direction == 0)
             {
                 m_StickDirection = 0;
@@ -483,6 +483,14 @@ namespace VRShootingGallery.Visualizer
                 Back();
             else if (Mathf.Abs(direction) == 1)
                 Move(direction);
+        }
+
+        /// <summary>Where the joystick is pushed: −1 up a row, 1 down, 2 right, −2 left, 0 at rest.</summary>
+        static int StickDirection(Vector2 axis)
+        {
+            if (Mathf.Abs(axis.y) < 0.3f && Mathf.Abs(axis.x) < 0.3f)
+                return 0;
+            return axis.y > 0.6f ? -1 : axis.y < -0.6f ? 1 : axis.x > 0.7f ? 2 : axis.x < -0.7f ? -2 : 0;
         }
 
         /// <summary>The wand's ray onto the panel: the row it points at is selected, and a line shows where it goes.</summary>

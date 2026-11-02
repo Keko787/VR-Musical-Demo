@@ -11,7 +11,8 @@ namespace VRShootingGallery.EditorTools
     /// player build, so the CAVE build carries whatever is in the folder at build time without anyone
     /// having to rebuild the scene first. In the editor the deck does the same scan itself when play
     /// starts; this is the equivalent for the asset-database-less player. Every room plays its music
-    /// through a deck, the visualizer included.
+    /// through a deck, the visualizer included — except the Animal Orchestra, whose conductor plays the
+    /// folder on its own clock in its visualize mode, and gets the same list.
     /// </summary>
     class VisualizerPlaylistProcessor : IProcessSceneWithReport
     {
@@ -28,6 +29,12 @@ namespace VRShootingGallery.EditorTools
                 foreach (var deck in root.GetComponentsInChildren<MusicDeck>(true))
                 {
                     deck.Playlist = clips;
+                    Report(scene, clips, report);
+                }
+
+                foreach (var conductor in root.GetComponentsInChildren<AnimalOrchestra.OrchestraConductor>(true))
+                {
+                    conductor.MusicTracks = clips;
                     Report(scene, clips, report);
                 }
             }

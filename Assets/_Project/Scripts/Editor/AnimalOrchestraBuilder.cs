@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using VRShootingGallery.AnimalOrchestra;
 using VRShootingGallery.CaveView;
 using VRShootingGallery.TrackingDemo;
+using VRShootingGallery.Visualizer;
 
 namespace VRShootingGallery.EditorTools
 {
@@ -97,6 +98,9 @@ namespace VRShootingGallery.EditorTools
         // switch to 2D and toggle low intensity at once.
         const int k_NextSongButton = 4;
         const int k_LowIntensityButton = 6;
+
+        /// <summary>The track list's sorting order: after every other see-through thing in the room.</summary>
+        const int k_MenuSortingOrder = 100;
 
         static readonly Color k_Bank = new(0.17f, 0.23f, 0.15f);
         static readonly Color k_HillNear = new(0.12f, 0.10f, 0.19f);
@@ -281,6 +285,14 @@ namespace VRShootingGallery.EditorTools
             var conductorSettings = new SerializedObject(conductor);
             conductorSettings.FindProperty("m_NextSongButton").intValue = k_NextSongButton;
             conductorSettings.FindProperty("m_LowIntensityButton").intValue = k_LowIntensityButton;
+
+            // The visualize mode's tracks: the music folder as it is now. Play in the editor reads it again,
+            // and a player build writes it in again (VisualizerPlaylistProcessor).
+            var clips = MusicDeck.ClipsInMusicFolder();
+            var tracks = conductorSettings.FindProperty("m_MusicTracks");
+            tracks.arraySize = clips.Length;
+            for (int i = 0; i < clips.Length; i++)
+                tracks.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
             conductorSettings.ApplyModifiedProperties();
 
             kit.Floor = BuildWater(root, kit.Box, waterMaterial);
@@ -299,6 +311,8 @@ namespace VRShootingGallery.EditorTools
             // 3D, 2D and 2D-Fixed on the wand's buttons 1–3 — for the audience without glasses.
             var box = kit.Box;
             CaveViewSetup.Build(room, new Vector3(box.CentreX, box.Height * 0.5f, box.CentreZ), FallbackScreens(box));
+
+            BuildTrackMenu(root, conductor);
 
             Undo.CollapseUndoOperations(group);
             Selection.activeGameObject = root.gameObject;
@@ -724,6 +738,37 @@ namespace VRShootingGallery.EditorTools
                 new FixedEyeView.Screen { Name = "Floor", Centre = new Vector3(box.CentreX, 0f, box.CentreZ), Normal = Vector3.up,
                     Up = Vector3.forward, Size = new Vector2(box.Width, box.Depth) },
             };
+        }
+
+        /// <summary>
+        /// The music folder's tracks on the front wall, which up and down on the joystick bring up for the
+        /// visualize mode: the other music rooms' panel (<see cref="WallMenuBuilder"/>). It goes on the views'
+        /// overlay layer, so the 2D-Fixed view draws it live, under the wand's ray, rather than into its
+        /// fixed pictures. Nothing stands near the front wall's middle at eye height to hide it.
+        /// </summary>
+        static void BuildTrackMenu(Transform root, OrchestraConductor conductor)
+        {
+            var menu = WallMenuBuilder.BuildMenu<OrchestraTrackMenu>("AnimalOrchestra", root, k_Materials + "M_Orchestra_");
+
+            var menuSettings = new SerializedObject(menu);
+            menuSettings.FindProperty("m_Conductor").objectReferenceValue = conductor;
+            menuSettings.ApplyModifiedProperties();
+
+            var conductorSettings = new SerializedObject(conductor);
+            conductorSettings.FindProperty("m_Menu").objectReferenceValue = menu;
+            conductorSettings.ApplyModifiedProperties();
+
+            int overlay = LayerMask.NameToLayer(CaveViewSetup.OverlayLayerName);
+            if (overlay > 0)
+                foreach (var part in menu.GetComponentsInChildren<Transform>(true))
+                    part.gameObject.layer = overlay;
+
+            // The panel writes no depth, so a see-through thing behind it that sorts later draws over it: the
+            // starlings, flying past the wall behind the title. Every transparent here is in the same queue
+            // (Unity puts URP's transparents back at 3000 whatever the menu builder asks), so a sorting order
+            // puts the whole list after them; its own parts still sort by distance, nearest last.
+            foreach (var renderer in menu.GetComponentsInChildren<Renderer>(true))
+                renderer.sortingOrder = k_MenuSortingOrder;
         }
 
         // ================================================================== room check

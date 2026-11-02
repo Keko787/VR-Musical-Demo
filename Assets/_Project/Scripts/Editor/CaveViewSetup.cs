@@ -20,7 +20,9 @@ namespace VRShootingGallery.EditorTools
     static class CaveViewSetup
     {
         const string k_RootName = "CAVE_View";
-        const string k_OverlayLayerName = "CaveOverlay";
+
+        /// <summary>The layer the 2D-Fixed view's pictures go on, and anything that must stay live in the room while it shows.</summary>
+        public const string OverlayLayerName = "CaveOverlay";
 
         /// <summary>The CAVE's own description of its screens — the truth, where the room model is an approximation.</summary>
         const string k_ConfigPath = "Assets/_Project/Config/MVR.vrx";
@@ -35,10 +37,10 @@ namespace VRShootingGallery.EditorTools
         /// </summary>
         public static bool Build(Transform room, Vector3 roomCentre, FixedEyeView.Screen[] fallbackScreens)
         {
-            int layer = EnsureLayer(k_OverlayLayerName);
+            int layer = EnsureLayer(OverlayLayerName);
             if (layer < 0)
             {
-                Debug.LogError($"[CaveView] No free layer for '{k_OverlayLayerName}': every user layer is taken. Free one " +
+                Debug.LogError($"[CaveView] No free layer for '{OverlayLayerName}': every user layer is taken. Free one " +
                                "in Project Settings ▸ Tags and Layers and build again.");
                 return false;
             }
@@ -70,7 +72,7 @@ namespace VRShootingGallery.EditorTools
             Debug.Log($"[CaveView] View modes on the wand: button 1 is 3D, 2 is 2D, 3 is 2D-Fixed (keys 1, 2, 3 at the " +
                       $"desk). {screens.Length} screens " +
                       $"({string.Join(", ", screens.Select(s => $"{s.Name} {s.Size.x:0.###}×{s.Size.y:0.###} m"))}), " +
-                      $"overlay layer {layer} '{k_OverlayLayerName}'.", root);
+                      $"overlay layer {layer} '{OverlayLayerName}'.", root);
             return true;
         }
 
