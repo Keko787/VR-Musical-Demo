@@ -7,15 +7,15 @@ shoot-to-press buttons on the front kick panel, and a spawner that keeps moving 
 
 Open `Assets/_Project/Scenes/ShootingGallery MiddleVR.unity`, then run:
 
-**VR Shooting Gallery ▸ Build ▸ Build CAVE Gallery Round**
+**VR-Music-Demo ▸ Build ▸ Build CAVE Gallery Round**
 
-`VR Shooting Gallery` is its own top-level menu in the Unity menu bar, not a Tools submenu.
+`VR-Music-Demo` is its own top-level menu in the Unity menu bar, not a Tools submenu.
 
 It is idempotent — running it again refreshes what it made instead of duplicating it, and it never
 overwrites a spawn area you have since tuned by hand. Everything it does is one Undo step.
 
 To put the original hand-placed spheres back:
-**VR Shooting Gallery ▸ Build ▸ Restore Original Static Targets**
+**VR-Music-Demo ▸ Build ▸ Restore Original Static Targets**
 
 ## What ends up in the scene
 

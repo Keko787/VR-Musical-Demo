@@ -10,8 +10,8 @@ Open `Assets/_Project/Scenes/Physics MiddleVR.unity`, then run either of:
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Physics ▸ Build Tethered Ball** | Rebuilds every rig, each keeping its own geometry |
-| **VR Shooting Gallery ▸ Physics ▸ Rebuild Tethered Balls From Placeholder** | Re-reads the placeholder sphere and gives every rig that same geometry |
+| **VR-Music-Demo ▸ Physics ▸ Build Tethered Ball** | Rebuilds every rig, each keeping its own geometry |
+| **VR-Music-Demo ▸ Physics ▸ Rebuild Tethered Balls From Placeholder** | Re-reads the placeholder sphere and gives every rig that same geometry |
 
 Both act on **every** `Tether_Rig*` in the room, so a grid of duplicates stays consistent. Each rig's
 own position and rotation are left alone — only its contents are rebuilt, because the chain length is

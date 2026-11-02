@@ -37,8 +37,8 @@ can draw the other's content. No layers or culling masks are involved.
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Glass Room ▸ Create Glass Room Scene** | Copies the physics scene to `GlassRoom MiddleVR.unity`, strips the tether demo and the gun out, and builds the room and its worlds |
-| **VR Shooting Gallery ▸ Glass Room ▸ Rebuild Glass Room** | Rebuilds the room in whatever scene is open, as long as that scene has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Glass Room ▸ Create Glass Room Scene** | Copies the physics scene to `GlassRoom MiddleVR.unity`, strips the tether demo and the gun out, and builds the room and its worlds |
+| **VR-Music-Demo ▸ Glass Room ▸ Rebuild Glass Room** | Rebuilds the room in whatever scene is open, as long as that scene has a `CAVE_User_Room` |
 
 It also builds without opening the editor:
 

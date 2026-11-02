@@ -13,7 +13,7 @@ namespace VRShootingGallery.Core
         Endless,
     }
 
-    [CreateAssetMenu(menuName = "VR Shooting Gallery/Match Config", fileName = "MatchConfig")]
+    [CreateAssetMenu(menuName = "VR-Music-Demo/Match Config", fileName = "MatchConfig")]
     public class MatchConfig : ScriptableObject
     {
         [Tooltip("Only TimeAttack is implemented in v1.")]

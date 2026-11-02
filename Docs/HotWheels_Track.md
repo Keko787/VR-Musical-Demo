@@ -12,8 +12,8 @@ laps wins; the sign calls it.
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Hot Wheels ▸ Create Hot Wheels Track Scene** | Copies the physics scene to `HotWheelsTrack.unity`, strips the other demos out of it, and builds the circuit |
-| **VR Shooting Gallery ▸ Hot Wheels ▸ Rebuild Hot Wheels Track** | Rebuilds the circuit in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Hot Wheels ▸ Create Hot Wheels Track Scene** | Copies the physics scene to `HotWheelsTrack.unity`, strips the other demos out of it, and builds the circuit |
+| **VR-Music-Demo ▸ Hot Wheels ▸ Rebuild Hot Wheels Track** | Rebuilds the circuit in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 The scene starts as a copy of `Physics MiddleVR.unity` for the same reason the
 [marble run](MarbleRun_Demo.md) does: that scene already carries the whole MiddleVR side of the setup

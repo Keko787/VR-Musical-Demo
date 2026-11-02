@@ -22,8 +22,8 @@ namespace VRShootingGallery.EditorTools
     static class HolographicHarpBuilder
     {
         const string k_Tag = "Harp";
-        const string k_CreateMenu = "VR Shooting Gallery/Harp/Create Harp Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Harp/Rebuild Harp";
+        const string k_CreateMenu = "VR-Music-Demo/Harp/Create Harp Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Harp/Rebuild Harp";
         const string k_ScenePath = "Assets/_Project/Scenes/Demos/Harp MiddleVR.unity";
 
         const string k_HarpRoot = "Holographic_Harp";

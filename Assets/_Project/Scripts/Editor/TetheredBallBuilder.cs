@@ -18,8 +18,8 @@ namespace VRShootingGallery.EditorTools
     /// </summary>
     static class TetheredBallBuilder
     {
-        const string k_BuildMenu = "VR Shooting Gallery/Physics/Build Tethered Ball";
-        const string k_RederiveMenu = "VR Shooting Gallery/Physics/Rebuild Tethered Balls From Placeholder";
+        const string k_BuildMenu = "VR-Music-Demo/Physics/Build Tethered Ball";
+        const string k_RederiveMenu = "VR-Music-Demo/Physics/Rebuild Tethered Balls From Placeholder";
 
         const string k_RoomRoot = "CAVE_User_Room";
         const string k_CeilingName = "Ceiling";

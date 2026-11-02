@@ -33,8 +33,8 @@ It has five modes, cross-faded rather than cut — one on the surfaces, four in 
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Visualizer ▸ Create Visualizer Scene** | Copies the physics scene to `Visualizer MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the visualizer |
-| **VR Shooting Gallery ▸ Visualizer ▸ Rebuild Visualizer** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Visualizer ▸ Create Visualizer Scene** | Copies the physics scene to `Visualizer MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the visualizer |
+| **VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 Same flow as the [guitar](HolographicGuitar_Demo.md) and the [harp](HolographicHarp_Demo.md): the
 scene starts as a copy of `Physics MiddleVR.unity` because that scene already carries the whole

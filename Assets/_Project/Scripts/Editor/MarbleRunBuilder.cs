@@ -20,8 +20,8 @@ namespace VRShootingGallery.EditorTools
     /// </summary>
     static class MarbleRunBuilder
     {
-        const string k_CreateMenu = "VR Shooting Gallery/Marble Run/Create Marble Run Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Marble Run/Rebuild Marble Run";
+        const string k_CreateMenu = "VR-Music-Demo/Marble Run/Create Marble Run Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Marble Run/Rebuild Marble Run";
 
         // The marble run scene starts as a copy of the physics scene, which already carries the
         // whole MiddleVR side of the setup: MVRManager pointed at the CAVE .vrx, the MVR_URP

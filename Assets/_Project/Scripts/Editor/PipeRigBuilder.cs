@@ -39,8 +39,8 @@ namespace VRShootingGallery.EditorTools
     public static class PipeRigBuilder
     {
         const string k_Tag = "PipeRig";
-        const string k_CreateMenu = "VR Shooting Gallery/Pipe Rig/Create Pipe Rig Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Pipe Rig/Rebuild Pipe Rig";
+        const string k_CreateMenu = "VR-Music-Demo/Pipe Rig/Create Pipe Rig Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Pipe Rig/Rebuild Pipe Rig";
         const string k_ScenePath = "Assets/_Project/Scenes/Demos/PipeRig MiddleVR.unity";
 
         const string k_Root = "Pipe_Rig";

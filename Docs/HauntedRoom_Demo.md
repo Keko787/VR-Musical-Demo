@@ -13,8 +13,8 @@ them — and it is built from the same analyser.
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Haunted Room ▸ Create Haunted Room Scene** | Copies the physics scene to `HauntedRoom MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the room |
-| **VR Shooting Gallery ▸ Haunted Room ▸ Rebuild Haunted Room** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Haunted Room ▸ Create Haunted Room Scene** | Copies the physics scene to `HauntedRoom MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the room |
+| **VR-Music-Demo ▸ Haunted Room ▸ Rebuild Haunted Room** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 Same flow as the other demos. It can also be built without opening the editor:
 

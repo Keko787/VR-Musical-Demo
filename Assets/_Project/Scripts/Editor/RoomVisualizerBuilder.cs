@@ -24,8 +24,8 @@ namespace VRShootingGallery.EditorTools
     static class RoomVisualizerBuilder
     {
         const string k_Tag = "Visualizer";
-        const string k_CreateMenu = "VR Shooting Gallery/Visualizer/Create Visualizer Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Visualizer/Rebuild Visualizer";
+        const string k_CreateMenu = "VR-Music-Demo/Visualizer/Create Visualizer Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Visualizer/Rebuild Visualizer";
         const string k_ScenePath = "Assets/_Project/Scenes/Demos/Visualizer MiddleVR.unity";
 
         const string k_Root = "Room_Visualizer";

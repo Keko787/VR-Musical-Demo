@@ -12,8 +12,8 @@ goes past your shoulder, behind your head, and back round again.
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Marble Run ▸ Create Marble Run Scene** | Copies the physics scene to `MarbleRun MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the run |
-| **VR Shooting Gallery ▸ Marble Run ▸ Rebuild Marble Run** | Rebuilds the run in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Marble Run ▸ Create Marble Run Scene** | Copies the physics scene to `MarbleRun MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the run |
+| **VR-Music-Demo ▸ Marble Run ▸ Rebuild Marble Run** | Rebuilds the run in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 The new scene starts as a copy of `Physics MiddleVR.unity` because that scene already carries the
 whole MiddleVR side of the setup — `MVRManager` pointed at the CAVE `.vrx`, the `MVR_URP` settings

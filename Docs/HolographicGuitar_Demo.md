@@ -13,8 +13,8 @@ the front and one thing the harp does not need: a strum has to keep its rake.
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Guitar ▸ Create Guitar Scene** | Copies the physics scene to `Guitar MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the guitar |
-| **VR Shooting Gallery ▸ Guitar ▸ Rebuild Guitar** | Rebuilds the guitar in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Guitar ▸ Create Guitar Scene** | Copies the physics scene to `Guitar MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the guitar |
+| **VR-Music-Demo ▸ Guitar ▸ Rebuild Guitar** | Rebuilds the guitar in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 Same flow as the [harp](HolographicHarp_Demo.md) and the [marble run](MarbleRun_Demo.md): the scene
 starts as a copy of `Physics MiddleVR.unity` because that scene already carries the whole MiddleVR

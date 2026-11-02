@@ -22,8 +22,8 @@ namespace VRShootingGallery.EditorTools
     static class HolographicGuitarBuilder
     {
         const string k_Tag = "Guitar";
-        const string k_CreateMenu = "VR Shooting Gallery/Guitar/Create Guitar Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Guitar/Rebuild Guitar";
+        const string k_CreateMenu = "VR-Music-Demo/Guitar/Create Guitar Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Guitar/Rebuild Guitar";
         const string k_ScenePath = "Assets/_Project/Scenes/Demos/Guitar MiddleVR.unity";
 
         const string k_GuitarRoot = "Holographic_Guitar";

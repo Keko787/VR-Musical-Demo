@@ -35,8 +35,8 @@ namespace VRShootingGallery.EditorTools
     /// </remarks>
     static class HotWheelsTrackBuilder
     {
-        const string k_CreateMenu = "VR Shooting Gallery/Hot Wheels/Create Hot Wheels Track Scene";
-        const string k_BuildMenu = "VR Shooting Gallery/Hot Wheels/Rebuild Hot Wheels Track";
+        const string k_CreateMenu = "VR-Music-Demo/Hot Wheels/Create Hot Wheels Track Scene";
+        const string k_BuildMenu = "VR-Music-Demo/Hot Wheels/Rebuild Hot Wheels Track";
 
         // Same reasoning as the marble run: the physics scene already carries the whole MiddleVR
         // side of the setup, and rebuilding that from scratch would be several chances to get it

@@ -19,8 +19,8 @@ It has two modes:
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Pipe Rig ▸ Create Pipe Rig Scene** | Copies the physics scene to `PipeRig MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the rig |
-| **VR Shooting Gallery ▸ Pipe Rig ▸ Rebuild Pipe Rig** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Pipe Rig ▸ Create Pipe Rig Scene** | Copies the physics scene to `PipeRig MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the rig |
+| **VR-Music-Demo ▸ Pipe Rig ▸ Rebuild Pipe Rig** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 Same flow as the other demos. It can also be built without opening the editor:
 

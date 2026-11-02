@@ -13,8 +13,8 @@ is the geometry that maps into the tracked volume and stays in reach. Both are s
 
 | Menu item | What it does |
 | --- | --- |
-| **VR Shooting Gallery ▸ Harp ▸ Create Harp Scene** | Copies the physics scene to `Harp MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the harp |
-| **VR Shooting Gallery ▸ Harp ▸ Rebuild Harp** | Rebuilds the harp in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Harp ▸ Create Harp Scene** | Copies the physics scene to `Harp MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the harp |
+| **VR-Music-Demo ▸ Harp ▸ Rebuild Harp** | Rebuilds the harp in whatever scene is open, as long as it has a `CAVE_User_Room` |
 
 The new scene starts as a copy of `Physics MiddleVR.unity` for the same reason the
 [marble run](MarbleRun_Demo.md) does — that scene already carries the whole MiddleVR side of the setup,

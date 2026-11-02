@@ -17,7 +17,7 @@ developer can build, run and repair it alone.
 ## The demos
 
 Each lives in its own scene under `Assets/_Project/Scenes/Demos/`, and each has a build menu item
-under **VR Shooting Gallery ▸ …** that generates the scene from a template, plus a document.
+under **VR-Music-Demo ▸ …** that generates the scene from a template, plus a document.
 
 | Scene | What it is | Doc |
 | --- | --- | --- |

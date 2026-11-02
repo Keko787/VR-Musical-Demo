@@ -335,7 +335,7 @@ namespace VRShootingGallery.Pipes
         void Start()
         {
             if (m_Balls == null)
-                Debug.LogError("[PipeRig] No balls: rebuild the scene with VR Shooting Gallery ▸ Pipe Rig ▸ Rebuild Pipe Rig.", this);
+                Debug.LogError("[PipeRig] No balls: rebuild the scene with VR-Music-Demo ▸ Pipe Rig ▸ Rebuild Pipe Rig.", this);
 
             EnterMode(m_Mode, false);
             UpdateSign();

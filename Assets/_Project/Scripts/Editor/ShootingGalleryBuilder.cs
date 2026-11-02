@@ -22,8 +22,8 @@ namespace VRShootingGallery.EditorTools
     static class ShootingGalleryBuilder
     {
         // Top level rather than under Tools — this is the project's own menu, not a general utility.
-        const string k_BuildMenu = "VR Shooting Gallery/Build/Build CAVE Gallery Round";
-        const string k_RestoreMenu = "VR Shooting Gallery/Build/Restore Original Static Targets";
+        const string k_BuildMenu = "VR-Music-Demo/Build/Build CAVE Gallery Round";
+        const string k_RestoreMenu = "VR-Music-Demo/Build/Restore Original Static Targets";
 
         const string k_ConfigPath = "Assets/_Project/Config/MatchConfig_CaveGallery.asset";
         const string k_TargetPrefabPath = "Assets/_Project/Prefabs/Targets/Target_Moving.prefab";

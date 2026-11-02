@@ -201,7 +201,7 @@ namespace VRShootingGallery.Visualizer
             if (m_Menu == null)
                 Debug.LogWarning("[Visualizer] This scene was built before the visualizer had its menu, so the mode and track " +
                                  "buttons step and skip instead of opening it, and there is no now-playing strip. Open the scene, " +
-                                 "run VR Shooting Gallery ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
+                                 "run VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
 
             // Start on the chosen mode with no fade-in.
             m_BlendTubes = IsOn(VisualizerMode.Surface2D) ? 1f : 0f;
@@ -566,7 +566,7 @@ namespace VRShootingGallery.Visualizer
             var clip = m_Deck != null ? m_Deck.Clip : null;
             if (m_Deck == null)
             {
-                m_Text.Append("no music source — rebuild the scene: VR Shooting Gallery ▸ Visualizer ▸ Rebuild Visualizer");
+                m_Text.Append("no music source — rebuild the scene: VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer");
             }
             else if (clip == null)
             {

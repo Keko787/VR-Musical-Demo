@@ -24,7 +24,7 @@ Scripts already written by me (let them compile, watch the Console for errors fi
 
 ## 1. Match config asset
 
-- [ ] In `Assets/_Project/Settings/`, right-click → **Create → VR Shooting Gallery → Match Config**
+- [ ] In `Assets/_Project/Settings/`, right-click → **Create → VR-Music-Demo → Match Config**
 - [ ] Name it **`Match_TimeAttack60`**: Mode = `TimeAttack`, Duration = `60`, Display Name = `Time Attack 60s`
 
 ## 2. Target prefabs (primitive meshes — reuse, no modeling)
