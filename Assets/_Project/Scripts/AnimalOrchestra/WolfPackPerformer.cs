@@ -4,7 +4,7 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The choir: three wolves sitting on a rocky ridge along the right wall, under a moon. One wolf per
+    /// The choir: three wolves sitting on a rocky ridge beyond the right wall, howling toward the moon. One wolf per
     /// harmony voice — while a voice sounds, its wolf howls, head raised higher the higher the note, jaw
     /// opening with the stem's loudness — so a chord change reads as heads shifting against each other,
     /// and a three-part harmony is three wolves at three heights.
@@ -26,8 +26,8 @@ namespace VRShootingGallery.AnimalOrchestra
     {
         const int k_Wolves = 3;
 
-        // The ridge: overlapping rocks along the wall. Local x ≤ 0 is inside the room; the wolves sit on
-        // the tops of rocks 1, 3 and 5.
+        // The ridge: overlapping rocks along the wall, beyond it. Local x ≤ 0 is the side facing the room;
+        // the wolves sit on the tops of rocks 1, 3 and 5.
         static readonly Vector3[] k_RockCentre =
         {
             new(-0.24f, 0.20f, -0.80f), new(-0.27f, 0.30f, -0.50f), new(-0.25f, 0.24f, -0.24f), new(-0.27f, 0.36f, 0.00f),
@@ -42,8 +42,11 @@ namespace VRShootingGallery.AnimalOrchestra
 
         static readonly int[] k_WolfRock = { 1, 3, 5 };
 
-        static readonly Vector3 k_MoonCentre = new(-0.03f, 1.75f, 0.55f);
-        const float k_MoonDiameter = 0.56f;
+        // The moon is far out over the water, ahead of the wolves and low in the sky, so it is seen through
+        // the front of the right wall just above their heads. A sphere rather than a disc: it reads as round
+        // from every eye, and at this distance its stereo depth is close to the sky's.
+        static readonly Vector3 k_MoonCentre = new(5.0f, 2.2f, 2.5f);
+        const float k_MoonDiameter = 1.4f;
 
         static readonly Color[] k_RockColor = { new(0.30f, 0.27f, 0.36f), new(0.27f, 0.25f, 0.33f), new(0.33f, 0.29f, 0.38f) };
         static readonly Color k_Fur = new(0.45f, 0.50f, 0.60f);
@@ -240,11 +243,9 @@ namespace VRShootingGallery.AnimalOrchestra
             kit.Ball(transform, "Ridge_Boulder_1", new Vector3(-0.44f, 0.09f, 0.05f), new Vector3(0.18f, 0.18f, 0.22f), k_RockColor[2]);
             kit.Ball(transform, "Ridge_Boulder_2", new Vector3(-0.45f, 0.06f, 0.38f), new Vector3(0.14f, 0.12f, 0.18f), k_RockColor[0]);
 
-            // The moon, flat on the wall, with a faint halo behind it.
-            kit.Glowing(transform, "Moon_Halo", kit.Sphere, k_MoonCentre + new Vector3(0.015f, 0f, 0f),
-                new Vector3(0.02f, k_MoonDiameter * 1.5f, k_MoonDiameter * 1.5f), k_Halo, k_HaloGlow);
-            m_Moon = kit.Glowing(transform, "Moon", kit.Sphere, k_MoonCentre, new Vector3(0.05f, k_MoonDiameter, k_MoonDiameter),
-                k_Moon, k_MoonGlow);
+            // The moon, with a faint halo round it.
+            kit.Glowing(transform, "Moon_Halo", kit.Sphere, k_MoonCentre, Vector3.one * (k_MoonDiameter * 1.5f), k_Halo, k_HaloGlow);
+            m_Moon = kit.Glowing(transform, "Moon", kit.Sphere, k_MoonCentre, Vector3.one * k_MoonDiameter, k_Moon, k_MoonGlow);
 
             m_Wolves = new Transform[k_Wolves];
             m_Necks = new Transform[k_Wolves];
@@ -262,7 +263,7 @@ namespace VRShootingGallery.AnimalOrchestra
                 float seat = k_RockCentre[rock].y + k_RockSize[rock].y * 0.5f - 0.02f;
                 m_SeatHeight[w] = seat;
 
-                // Facing the moon (+Z), turned a quarter toward the room so the viewer sees them in profile.
+                // Facing ahead (+Z), toward the moon, turned a quarter toward the room so the viewer sees them in profile.
                 m_Wolves[w] = kit.Node(transform, $"Wolf_{w}", new Vector3(k_RockCentre[rock].x, seat, k_RockCentre[rock].z),
                     new Vector3(0f, -25f, 0f));
                 BuildWolf(kit, w);

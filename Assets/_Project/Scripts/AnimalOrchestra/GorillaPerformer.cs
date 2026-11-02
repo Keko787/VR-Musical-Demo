@@ -3,7 +3,7 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// Snare and toms: a gorilla standing at the left wall, facing into the room, with a hollow log at its
+    /// Snare and toms: a gorilla standing beyond the left wall, facing into the room, with a hollow log at its
     /// feet. A snare is a chest beat — one fist winds out and strikes the chest on the note, hands taking
     /// turns — and a tom is a fist raised and brought down on the log. The chest and the log glow where
     /// they are struck, so each hit has a visible cause from anywhere in the room.

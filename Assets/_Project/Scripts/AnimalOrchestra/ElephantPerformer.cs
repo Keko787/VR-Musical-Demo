@@ -4,11 +4,11 @@ using VRShootingGallery.TrackingDemo;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The kick drum: an elephant on the front wall, facing the room, that stomps a front foot on every
+    /// The kick drum: an elephant beyond the front wall, facing the room, that stomps a front foot on every
     /// kick. The foot lifts in the moment before and lands on the note, the body drops onto it, and the
-    /// water under the foot takes the blow — the ring runs across the floor toward the viewer, which is
-    /// what ties the front wall to the floor in the plan's room layout. Feet alternate, so four on the
-    /// floor reads as a march rather than one foot hammering.
+    /// water under the foot takes the blow — the ring runs in under the wall and across the floor toward
+    /// the viewer, which is what ties the front wall to the floor in the plan's room layout. Feet
+    /// alternate, so four on the floor reads as a march rather than one foot hammering.
     /// </summary>
     /// <remarks>
     /// <para>

@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using VRShootingGallery.AnimalOrchestra;
+using VRShootingGallery.CaveView;
 using VRShootingGallery.TrackingDemo;
 
 namespace VRShootingGallery.EditorTools
@@ -18,21 +19,29 @@ namespace VRShootingGallery.EditorTools
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The layout is the plan's. Large or numerous animals go on surfaces, each big one anchored to the
-    /// middle of its wall and never across a corner: the elephant (kick) on the front wall with the
-    /// starlings (arpeggio) in the band above it, the gorilla (snare) on the left wall, the wolves (choir)
-    /// on a ridge along the right wall, the whale (sub bass) in the water on the floor, and fireflies
-    /// (texture) everywhere. Small and medium ones are stereo geometry in front of the tracked viewer's
+    /// The layout is the plan's, with one change Kevin asked for: the big wall animals stand <b>beyond</b>
+    /// their walls, so each wall is a window onto them and the room itself holds only the inner volume.
+    /// The elephant (kick) stands in the water beyond the front wall, its stomps rippling in under the
+    /// wall, with the starlings (arpeggio) in the sky above it; the gorilla (snare) stands on a bank
+    /// beyond the left wall; the wolves (choir) sit on a ridge beyond the right wall, howling toward a
+    /// moon low over the water. Each is anchored to the middle of its own wall, so it is seen through
+    /// that wall alone. The whale (sub bass) swims in the water on the floor and fireflies (texture)
+    /// fill the room. Small and medium animals are stereo geometry in front of the tracked viewer's
     /// default spot: the parrot (vocal) at eye level nearest the front wall, the bullfrog (bass) left and
     /// the woodpecker (hats) right at waist height, jellyfish (pads) overhead, and the octopus (keys) low
-    /// in the centre on a pedestal. Nothing is placed beyond the walls; the room is the stage, and the
-    /// ensemble faces the front wall with the audience at the open back.
+    /// in the centre on a pedestal. The ensemble faces the front wall, the audience at the open back.
+    /// </para>
+    /// <para>
+    /// The CAVE's three views — 3D, 2D and 2D-Fixed, Sit-Rep-CAVE's CARE views — are on wand buttons 1–3
+    /// (<see cref="CaveViewSetup"/>). In 2D-Fixed every screen is a picture of the scene from one fixed
+    /// eye, so the wall animals read as steady windows for an audience without glasses.
     /// </para>
     /// <para>
     /// The scene is a copy of the physics scene for the reason every demo here is: it already carries the
     /// whole MiddleVR side of the setup. Each animal builds its own body (<see cref="Performer.Build"/>); this
-    /// places them, wires them to the conductor, and checks them against the room — inside it, clear of
-    /// the corners, and visible from the tracked viewer's eyes — as the plan's risk table asks.
+    /// places them, wires them to the conductor, and checks them against the room — the wall animals
+    /// behind their own walls and seen through them, the inner ones inside the room and visible from the
+    /// tracked viewer's eyes — as the plan's risk table asks.
     /// </para>
     /// </remarks>
     static class AnimalOrchestraBuilder
@@ -71,6 +80,22 @@ namespace VRShootingGallery.EditorTools
         /// <summary>Water cells: the resolution of VR-Demo's head tracking demo, where the water comes from.</summary>
         const float k_WaterCell = 0.025f;
 
+        /// <summary>
+        /// How far the rippling water runs on past the front wall, metres: under the elephant, so a stomp's
+        /// ring starts at its foot and comes in under the wall.
+        /// </summary>
+        const float k_WaterBeyondFront = 1.8f;
+
+        /// <summary>How far the still lagoon around the rippling water reaches, metres: far enough to meet the horizon.</summary>
+        const float k_LagoonReach = 150f;
+
+        /// <summary>Least distance between a wall animal and the glass, metres.</summary>
+        const float k_WallClearance = 0.1f;
+
+        static readonly Color k_Bank = new(0.17f, 0.23f, 0.15f);
+        static readonly Color k_HillNear = new(0.12f, 0.10f, 0.19f);
+        static readonly Color k_HillFar = new(0.09f, 0.08f, 0.15f);
+
         // Only used when a wall is missing from the room — the CAVE as this project ships it.
         const float k_FallbackLeftX = -1.778f;
         const float k_FallbackRightX = 1.778f;
@@ -94,6 +119,25 @@ namespace VRShootingGallery.EditorTools
             Yaw,
         }
 
+        /// <summary>The wall an outer animal stands behind, seen through.</summary>
+        enum Wall
+        {
+            None,
+            Front,
+            Left,
+            Right,
+        }
+
+        /// <summary>Which face of the room a line of sight leaves through.</summary>
+        enum Face
+        {
+            None,
+            Front,
+            Left,
+            Right,
+            Floor,
+        }
+
         readonly struct Seat
         {
             public readonly string Name;
@@ -103,9 +147,11 @@ namespace VRShootingGallery.EditorTools
             public readonly System.Func<RoomBox, Vector3> Position;
             public readonly Facing Facing;
             public readonly float Yaw;
+            public readonly Wall Wall;
+            public readonly float Scale;
 
             public Seat(string name, System.Type type, Part part, bool inner, System.Func<RoomBox, Vector3> position,
-                Facing facing, float yaw = 0f)
+                Facing facing, float yaw = 0f, Wall wall = Wall.None, float scale = 1f)
             {
                 Name = name;
                 Type = type;
@@ -114,16 +160,25 @@ namespace VRShootingGallery.EditorTools
                 Position = position;
                 Facing = facing;
                 Yaw = yaw;
+                Wall = wall;
+                Scale = scale;
             }
         }
 
-        /// <summary>The cast, in the plan's order: six on the surfaces, five in the volume.</summary>
+        /// <summary>
+        /// The cast, in the plan's order: six outer, five in the volume. The three big wall animals stand
+        /// beyond their walls and are scaled up to make up for the distance: an animal a metre past the glass
+        /// looks smaller than one against it, and these still have to read from the open back.
+        /// </summary>
         static readonly Seat[] k_Cast =
         {
-            new("Elephant", typeof(ElephantPerformer), Part.Kick, false, b => new Vector3(b.CentreX, 0f, b.FrontZ - 0.35f), Facing.Yaw, 180f),
+            new("Elephant", typeof(ElephantPerformer), Part.Kick, false, b => new Vector3(b.CentreX, 0f, b.FrontZ + 1.0f), Facing.Yaw, 180f,
+                Wall.Front, 1.4f),
             new("Whale", typeof(WhalePerformer), Part.SubBass, false, b => Vector3.zero, Facing.Room),
-            new("Gorilla", typeof(GorillaPerformer), Part.Snare, false, b => new Vector3(b.LeftX + 0.378f, 0f, 0f), Facing.Yaw, 90f),
-            new("Wolf_Pack", typeof(WolfPackPerformer), Part.Choir, false, b => new Vector3(b.RightX, 0f, 0f), Facing.Room),
+            new("Gorilla", typeof(GorillaPerformer), Part.Snare, false, b => new Vector3(b.LeftX - 0.75f, 0f, 0f), Facing.Yaw, 90f,
+                Wall.Left, 1.3f),
+            new("Wolf_Pack", typeof(WolfPackPerformer), Part.Choir, false, b => new Vector3(b.RightX + 0.8f, 0f, -0.05f), Facing.Room, 0f,
+                Wall.Right, 1.15f),
             new("Starling_Flock", typeof(StarlingFlock), Part.Arp, false, b => Vector3.zero, Facing.Room),
             new("Fireflies", typeof(FireflySwarm), Part.Texture, false, b => Vector3.zero, Facing.Room),
 
@@ -175,7 +230,8 @@ namespace VRShootingGallery.EditorTools
             RegisterInBuildSettings();
 
             Debug.Log($"{k_LogTag} Built '{scene.name}'. Enter play mode: fireflies fill the room while the first song " +
-                      "renders, then the orchestra plays. Wand 3 (N) skips a song, wand 2 (L) is low intensity.");
+                      "renders, then the orchestra plays. Wand 1 / 2 / 3 are the 3D / 2D / 2D-Fixed views, wand 4 (N) skips a " +
+                      "song, wand 6 (L) is low intensity.");
         }
 
         [MenuItem(k_BuildMenu, false, 910)]
@@ -215,6 +271,8 @@ namespace VRShootingGallery.EditorTools
                 conductor = Undo.AddComponent<OrchestraConductor>(root.gameObject);
 
             kit.Floor = BuildWater(root, kit.Box, waterMaterial);
+            BuildLagoon(root, kit.Box, waterMaterial);
+            BuildScenery(root, kit);
 
             var performers = new List<(Seat seat, Performer performer)>();
             foreach (var seat in k_Cast)
@@ -225,7 +283,9 @@ namespace VRShootingGallery.EditorTools
             BuildSky(scene, skyMaterial);
             Moonlight(scene);
 
+            // 3D, 2D and 2D-Fixed on the wand's buttons 1–3 — for the audience without glasses.
             var box = kit.Box;
+            CaveViewSetup.Build(room, new Vector3(box.CentreX, box.Height * 0.5f, box.CentreZ), FallbackScreens(box));
 
             Undo.CollapseUndoOperations(group);
             Selection.activeGameObject = root.gameObject;
@@ -244,6 +304,7 @@ namespace VRShootingGallery.EditorTools
             go.transform.SetParent(root, false);
             go.transform.localPosition = seat.Position(kit.Box);
             go.transform.localRotation = Quaternion.Euler(0f, Yaw(seat, kit, go.transform.localPosition), 0f);
+            go.transform.localScale = Vector3.one * seat.Scale;
 
             var performer = (Performer)go.AddComponent(seat.Type);
             performer.Configure(conductor, seat.Part);
@@ -422,20 +483,23 @@ namespace VRShootingGallery.EditorTools
         // ================================================================== water
 
         /// <summary>
-        /// The floor: VR-Demo's head tracking water sheet, the exact size of the floor screen, in dusk
-        /// colours. The elephant's stomps and the whale's tail splash it; the ripples run toward the viewer.
+        /// The floor: VR-Demo's head tracking water sheet, as wide as the floor screen and running on past
+        /// the front wall under the elephant, in dusk colours. The elephant's stomps and the whale's tail
+        /// splash it; the rings come in under the front wall and run toward the viewer. Seen through the
+        /// front wall and on the floor, it is one sheet, so a ring crosses the seam unbroken.
         /// </summary>
         static RippleFloor BuildWater(Transform root, RoomBox box, Material material)
         {
+            float depth = box.Depth + k_WaterBeyondFront;
             var water = new GameObject("Water").transform;
             water.SetParent(root, false);
-            water.localPosition = new Vector3(box.CentreX, 0f, box.CentreZ);
+            water.localPosition = new Vector3(box.CentreX, 0f, box.BackZ + depth * 0.5f);
 
             var filter = water.gameObject.AddComponent<MeshFilter>();
             var renderer = water.gameObject.AddComponent<MeshRenderer>();
             var ripple = water.gameObject.AddComponent<RippleFloor>();
 
-            filter.sharedMesh = SaveMesh(RippleFloor.BuildMesh(box.Width, box.Depth, k_WaterCell, out _, out _), "Water");
+            filter.sharedMesh = SaveMesh(RippleFloor.BuildMesh(box.Width, depth, k_WaterCell, out _, out _), "Water");
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
@@ -444,12 +508,86 @@ namespace VRShootingGallery.EditorTools
 
             var so = new SerializedObject(ripple);
             so.FindProperty("m_Width").floatValue = box.Width;
-            so.FindProperty("m_Depth").floatValue = box.Depth;
+            so.FindProperty("m_Depth").floatValue = depth;
             so.FindProperty("m_CellSize").floatValue = k_WaterCell;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             Undo.RegisterCreatedObjectUndo(water.gameObject, "Build water");
             return ripple;
+        }
+
+        /// <summary>
+        /// Still water all round the rippling sheet, out to the horizon: what the gorilla's bank and the
+        /// wolves' ridge rise from, and what the elephant wades in beyond the sheet's edge. Four flat strips
+        /// framing the sheet rather than one plane under it, so nothing pokes up through its troughs; on the
+        /// water's own material with its rest colour in the vertex colour, so it is the same water, still.
+        /// </summary>
+        static void BuildLagoon(Transform root, RoomBox box, Material material)
+        {
+            float x0 = box.LeftX, x1 = box.RightX, z0 = box.BackZ, z1 = box.FrontZ + k_WaterBeyondFront, r = k_LagoonReach;
+            var strips = new[]
+            {
+                new Rect(-r, z1, 2f * r, r - z1),        // beyond the sheet's far edge
+                new Rect(-r, -r, 2f * r, z0 + r),        // behind the room
+                new Rect(-r, z0, x0 + r, z1 - z0),       // left of the sheet
+                new Rect(x1, z0, r - x1, z1 - z0),       // right of the sheet
+            };
+
+            var positions = new List<Vector3>();
+            var triangles = new List<int>();
+            foreach (var strip in strips)
+            {
+                int v = positions.Count;
+                positions.Add(new Vector3(strip.xMin, 0f, strip.yMin));
+                positions.Add(new Vector3(strip.xMax, 0f, strip.yMin));
+                positions.Add(new Vector3(strip.xMin, 0f, strip.yMax));
+                positions.Add(new Vector3(strip.xMax, 0f, strip.yMax));
+
+                // Wound to face up, as the ripple sheet is.
+                triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 1);
+                triangles.Add(v + 1); triangles.Add(v + 2); triangles.Add(v + 3);
+            }
+
+            var mesh = new Mesh { name = "Lagoon" };
+            mesh.SetVertices(positions);
+            mesh.SetNormals(Enumerable.Repeat(Vector3.up, positions.Count).ToList());
+            mesh.SetColors(Enumerable.Repeat(new Color32(128, 0, 0, 255), positions.Count).ToList());
+            mesh.SetTriangles(triangles, 0);
+            mesh.bounds = new Bounds(Vector3.zero, new Vector3(2f * r, 0.5f, 2f * r));
+
+            var lagoon = new GameObject("Lagoon");
+            lagoon.transform.SetParent(root, false);
+            lagoon.AddComponent<MeshFilter>().sharedMesh = SaveMesh(mesh, "Lagoon");
+            var renderer = lagoon.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+
+            Undo.RegisterCreatedObjectUndo(lagoon, "Build lagoon");
+        }
+
+        /// <summary>
+        /// The land beyond the walls: a mossy bank for the gorilla to stand on, and low hills on the horizon
+        /// either side of where the sun went down, dark against the sky. The hills give the tracked viewer
+        /// something far away to see the near animals move against.
+        /// </summary>
+        static void BuildScenery(Transform root, CreatureKit kit)
+        {
+            var box = kit.Box;
+            var scenery = new GameObject("Scenery").transform;
+            scenery.SetParent(root, false);
+
+            // Its top at the water line under the gorilla's feet; kept outside the glass.
+            kit.Ball(scenery, "Left_Bank", new Vector3(box.LeftX - 0.95f, -0.16f, 0f), new Vector3(1.6f, 0.32f, 2.4f), k_Bank);
+
+            kit.Ball(scenery, "Hill_Front_Left", new Vector3(-14f, -2f, 40f), new Vector3(30f, 9f, 10f), k_HillNear);
+            kit.Ball(scenery, "Hill_Front_Right", new Vector3(16f, -2.5f, 46f), new Vector3(34f, 8f, 12f), k_HillFar);
+            kit.Ball(scenery, "Hill_Left", new Vector3(-45f, -3f, 5f), new Vector3(14f, 12f, 50f), k_HillNear);
+            kit.Ball(scenery, "Hill_Right", new Vector3(46f, -3f, -4f), new Vector3(14f, 10f, 46f), k_HillFar);
+
+            Undo.RegisterCreatedObjectUndo(scenery.gameObject, "Build scenery");
         }
 
         static void WaterColours(Material material)
@@ -542,13 +680,32 @@ namespace VRShootingGallery.EditorTools
             light.transform.rotation = Quaternion.Euler(k_LightEuler);
         }
 
+        static FixedEyeView.Screen[] FallbackScreens(RoomBox box)
+        {
+            float mid = box.Height * 0.5f;
+            return new[]
+            {
+                new FixedEyeView.Screen { Name = "Front", Centre = new Vector3(box.CentreX, mid, box.FrontZ), Normal = Vector3.back,
+                    Up = Vector3.up, Size = new Vector2(box.Width, box.Height) },
+                new FixedEyeView.Screen { Name = "Left", Centre = new Vector3(box.LeftX, mid, box.CentreZ), Normal = Vector3.right,
+                    Up = Vector3.up, Size = new Vector2(box.Depth, box.Height) },
+                new FixedEyeView.Screen { Name = "Right", Centre = new Vector3(box.RightX, mid, box.CentreZ), Normal = Vector3.left,
+                    Up = Vector3.up, Size = new Vector2(box.Depth, box.Height) },
+                new FixedEyeView.Screen { Name = "Floor", Centre = new Vector3(box.CentreX, 0f, box.CentreZ), Normal = Vector3.up,
+                    Up = Vector3.forward, Size = new Vector2(box.Width, box.Depth) },
+            };
+        }
+
         // ================================================================== room check
 
         /// <summary>
-        /// The plan's room rules, checked against what was built: every animal inside the room; the big wall
-        /// animals clear of the corners; the inner animals within the plan's 1.5 m and visible from the
-        /// tracked viewer's eyes — a point is seen only if the line from the eye through it lands on one of
-        /// the four screens, and the CAVE has no ceiling and no back wall. Warnings name the animal and the rule.
+        /// The room rules, checked against what was built. A wall animal must stand wholly behind its own
+        /// wall, clear of the glass, and every part of it must be seen <b>through that wall</b> from the
+        /// tracked viewer's default eye — not through a neighbouring screen, which is what anchoring it to
+        /// the middle of one wall means once it is beyond the glass. Everything else must be inside the room,
+        /// and the inner animals within the plan's 1.5 m and visible from all the test eyes: a point is seen
+        /// only if the line from the eye through it lands on one of the four screens, and the CAVE has no
+        /// ceiling and no back wall. Warnings name the animal and the rule.
         /// </summary>
         static void Check(Transform room, CreatureKit kit, List<(Seat seat, Performer performer)> performers)
         {
@@ -562,6 +719,12 @@ namespace VRShootingGallery.EditorTools
             int warnings = 0;
             foreach (var (seat, performer) in performers)
             {
+                if (seat.Wall != Wall.None)
+                {
+                    warnings += CheckWallAnimal(room, kit, seat, performer);
+                    continue;
+                }
+
                 if (!TryRoomBounds(room, performer.transform, out var bounds))
                     continue;
 
@@ -574,20 +737,6 @@ namespace VRShootingGallery.EditorTools
                 {
                     Debug.LogWarning($"{k_LogTag} {seat.Name} pokes out of the room ({extent}).", performer);
                     warnings++;
-                }
-
-                if (!seat.Inner && seat.Facing != Facing.Room)
-                {
-                    bool frontWall = seat.Part == Part.Kick;
-                    bool nearCorner = frontWall
-                        ? min.x < box.LeftX + 0.3f || max.x > box.RightX - 0.3f
-                        : max.z > box.FrontZ - 0.3f;
-                    if (nearCorner)
-                    {
-                        Debug.LogWarning($"{k_LogTag} {seat.Name} reaches within 30 cm of a corner ({extent}); the plan " +
-                                         "anchors big animals to the middle of one wall.", performer);
-                        warnings++;
-                    }
                 }
 
                 if (!seat.Inner)
@@ -605,7 +754,7 @@ namespace VRShootingGallery.EditorTools
                 foreach (var eye in eyes)
                 {
                     samples++;
-                    if (!Visible(eye, point, box))
+                    if (Through(eye, point, box) == Face.None)
                         hidden++;
                 }
 
@@ -619,16 +768,75 @@ namespace VRShootingGallery.EditorTools
             }
 
             if (warnings == 0)
-                Debug.Log($"{k_LogTag} Room check passed: every animal inside the room, the wall animals clear of the corners, " +
-                          $"and the inner ones visible from all {eyes.Count} test eyes.");
+                Debug.Log($"{k_LogTag} Room check passed: the wall animals behind their own walls and seen through them, " +
+                          $"everything else inside the room, and the inner animals visible from all {eyes.Count} test eyes.");
         }
 
-        /// <summary>The union of the performer's renderers' bounds, in the room frame. Particles and runtime-built meshes have none yet.</summary>
-        static bool TryRoomBounds(Transform room, Transform performer, out Bounds bounds)
+        /// <summary>
+        /// One wall animal: every part behind its wall by <see cref="k_WallClearance"/>, and every part's centre
+        /// seen through that wall from the default eye. Returns the number of warnings logged.
+        /// </summary>
+        static int CheckWallAnimal(Transform room, CreatureKit kit, Seat seat, Performer performer)
+        {
+            var box = kit.Box;
+            var wall = seat.Wall switch
+            {
+                Wall.Front => Face.Front,
+                Wall.Left => Face.Left,
+                _ => Face.Right,
+            };
+
+            var through = new List<string>();
+            var inside = new List<string>();
+            foreach (var renderer in performer.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (!TryRoomBounds(room, renderer.transform, out var part, false))
+                    continue;
+
+                bool behind = seat.Wall switch
+                {
+                    Wall.Front => part.min.z >= box.FrontZ + k_WallClearance,
+                    Wall.Left => part.max.x <= box.LeftX - k_WallClearance,
+                    _ => part.min.x >= box.RightX + k_WallClearance,
+                };
+                if (!behind)
+                    inside.Add(renderer.name);
+
+                var seenThrough = Through(kit.ViewerEye, part.center, box);
+                if (seenThrough != wall)
+                    through.Add($"{renderer.name} ({(seenThrough == Face.None ? "no screen" : seenThrough.ToString())})");
+            }
+
+            int warnings = 0;
+            if (inside.Count > 0)
+            {
+                Debug.LogWarning($"{k_LogTag} {seat.Name}: {inside.Count} parts come within {k_WallClearance * 100f:0} cm of the " +
+                                 $"{seat.Wall.ToString().ToLowerInvariant()} wall or through it: {string.Join(", ", inside.Take(8))}.", performer);
+                warnings++;
+            }
+
+            if (through.Count > 0)
+            {
+                Debug.LogWarning($"{k_LogTag} {seat.Name}: {through.Count} parts are seen through the wrong screen from the default " +
+                                 $"eye, or none: {string.Join(", ", through.Take(8))}.", performer);
+                warnings++;
+            }
+
+            return warnings;
+        }
+
+        /// <summary>
+        /// The union of the renderers' bounds under <paramref name="performer"/> (or on it alone, without
+        /// <paramref name="children"/>), in the room frame. Particles and runtime-built meshes have none yet.
+        /// </summary>
+        static bool TryRoomBounds(Transform room, Transform performer, out Bounds bounds, bool children = true)
         {
             bounds = default;
             bool any = false;
-            foreach (var renderer in performer.GetComponentsInChildren<MeshRenderer>(true))
+            var renderers = children
+                ? performer.GetComponentsInChildren<MeshRenderer>(true)
+                : performer.GetComponents<MeshRenderer>();
+            foreach (var renderer in renderers)
             {
                 var filter = renderer.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null)
@@ -668,19 +876,20 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>
-        /// True if the line from <paramref name="eye"/> through <paramref name="point"/> reaches a screen — the
-        /// front wall, a side wall or the floor — before it leaves the room through the open top or back.
+        /// The screen the line from <paramref name="eye"/> through <paramref name="point"/> leaves the room by —
+        /// the front wall, a side wall or the floor — or <see cref="Face.None"/> if it leaves through the open
+        /// top or back. That is the screen a point is drawn on, whether it is inside the room or beyond it.
         /// </summary>
-        static bool Visible(Vector3 eye, Vector3 point, RoomBox box)
+        static Face Through(Vector3 eye, Vector3 point, RoomBox box)
         {
             var d = point - eye;
             if (d.sqrMagnitude < 1e-6f)
-                return true;
+                return Face.Floor;
 
             float exit = float.MaxValue;
-            bool screen = false;
+            var face = Face.None;
 
-            void Plane(float origin, float direction, float at, bool isScreen)
+            void Plane(float origin, float direction, float at, Face hit)
             {
                 if (Mathf.Abs(direction) < 1e-6f)
                     return;
@@ -688,18 +897,18 @@ namespace VRShootingGallery.EditorTools
                 if (t > 1e-4f && t < exit)
                 {
                     exit = t;
-                    screen = isScreen;
+                    face = hit;
                 }
             }
 
-            if (d.x < 0f) Plane(eye.x, d.x, box.LeftX, true);
-            if (d.x > 0f) Plane(eye.x, d.x, box.RightX, true);
-            if (d.z > 0f) Plane(eye.z, d.z, box.FrontZ, true);
-            if (d.z < 0f) Plane(eye.z, d.z, box.BackZ, false);
-            if (d.y < 0f) Plane(eye.y, d.y, 0f, true);
-            if (d.y > 0f) Plane(eye.y, d.y, box.Height, false);
+            if (d.x < 0f) Plane(eye.x, d.x, box.LeftX, Face.Left);
+            if (d.x > 0f) Plane(eye.x, d.x, box.RightX, Face.Right);
+            if (d.z > 0f) Plane(eye.z, d.z, box.FrontZ, Face.Front);
+            if (d.z < 0f) Plane(eye.z, d.z, box.BackZ, Face.None);
+            if (d.y < 0f) Plane(eye.y, d.y, 0f, Face.Floor);
+            if (d.y > 0f) Plane(eye.y, d.y, box.Height, Face.None);
 
-            return screen;
+            return face;
         }
 
         static RoomBox ReadRoom(Transform room)

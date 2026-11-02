@@ -3,9 +3,10 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The starlings: the arpeggio or synth lead, as a murmuration in the upper band of the front wall.
-    /// The flock's centre sweeps across the wall over eight bars and rises and falls with the pitch of
-    /// each note, so the flock traces the melody over time; every note sends a ripple of light through it.
+    /// The starlings: the arpeggio or synth lead, as a murmuration in the sky beyond the front wall,
+    /// above the elephant. The flock's centre sweeps across the wall over eight bars and rises and falls
+    /// with the pitch of each note, so the flock traces the melody over time; every note sends a ripple of
+    /// light through it.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -15,8 +16,11 @@ namespace VRShootingGallery.AnimalOrchestra
     /// look of a murmuration, at the cost of one spring per bird rather than a boids neighbourhood search.
     /// </para>
     /// <para>
-    /// The band sits just in front of the front wall, near zero parallax, so the flock reads the same
-    /// from the open back without glasses as it does to the tracked viewer.
+    /// The flock flies outside the room, seen through the front wall as through a window. Beyond the wall
+    /// the band can sit higher than the wall's top edge — a line from the eye climbs as it goes — but the
+    /// further out it flies, the more of the band the eye has to look over the elephant to see, so the
+    /// heights are set for a viewer of 1.5–1.75 m at the default spot. The birds never come inside the
+    /// glass: a bird crossing the wall would jump from one picture into the room.
     /// </para>
     /// </remarks>
     public sealed class StarlingFlock : Performer
@@ -27,24 +31,28 @@ namespace VRShootingGallery.AnimalOrchestra
         [SerializeField, Min(1)] int m_Count = 150;
 
         [Header("Band (room frame)")]
-        [SerializeField, Tooltip("Lowest and highest the flock's centre goes, metres. The pitch maps onto this.")]
-        Vector2 m_Height = new(1.62f, 2.0f);
+        [SerializeField, Tooltip("Lowest and highest the flock's centre goes, metres. The pitch maps onto this. Above " +
+            "the elephant's head as the viewer sees it, below the top of the front wall's window.")]
+        Vector2 m_Height = new(2.27f, 2.5f);
 
         [SerializeField, Tooltip("How far either side of the wall's centre the flock sweeps, metres.")]
-        float m_Sweep = 1.0f;
+        float m_Sweep = 1.6f;
 
         [SerializeField, Tooltip("Beats per sweep across the wall and back.")]
         float m_SweepBeats = 32f;
 
-        [SerializeField, Tooltip("Distance in front of the front wall, metres.")]
-        float m_WallGap = 0.16f;
+        [SerializeField, Tooltip("How far beyond the front wall the flock flies, metres: behind the elephant.")]
+        float m_Distance = 1.2f;
+
+        [SerializeField, Tooltip("Nearest any bird may come to the front wall, metres, from outside.")]
+        float m_WallClearance = 0.3f;
 
         [SerializeField, Tooltip("The room box, room frame. Set by Build.")]
         RoomBox m_Box;
 
         [Header("Formation")]
         [SerializeField, Tooltip("Half-size of the formation, metres: across, up, out from the wall.")]
-        Vector3 m_Spread = new(0.42f, 0.16f, 0.05f);
+        Vector3 m_Spread = new(0.6f, 0.15f, 0.15f);
 
         [SerializeField, Tooltip("Spring stiffness range, per bird. The spread between them is what makes the flock wave.")]
         Vector2 m_Stiffness = new(5f, 16f);
@@ -56,8 +64,8 @@ namespace VRShootingGallery.AnimalOrchestra
         float m_PitchHalfLife = 0.08f;
 
         [Header("Look")]
-        [SerializeField, Tooltip("Wingspan, metres.")]
-        Vector2 m_Size = new(0.045f, 0.06f);
+        [SerializeField, Tooltip("Wingspan, metres. Bigger than a starling: they fly a metre and more beyond the glass.")]
+        Vector2 m_Size = new(0.07f, 0.095f);
 
         [SerializeField, Range(0f, 1f), Tooltip("Strongest flash a note sends through the flock.")]
         float m_FlashStrength = 0.55f;
@@ -186,9 +194,10 @@ namespace VRShootingGallery.AnimalOrchestra
                     p += v * h;
                 }
 
-                p.x = Mathf.Clamp(p.x, box.LeftX + 0.1f, box.RightX - 0.1f);
-                p.y = Mathf.Clamp(p.y, 1.3f, box.Height - 0.06f);
-                p.z = Mathf.Min(p.z, box.FrontZ - 0.04f);
+                // Kept outside the glass and inside the front window as the default eye sees it.
+                p.x = Mathf.Clamp(p.x, box.LeftX - 0.4f, box.RightX + 0.4f);
+                p.y = Mathf.Clamp(p.y, m_Height.x - 0.5f, m_Height.y + 0.5f);
+                p.z = Mathf.Max(p.z, box.FrontZ + m_WallClearance);
                 m_Position[i] = p;
                 m_Velocity[i] = v;
 
@@ -241,7 +250,7 @@ namespace VRShootingGallery.AnimalOrchestra
             }
 
             m_CentreY = m_Started ? Motion.Damp(m_CentreY, targetY, m_PitchHalfLife, deltaTime) : targetY;
-            var target = new Vector3(x, m_CentreY, box.FrontZ - m_WallGap);
+            var target = new Vector3(x, m_CentreY, box.FrontZ + m_Distance);
             m_Centre = m_Started ? Motion.Damp(m_Centre, target, 0.05f, deltaTime) : target;
         }
     }

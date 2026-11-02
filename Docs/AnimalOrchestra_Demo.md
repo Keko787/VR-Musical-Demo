@@ -1,25 +1,30 @@
 # Animal Orchestra demo (AnimalOrchestra)
 
 A hands-off, self-playing performance. Every part of a song is played by an animal, and each animal
-moves to its part's notes and its part's sound: a note fires, an animal moves. Six animals sit on the
-CAVE's surfaces and read from the open back without glasses. Five more stand in a bounded volume
-within arm's reach of the tracked viewer, where the stereo pays off. Between songs, fireflies fill
-the room, so the demo can run unattended as the idle state for open houses and school groups.
+moves to its part's notes and its part's sound: a note fires, an animal moves. The three big animals
+stand **beyond the walls**, each wall a window onto one of them, with starlings in the sky past the
+front wall and a whale in the water underfoot: that outer layer reads from the open back without
+glasses. Five more stand in a bounded volume within arm's reach of the tracked viewer, where the
+stereo pays off. Between songs, fireflies fill the room, so the demo can run unattended as the idle
+state for open houses and school groups. For the audience there are Sit-Rep-CAVE's three views,
+**3D**, **2D** and **2D-Fixed**, on wand buttons 1–3 ([CAVE_View_Modes.md](CAVE_View_Modes.md)).
 
 Built from *Animal Orchestra: CAVE Build and Plan* (Nov 2026). It covers all five of the plan's
 phases in code. Each phase gate is still to be passed **in the room**; see [Against the plan](#against-the-plan).
 
 ```
-seen from above, front wall at the top
-            ┌──────────────── starlings (upper band) ─────────────────┐
-            │                      ELEPHANT                           │
-            │           jellyfish ~  ~  ~ (overhead, forward)         │
- GORILLA    │                 parrot                                  │   ridge, WOLVES, moon
- (left wall)│     bullfrog            octopus        woodpecker       │   (right wall)
-            │                   ◉ viewer                              │
-            │        ~~~~~~~~~~~ WHALE in the water ~~~~~~~~~~~       │
-            └────────────────── open back: audience ──────────────────┘
-                      fireflies on every free surface
+seen from above, front wall at the top            hills on the horizon, the sunset behind the front wall
+                          starlings in the sky (beyond the front wall)
+                            ELEPHANT, wading (1 m beyond the wall)         moon, far out
+              ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈ rippling water runs in under the wall ≈≈≈≈≈≈≈≈
+ GORILLA    ┌────────────────────────── front wall ───────────────────────┐   ridge,
+ on a bank  │            jellyfish ~  ~  ~ (overhead, forward)            │   WOLVES
+ (beyond    │                  parrot                                     │   (beyond
+ the left   │     bullfrog             octopus           woodpecker       │   the right
+ wall)      │                    ◉ viewer                                 │   wall)
+            │         ~~~~~~~~~~~ WHALE in the water ~~~~~~~~~~~          │
+            └──────────────────── open back: audience ────────────────────┘
+       still lagoon all round, out to the horizon; fireflies in the room
 ```
 
 ## Build it
@@ -37,18 +42,23 @@ Everything the builder makes lives under `CAVE_User_Room/Animal_Orchestra`:
 
 ```
 Animal_Orchestra        OrchestraConductor: the playlist and the one clock
-├── Water               RippleFloor (water from VR-Demo's head tracking demo), M_OrchestraWater
-├── Elephant            ElephantPerformer     Kick      front wall, centre
+├── Water               RippleFloor (water from VR-Demo's head tracking demo), M_OrchestraWater:
+│                       the floor, and on 1.8 m past the front wall under the elephant
+├── Lagoon              still water round it all, out to the horizon (Lagoon.asset)
+├── Scenery             the gorilla's bank; hills on the horizon
+├── Elephant            ElephantPerformer     Kick      1 m beyond the front wall, centre, ×1.4
 ├── Whale               WhalePerformer        SubBass   floor
-├── Gorilla             GorillaPerformer      Snare     left wall, centre
-├── Wolf_Pack           WolfPackPerformer     Choir     right wall: ridge, three wolves, the moon
-├── Starling_Flock      StarlingFlock         Arp       front wall, upper band
+├── Gorilla             GorillaPerformer      Snare     0.75 m beyond the left wall, centre, ×1.3
+├── Wolf_Pack           WolfPackPerformer     Choir     beyond the right wall: ridge, three wolves, the moon far out, ×1.15
+├── Starling_Flock      StarlingFlock         Arp       the sky 1.2 m beyond the front wall
 ├── Fireflies           FireflySwarm          Texture   every free surface; the idle state
 ├── Parrot              ParrotPerformer       Vocal     eye level, nearest the front wall, on a stand
 ├── Bullfrog            BullfrogPerformer     Bass      waist height, left of the viewer, on a stump
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, right of the viewer, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      overhead (three)
 └── Octopus             OctopusPerformer      Keys      low centre, on a pedestal
+
+CAVE_User_Room/CAVE_View    3D / 2D / 2D-Fixed on wand buttons 1–3 (CAVE_View_Modes.md)
 ```
 
 Each animal builds its own body in `Performer.Build` from a shared kit
@@ -62,8 +72,28 @@ Outside the subtree the builder switches off the room's wall quads and the `Grou
 and the water replace them), and sets every camera to clear to the skybox. It also makes the
 skybox the dusk sky, sets a dusk trilight ambient, and turns the directional light into cool
 moonlight from behind the viewer. The skybox and ambient are scene settings, so **not undoable**.
+The view modes add the `CaveOverlay` layer to the project the first time (layer 8 here) and the
+pictures' material, `M_FixedViewPicture`.
 
 ## The stage
+
+**The walls are windows.** The room's wall quads are off, so each screen looks out of the room, and
+the three big animals stand outside it: the elephant 1 m beyond the front wall, wading; the gorilla
+0.75 m beyond the left wall, on a mossy bank; the wolves' ridge beyond the right wall. Each is
+anchored to the middle of its own wall and seen through that wall alone, never across a corner, so a
+screen's seam never cuts an animal in two (the builder checks this; see [Room check](#room-check)).
+They are scaled up, 1.4, 1.3 and 1.15 times, because a metre past the glass an animal looks smaller
+than one against it, and these still have to read from the open back. The room itself holds only the
+inner volume. This is a change from the plan, which keeps everything inside the room, at Kevin's ask.
+
+Beyond the glass the image has real depth for the tracked viewer: step sideways and the elephant
+moves against the hills behind it, as through a window. For everyone else, **2D-Fixed** turns each
+wall into a steady picture of the same scene from one spot in the room.
+
+The starlings fly in the sky beyond the front wall, above the elephant. Seen through the front
+window, the flock's band sits between the elephant's head and the window's top edge for eyes from
+1.5 to 1.75 m. The wolves' moon is far out over the water, low, ahead of them, seen through the
+front half of the right wall just above their heads.
 
 The **sky** (`VRMusic/Dusk Skybox`) is the moment after sunset, made from the view direction alone:
 indigo overhead, violet, then a warm horizon with the glow brightest behind the front wall. A few
@@ -71,10 +101,13 @@ cloud streaks catch the glow, and stars fade in overhead. The elephant and the s
 against the brightest part of it. Every colour is a material property on `M_DuskSky`.
 
 The **floor** is water: the sheet from VR-Demo's head tracking demo (`Scripts/Tracking/RippleFloor.cs`,
-brought over with this demo along with `TrackedHead`), sized to the floor screen. The elephant's stomps
-splash it at the foot, so the rings run across the floor toward the viewer, as the plan asks: *"tying
-the front wall to the floor."* The whale swims in it, 1.2 cm above the rest surface, so every crest
-passing over the whale hides a strip of it. That is how it reads as being under the water.
+brought over with this demo along with `TrackedHead`), as wide as the floor screen and running on
+1.8 m past the front wall, under the elephant. Its stomps splash the water at its foot, out there, and
+the rings come in under the wall and across the floor toward the viewer, one sheet seen through the
+front wall and then on the floor, as the plan asks: *"tying the front wall to the floor."* Round it,
+out to the horizon, is a still **lagoon** on the same material. The whale swims in the room's part
+of it, 1.2 cm above the rest surface, so every crest passing over the whale hides a strip of it.
+That is how it reads as being under the water.
 
 **Lighting.** The key light is cool moonlight from behind the viewer, so every animal's face is lit
 as the audience sees it. The warm half comes from the creature shader's rim light: the sunset behind
@@ -191,17 +224,20 @@ scale, so chords a fifth apart get neighbouring hues and a song's colours drift 
 
 ## Controls
 
-On the wand, with nothing drawn on the screens, on the same buttons as the other music rooms:
+On the wand, with nothing drawn on the screens:
 
 | Wand | Key | Does |
 | --- | --- | --- |
-| 3 | N or 3 | Skip to the next song |
-| 2 | L or 2 | Low intensity mode on/off |
+| 1 / 2 / 3 | 1 / 2 / 3 | 3D / 2D / 2D-Fixed views ([CAVE_View_Modes.md](CAVE_View_Modes.md)) |
+| 4 | N or 4 | Skip to the next song |
+| 6 | L or 6 | Low intensity mode on/off |
 
-Button indices are Inspector fields on the conductor, because they are the `.vrx`'s, not standardised.
-`MiddleVRWandButtonProbe` lists them. Keys go through Unity's keyboard, as in the other rooms, so the
-Editor or the build needs focus. There are no 3D / 2D / 2D-Fixed views here: those live in VR-Demo
-(`Scripts/CaveView`) and weren't brought over.
+The views are on 1–3 as in Sit-Rep-CAVE and VR-Demo's bounded volumes, so skip and low intensity are
+not on 3 and 2 as in the other music rooms. Button indices are Inspector fields on the conductor and on
+`CAVE_View`, because they are the `.vrx`'s, not standardised; `MiddleVRWandButtonProbe` lists them. The
+skip and intensity keys go through Unity's keyboard, so the Editor or the build needs focus; the view
+keys also read MiddleVR's keyboard (`MiddleVRKeyboard`, brought over from VR-Demo with the views), which
+works without focus.
 
 **Photosensitivity.** Nothing flashes faster than the conductor's **Max Flash Hz** (3 Hz). Each animal
 scales a per-note flash down when its notes come faster than that: the woodpecker's 16th-note hats
@@ -214,14 +250,23 @@ plan also says to warn at the door, which is for whoever runs the session.
 After building, the builder checks every animal against the room and logs a warning naming the
 animal and the rule it breaks:
 
-- every animal is inside the room;
-- the elephant and the gorilla are at least 30 cm from a corner (big animals are anchored to the
-  middle of one wall);
+- the wall animals stand wholly **behind their own wall**, at least 10 cm from the glass;
+- every part of a wall animal is seen **through its own wall** from the default eye, not through a
+  neighbouring screen: that is what anchoring it to the middle of one wall means once it is beyond
+  the glass, and it keeps every seam clear of the animals;
+- everything else is inside the room;
 - the inner animals are under 1.5 m across;
 - the inner animals are **visible**. From 27 test eyes (heights 1.5, 1.6 and 1.75 m, around the
   default spot at (0, 0, −0.35)), every line through an animal's centre and top corners must land on
   a screen. The CAVE has no ceiling and no back wall, so a line leaving through either means part of
   the animal vanishes.
+
+Checked numerically before the first build, from the performers' reported extents (motion included):
+from all 27 test eyes, every corner of the elephant's, the gorilla's and the wolves' boxes is seen
+through its own wall, 24, 17 and 17 cm clear of the glass. At 1.35 times the wolves' ridge was longer
+than the right wall's window and reached round the front corner, which is why it is 1.15. Only the
+corners of the moon's halo and of the starlings' band touch the top of the windows, for the tallest
+eyes.
 
 The jellyfish are why the visibility check exists. "Overhead" in this CAVE has a ceiling: a crown is
 seen only while the line from the eye through it still lands on the front wall, so the nearer a jelly
@@ -235,7 +280,9 @@ falls back to the default eye.
 ## Cost
 
 Drawing is light: a few hundred primitive parts across eleven animals (the jellyfish's beaded
-tentacles are most of them), on two instanced materials, plus 410 particles. The water is a 143 × 90 sheet. Per frame on the CPU, the
+tentacles are most of them), on two instanced materials, plus 410 particles. The rippling water is a
+143 × 162 sheet now that it runs past the front wall, 23,000 vertices rewritten each step; the lagoon
+is eight triangles. Per frame on the CPU, the
 jellyfish update about 235 property blocks (their colour drifts continuously), the whale rewrites
 its body mesh, and the starlings run 150 springs. All of that is small next to MiddleVR's eight
 eye cameras.
@@ -246,7 +293,9 @@ Press Play. Fireflies fill the room for a few seconds while the first song rende
 `Rendered 'Lagoon Lights'`, then `Now playing …` with the parts the song has. Then the sky glows
 orange behind the elephant, the elephant stomps and the water rings toward you, and the gorilla beats
 its chest on 2 and 4. Pads come in first, so the jellyfish pulse from the opening chord, and the
-wolves howl in the intro. Press **N** to skip and **L** for low intensity.
+wolves howl in the intro. Press **N** to skip and **L** for low intensity. Press **2** for 2D and
+**3** for 2D-Fixed: the stereo collapses, then every screen holds steady however the head moves; **1**
+brings 3D back.
 
 If the animals are magenta, a shader didn't compile and the Console will say why; the builder logs an
 error rather than building if `Shader.Find` can't see one. If a screen shows the old coloured wall
@@ -268,8 +317,9 @@ Not done:
 
 - the plan's *"reuse the room audio visualizer from the hands-off demo"*: `RoomVisualizer` is in this
   repository, but the orchestra doesn't use it yet, so the outer layer is built fresh;
-- the plan's 2D rigged sprites for the outer animals: they are shallow 3D figures against their walls
-  instead, standing close to theirs (the elephant's feet are 35 cm from the front wall).
+- the plan's 2D rigged sprites for the outer animals: they are 3D figures standing beyond their walls
+  instead, a change from the plan's *"nothing is placed beyond the walls"* made at Kevin's ask; each is
+  still anchored to the middle of one wall.
 
 Still open, as in the plan: the speaker layout and routing out of Unity (the songs are panned for
 stereo); real songs with stems and MIDI; and the dry run.

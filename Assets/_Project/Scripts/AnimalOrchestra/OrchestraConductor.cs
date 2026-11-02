@@ -42,9 +42,10 @@ namespace VRShootingGallery.AnimalOrchestra
     /// pulled back to the DSP clock at each new buffer; it never runs backwards.
     /// </para>
     /// <para>
-    /// The wand's buttons are the other music rooms': <b>3</b> skips to the next song and <b>2</b> toggles
-    /// low intensity mode (dimmer glows, a lower flash cap — the photosensitivity setting). At the desk,
-    /// <b>N</b> or <b>3</b> skips and <b>L</b> or <b>2</b> toggles. Nothing is drawn on the screens.
+    /// The wand: <b>4</b> skips to the next song and <b>6</b> toggles low intensity mode (dimmer glows, a
+    /// lower flash cap — the photosensitivity setting). Buttons 1–3 are the CAVE's 3D / 2D / 2D-Fixed views
+    /// (<c>CaveViewMode</c>), which is why these two are not on 3 and 2 as in the other music rooms. At the
+    /// desk, <b>N</b> or <b>4</b> skips and <b>L</b> or <b>6</b> toggles. Nothing is drawn on the screens.
     /// </para>
     /// </remarks>
     [DefaultExecutionOrder(-40)]
@@ -86,15 +87,15 @@ namespace VRShootingGallery.AnimalOrchestra
         [SerializeField, Range(0.25f, 6f)] float m_LowIntensityMaxFlashHz = 1.5f;
 
         [Header("Wand and keys")]
-        [SerializeField, Min(0), Tooltip("Wand button that skips to the next song — 3, the next-track button in the " +
-            "other music rooms. Indices are the .vrx's; MiddleVRWandButtonProbe lists them.")]
-        int m_NextSongButton = 3;
+        [SerializeField, Min(0), Tooltip("Wand button that skips to the next song. Not 3, the other music rooms' " +
+            "next-track button: 1–3 are the view modes here. Indices are the .vrx's; MiddleVRWandButtonProbe lists them.")]
+        int m_NextSongButton = 4;
 
-        [SerializeField, Tooltip("Wand button that toggles low intensity mode — 2, as in the other music rooms; −1 for none.")]
-        int m_LowIntensityButton = 2;
+        [SerializeField, Tooltip("Wand button that toggles low intensity mode; −1 for none. Not 2: 1–3 are the view modes.")]
+        int m_LowIntensityButton = 6;
 
         [SerializeField, Tooltip("N or the skip button's digit skips; L or the intensity button's digit toggles low " +
-            "intensity, as in the other music rooms. Unity's keyboard, so the Editor or the build needs focus.")]
+            "intensity. Unity's keyboard, so the Editor or the build needs focus.")]
         bool m_KeyboardShortcuts = true;
 
         /// <summary>Most audio sources a song can need: one per stem.</summary>
