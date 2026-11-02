@@ -41,8 +41,8 @@ namespace VRShootingGallery.EditorTools
         // Same reasoning as the marble run: the physics scene already carries the whole MiddleVR
         // side of the setup, and rebuilding that from scratch would be several chances to get it
         // subtly wrong.
-        const string k_TemplateScene = "Assets/_Project/Scenes/Demos/Physics MiddleVR.unity";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/HotWheelsTrack.unity";
+        const string k_TemplateScene = "Assets/_Project/Scenes/BasicDemos/Physics MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/BasicDemos/HotWheelsTrack.unity";
 
         const string k_RoomRoot = "CAVE_User_Room";
         const string k_TrackRoot = "Hot_Wheels_Track";

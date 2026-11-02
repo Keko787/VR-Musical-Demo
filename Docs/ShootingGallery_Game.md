@@ -5,7 +5,7 @@ shoot-to-press buttons on the front kick panel, and a spawner that keeps moving 
 
 ## Build it
 
-Open `Assets/_Project/Scenes/ShootingGallery MiddleVR.unity`, then run:
+Open `Assets/_Project/Scenes/BasicDemos/ShootingGallery MiddleVR.unity`, then run:
 
 **VR-Music-Demo ▸ Build ▸ Build CAVE Gallery Round**
 

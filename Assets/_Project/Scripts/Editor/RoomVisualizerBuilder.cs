@@ -26,7 +26,7 @@ namespace VRShootingGallery.EditorTools
         const string k_Tag = "Visualizer";
         const string k_CreateMenu = "VR-Music-Demo/Visualizer/Create Visualizer Scene";
         const string k_BuildMenu = "VR-Music-Demo/Visualizer/Rebuild Visualizer";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/Visualizer MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/MusicDemos/Visualizer MiddleVR.unity";
 
         const string k_Root = "Room_Visualizer";
         const string k_AnalyserName = "Analyser";

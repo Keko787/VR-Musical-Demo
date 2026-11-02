@@ -16,8 +16,10 @@ developer can build, run and repair it alone.
 
 ## The demos
 
-Each lives in its own scene under `Assets/_Project/Scenes/Demos/`, and each has a build menu item
-under **VR-Music-Demo ▸ …** that generates the scene from a template, plus a document.
+Each lives in its own scene, the music demos under `Assets/_Project/Scenes/MusicDemos/` and the
+earlier ones (shooting gallery, physics, marble run, Hot Wheels) under `Assets/_Project/Scenes/BasicDemos/`.
+Each has a build menu item under **VR-Music-Demo ▸ …** that generates the scene from a template, plus a
+document.
 
 | Scene | What it is | Doc |
 | --- | --- | --- |

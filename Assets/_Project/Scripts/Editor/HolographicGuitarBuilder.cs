@@ -24,7 +24,7 @@ namespace VRShootingGallery.EditorTools
         const string k_Tag = "Guitar";
         const string k_CreateMenu = "VR-Music-Demo/Guitar/Create Guitar Scene";
         const string k_BuildMenu = "VR-Music-Demo/Guitar/Rebuild Guitar";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/Guitar MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/MusicDemos/Guitar MiddleVR.unity";
 
         const string k_GuitarRoot = "Holographic_Guitar";
         const string k_BodyName = "Body";

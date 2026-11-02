@@ -27,8 +27,8 @@ namespace VRShootingGallery.EditorTools
         // whole MiddleVR side of the setup: MVRManager pointed at the CAVE .vrx, the MVR_URP
         // settings prefab, the base camera MiddleVR clones onto its viewports, and the room itself.
         // Rebuilding any of that from scratch would be five chances to get it subtly wrong.
-        const string k_TemplateScene = "Assets/_Project/Scenes/Demos/Physics MiddleVR.unity";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/MarbleRun MiddleVR.unity";
+        const string k_TemplateScene = "Assets/_Project/Scenes/BasicDemos/Physics MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/BasicDemos/MarbleRun MiddleVR.unity";
 
         const string k_RoomRoot = "CAVE_User_Room";
         const string k_RunRoot = "Marble_Run";

@@ -50,8 +50,8 @@ namespace VRShootingGallery.EditorTools
         const string k_CreateMenu = "VR-Music-Demo/Animal Orchestra/Create Animal Orchestra Scene";
         const string k_BuildMenu = "VR-Music-Demo/Animal Orchestra/Rebuild Animal Orchestra";
 
-        const string k_TemplateScene = "Assets/_Project/Scenes/Demos/Physics MiddleVR.unity";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/AnimalOrchestra.unity";
+        const string k_TemplateScene = "Assets/_Project/Scenes/BasicDemos/Physics MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/MusicDemos/AnimalOrchestra.unity";
 
         const string k_RoomRoot = "CAVE_User_Room";
         const string k_DemoRoot = "Animal_Orchestra";

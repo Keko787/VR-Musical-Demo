@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_DuskSky
+  m_Shader: {fileID: 4800000, guid: c1a2369a80fb4b05aa0007fa73c97e96, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _CloudStrength: 0.4
+    - _GlowStrength: 0.9
+    - _GlowWidth: 5
+    - _HorizonHeight: 0.18
+    - _StarBrightness: 1.1
+    - _StarDensity: 150
+    m_Colors:
+    - _CloudColor: {r: 0.95, g: 0.52, b: 0.5, a: 1}
+    - _GlowColor: {r: 1, g: 0.56, b: 0.24999997, a: 1}
+    - _GlowDirection: {r: 0.15, g: -0.04, b: 1, a: 0}
+    - _HorizonColor: {r: 0.7, g: 0.32999998, b: 0.32999998, a: 1}
+    - _NadirColor: {r: 0.02, g: 0.03, b: 0.049999982, a: 1}
+    - _UpperColor: {r: 0.17999998, g: 0.10999996, b: 0.32999998, a: 1}
+    - _ZenithColor: {r: 0.03, g: 0.04, b: 0.14999998, a: 1}
+  m_BuildTextureStacks: []

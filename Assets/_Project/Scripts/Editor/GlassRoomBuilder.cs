@@ -47,7 +47,7 @@ namespace VRShootingGallery.EditorTools
         const string k_Tag = "GlassRoom";
         const string k_CreateMenu = "VR-Music-Demo/Glass Room/Create Glass Room Scene";
         const string k_BuildMenu = "VR-Music-Demo/Glass Room/Rebuild Glass Room";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/GlassRoom MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/MusicDemos/GlassRoom MiddleVR.unity";
 
         const string k_Root = "Glass_Room";
         const string k_Art = "Assets/_Project/Art/GlassRoom";

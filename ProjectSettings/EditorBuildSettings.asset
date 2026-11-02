@@ -12,29 +12,32 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 55daccc09a3b69647bbab145b54a3ab3
   - enabled: 1
-    path: Assets/_Project/Scenes/Demos/ShootingGallery MiddleVR.unity
+    path: Assets/_Project/Scenes/BasicDemos/ShootingGallery MiddleVR.unity
     guid: d88d25f7a038a8449a01d19b1211fd48
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/Physics MiddleVR.unity
+    path: Assets/_Project/Scenes/BasicDemos/Physics MiddleVR.unity
     guid: 75d02179cd95e7742b89016be5384ce0
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/MarbleRun MiddleVR.unity
+    path: Assets/_Project/Scenes/BasicDemos/MarbleRun MiddleVR.unity
     guid: a062e26c657c17044a2798971999d48d
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/HotWheelsTrack.unity
+    path: Assets/_Project/Scenes/BasicDemos/HotWheelsTrack.unity
     guid: cd1e0c7b30328284080e72b9f01fac1a
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/Visualizer MiddleVR.unity
+    path: Assets/_Project/Scenes/MusicDemos/Visualizer MiddleVR.unity
     guid: 2b7a314e2a2a9e646a80e2b2916b31b2
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/HauntedRoom MiddleVR.unity
+    path: Assets/_Project/Scenes/MusicDemos/HauntedRoom MiddleVR.unity
     guid: 5600e3b8c03c65640ad3fa578c1f4333
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/GlassRoom MiddleVR.unity
+    path: Assets/_Project/Scenes/MusicDemos/GlassRoom MiddleVR.unity
     guid: 7740544afecdf804ebcabfa1ff9ebaf3
   - enabled: 0
-    path: Assets/_Project/Scenes/Demos/PipeRig MiddleVR.unity
+    path: Assets/_Project/Scenes/MusicDemos/PipeRig MiddleVR.unity
     guid: 48cf03bdc2ac16d4ba3ddbf92f6868d3
+  - enabled: 0
+    path: Assets/_Project/Scenes/MusicDemos/AnimalOrchestra.unity
+    guid: 816fbc6b29a46c54db9bc161dbb2a38e
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

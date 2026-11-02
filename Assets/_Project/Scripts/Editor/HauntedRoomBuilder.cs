@@ -35,7 +35,7 @@ namespace VRShootingGallery.EditorTools
         const string k_Tag = "Haunted";
         const string k_CreateMenu = "VR-Music-Demo/Haunted Room/Create Haunted Room Scene";
         const string k_BuildMenu = "VR-Music-Demo/Haunted Room/Rebuild Haunted Room";
-        const string k_ScenePath = "Assets/_Project/Scenes/Demos/HauntedRoom MiddleVR.unity";
+        const string k_ScenePath = "Assets/_Project/Scenes/MusicDemos/HauntedRoom MiddleVR.unity";
 
         const string k_Root = "Haunted_Room";
         const string k_Art = "Assets/_Project/Art/Haunted";
