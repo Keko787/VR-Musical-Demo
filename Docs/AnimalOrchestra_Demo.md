@@ -1,0 +1,275 @@
+# Animal Orchestra demo (AnimalOrchestra)
+
+A hands-off, self-playing performance. Every part of a song is played by an animal, and each animal
+moves to its part's notes and its part's sound: a note fires, an animal moves. Six animals sit on the
+CAVE's surfaces and read from the open back without glasses. Five more stand in a bounded volume
+within arm's reach of the tracked viewer, where the stereo pays off. Between songs, fireflies fill
+the room, so the demo can run unattended as the idle state for open houses and school groups.
+
+Built from *Animal Orchestra: CAVE Build and Plan* (Nov 2026). It covers all five of the plan's
+phases in code. Each phase gate is still to be passed **in the room**; see [Against the plan](#against-the-plan).
+
+```
+seen from above, front wall at the top
+            ┌──────────────── starlings (upper band) ─────────────────┐
+            │                      ELEPHANT                           │
+            │           jellyfish ~  ~  ~ (overhead, forward)         │
+ GORILLA    │                 parrot                                  │   ridge, WOLVES, moon
+ (left wall)│     bullfrog            octopus        woodpecker       │   (right wall)
+            │                   ◉ viewer                              │
+            │        ~~~~~~~~~~~ WHALE in the water ~~~~~~~~~~~       │
+            └────────────────── open back: audience ──────────────────┘
+                      fireflies on every free surface
+```
+
+## Build it
+
+| Menu item | What it does |
+| --- | --- |
+| **VR-Music-Demo ▸ Animal Orchestra ▸ Create Animal Orchestra Scene** | Copies the physics scene to `AnimalOrchestra.unity`, strips the other demos out of it, and builds the orchestra |
+| **VR-Music-Demo ▸ Animal Orchestra ▸ Rebuild Animal Orchestra** | Rebuilds the orchestra in whatever scene is open, as long as it has a `CAVE_User_Room` |
+
+Like every demo here, the scene starts as a copy of `Physics MiddleVR.unity`, because that scene
+already carries the whole MiddleVR setup. Create also adds the scene to **File ▸ Build Settings**,
+switched off.
+
+Everything the builder makes lives under `CAVE_User_Room/Animal_Orchestra`:
+
+```
+Animal_Orchestra        OrchestraConductor: the playlist and the one clock
+├── Water               RippleFloor (water from VR-Demo's head tracking demo), M_OrchestraWater
+├── Elephant            ElephantPerformer     Kick      front wall, centre
+├── Whale               WhalePerformer        SubBass   floor
+├── Gorilla             GorillaPerformer      Snare     left wall, centre
+├── Wolf_Pack           WolfPackPerformer     Choir     right wall: ridge, three wolves, the moon
+├── Starling_Flock      StarlingFlock         Arp       front wall, upper band
+├── Fireflies           FireflySwarm          Texture   every free surface; the idle state
+├── Parrot              ParrotPerformer       Vocal     eye level, nearest the front wall, on a stand
+├── Bullfrog            BullfrogPerformer     Bass      waist height, left of the viewer, on a stump
+├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, right of the viewer, on a trunk
+├── Jellyfish           JellyfishPerformer    Pads      overhead (three)
+└── Octopus             OctopusPerformer      Keys      low centre, on a pedestal
+```
+
+Each animal builds its own body in `Performer.Build` from a shared kit
+(`Scripts/AnimalOrchestra/CreatureKit.cs`): Unity's sphere, capsule and cylinder plus a generated
+cone and jellyfish bell, all on two shared materials. The colours sit on each part's `CreatureTint`.
+A rebuild clears the subtree, so hand-tuning *inside* it is lost; the numbers live on the
+components. The materials in `Art/Materials/AnimalOrchestra/` are created once and then left alone,
+so colours tuned there survive.
+
+Outside the subtree the builder switches off the room's wall quads and the `Ground` plane (the sky
+and the water replace them), and sets every camera to clear to the skybox. It also makes the
+skybox the dusk sky, sets a dusk trilight ambient, and turns the directional light into cool
+moonlight from behind the viewer. The skybox and ambient are scene settings, so **not undoable**.
+
+## The stage
+
+The **sky** (`VRMusic/Dusk Skybox`) is the moment after sunset, made from the view direction alone:
+indigo overhead, violet, then a warm horizon with the glow brightest behind the front wall. A few
+cloud streaks catch the glow, and stars fade in overhead. The elephant and the starlings stand
+against the brightest part of it. Every colour is a material property on `M_DuskSky`.
+
+The **floor** is water: the sheet from VR-Demo's head tracking demo (`Scripts/Tracking/RippleFloor.cs`,
+brought over with this demo along with `TrackedHead`), sized to the floor screen. The elephant's stomps
+splash it at the foot, so the rings run across the floor toward the viewer, as the plan asks: *"tying
+the front wall to the floor."* The whale swims in it, 1.2 cm above the rest surface, so every crest
+passing over the whale hides a strip of it. That is how it reads as being under the water.
+
+**Lighting.** The key light is cool moonlight from behind the viewer, so every animal's face is lit
+as the audience sees it. The warm half comes from the creature shader's rim light: the sunset behind
+the animals edges their silhouettes.
+
+## The songs
+
+The plan leaves the songs open (*"pick two or three demo songs with clean stems and MIDI"*), and the
+music folder the other rooms play has neither stems nor MIDI, so the demo brings its own. It has three lab-made songs, written note by note in `DemoSongs.cs` and
+synthesised by `SongSynth.cs`, so there is nothing to license and nothing to load:
+
+| Song | Key, tempo | Character | Parts |
+| --- | --- | --- | --- |
+| Lagoon Lights | A minor, 110 BPM, i–VI–III–VII | intro, verse, build, two choruses, a break | all eleven |
+| Night Parade | D major, 96 BPM, I–V–vi–IV | half-time groove led by keys and voice | all eleven |
+| Deep Current | E minor, 124 BPM, i–iv–VI–v | electronic, arpeggio-led | no vocal, no keys |
+
+Deep Current leaves the parrot and the octopus out on purpose: *"songs without a part simply leave
+that animal idle."* Parts come and go between sections in the other two, so animals take turns
+resting.
+
+The notes that make the sound are the notes the animals read, so sync is exact by construction.
+Each part is rendered as its own stem, measured (below), then panned toward its animal's wall: the
+gorilla's snare left, the wolves' choir right, the bullfrog's bass a little left, the woodpecker's
+hats a little right. Then a small reverb is added. Each song is about 90 s. Rendering one takes about
+a second in optimised .NET on four threads, and longer in the Editor's Mono. It renders in the
+background while the previous song plays, so only the first song is waited for, and the fireflies
+fill the room while it renders.
+
+### A song of your own
+
+The plan's format: a folder per song, holding a MIDI file, one stem per part, and a mapping file. Put
+it under `Assets/StreamingAssets/AnimalOrchestra/<Song>/`. The playlist plays every such folder
+first, then the built-in songs.
+
+```json
+{
+  "title": "My Song",
+  "midi": "song.mid",
+  "parts": [
+    { "part": "Kick",   "stem": "kick.wav",  "track": "Drums", "pitches": "36" },
+    { "part": "Snare",  "stem": "snare.wav", "track": "Drums", "pitches": "38,40,41,43,45,47,48,50" },
+    { "part": "HiHat",  "stem": "hats.wav",  "track": "Drums", "pitches": "42,44,46" },
+    { "part": "Vocal",  "stem": "vox.wav",   "track": "Lead Vox" },
+    { "part": "Bass",   "stem": "bass.wav",  "track": "Bass" },
+    { "part": "Pads",   "stem": "pads.wav" }
+  ]
+}
+```
+
+- `part` is one of `Kick SubBass Snare Choir Arp Texture Vocal Bass HiHat Pads Keys`.
+- `track` is a MIDI track's name (or its index). `channel` (1–16) and `pitches` (a list or a range
+  like `"60-84"`) narrow it, which is how one drum track feeds the elephant, the gorilla and the
+  woodpecker.
+- A part with a stem but no track moves on its stem alone. A part with neither idles.
+- Stems are WAV or OGG, all starting at the MIDI file's time zero, which is how a DAW exports them.
+
+The drum parts read General MIDI pitches: the gorilla tells toms (41, 43, 45, 47, 48, 50) from
+snare, and the woodpecker tells the open hat (46) from closed. `MidiFile.cs` is a minimal Standard
+MIDI File reader covering formats 0 and 1, the tempo map, running status and track names. It doesn't
+support SMPTE time division, which no DAW exports by default. It was checked against a generated file
+with a tempo change, running status, velocity-0 note-offs and overlapping notes of one pitch. **No
+real song folder has been run yet**, so the first one is worth watching in the Console.
+
+## How the animals keep time
+
+The audio clock is the only timeline. `OrchestraConductor` starts every stem with `PlayScheduled` on
+the same DSP sample, and song time is the DSP time since then. The DSP clock only steps once per
+audio buffer (about 21 ms here), so between steps the frame clock carries it forward, and it never
+runs backwards. Frame time never drives the music, so a slow frame skips the animation ahead rather
+than letting it fall behind.
+
+**Triggers.** A performer asks the song for the note coming next and the note just gone
+(`Performer.TryHit`). It shapes the move as a function of time from that note (`Motion.Hit`): a
+windup from at most 200 ms before, an accelerating strike that reaches its pose exactly on the
+note, then a recovery. That is the plan's *"schedule clips ahead from MIDI so the hit frame lands
+on the note."* Nothing is queued, and every pose is recomputed from the clock each frame. For fast
+repeats the lead shrinks to three quarters of the gap, so every hit still gets a windup.
+
+**Continuous signals.** Each stem is measured once, when the song loads (`StemAnalysis.cs`): loudness
+plus a low band (below 150 Hz) and a high band (above 4 kHz), 100 times a second. An envelope follower
+smooths them, rising in 15 ms and falling over 180 ms, and they are normalised to the stem's own loud
+passages. This is the plan's *"envelope follower and a few FFT bands per stem, smoothed"*, measured
+ahead of time, so it has no analysis latency and doesn't jitter with the frame rate. All three bands
+share one scale, so a band reads as its share of the stem: a hi-hat's low band stays near zero.
+
+**Tuning the sync in the room.** The conductor's **Visual Offset (ms)** shifts every animal against
+the sound. Film the room at 240 fps, count the frames between the audio hit and the visual hit for
+the kick, the snare and the vocal, and set the offset to cancel the difference. It starts at 0.
+Audio output latency (the DSP buffer is 1024 samples) and the CAVE's 2–3 frames of display pipeline
+pull in opposite directions, so only the room can say which wins.
+
+## The cast
+
+| Animal | Part | Discrete (notes) | Continuous (stem) | Idle |
+| --- | --- | --- | --- | --- |
+| Elephant | Kick | Alternate front feet stomp; body dips toward the foot; foot pad glows; **the water splashes under the foot** | Ears flap with the low band | Weight shifts foot to foot, trunk sways |
+| Whale | SubBass | Each note sends a glow pulse down the spots, nose to flukes; hard notes flick the tail into the water | Swim speed and body glow follow the low band | Slow figure-eight under the inner animals |
+| Gorilla | Snare | Snare: alternating hands beat the chest; toms: alternating fists pound the log; chest and log glow | — | Breathing, sway, looks around |
+| Wolf pack | Choir | One wolf per voice: the head rises higher the higher its pitch | Jaw opens with loudness; the moon brightens | Ears, glances, tails |
+| Starlings | Arp | Each note ripples a flash through the flock | The flock's centre rises and falls with pitch while sweeping the wall over 8 bars | Wheels about the band |
+| Fireflies | Texture | Glints (high notes) light a handful at once | The high band sets how many are lit and how fast they blink | All lit, blinking slowly: the room between songs |
+| Parrot | Vocal | Wings flare on held notes | Beak opens and crest fans with loudness | Bobs to the beat, **looks at the tracked head** |
+| Bullfrog | Bass | Throat sac inflates by note velocity; body squashes | — | Throat breathes, blinks |
+| Woodpecker | HiHat | One peck per hat note, striking the trunk on the note; accents glow; the open hat lifts the head and crest | — | An occasional tap, head tilts |
+| Jellyfish | Pads | Bell contracts on each chord and the jelly rises a little | Gentle throb with loudness; colour from the chord root | Slow pulse and drift |
+| Octopus | Keys | One arm per sounding note, low notes left, high right, like a keyboard; suckers flash on note-on | Mantle swells with loudness | Waves down the arms, breathing, blinks |
+
+Each performer has a **Gain** (0–2), the plan's *"per-stem gain on visual intensity: mix the visuals
+like audio"*. It scales that animal's glows and continuous motion.
+
+Colours from pitch (`Motion.PitchColor`) go round the circle of fifths rather than the chromatic
+scale, so chords a fifth apart get neighbouring hues and a song's colours drift rather than jump.
+
+## Controls
+
+On the wand, with nothing drawn on the screens, on the same buttons as the other music rooms:
+
+| Wand | Key | Does |
+| --- | --- | --- |
+| 3 | N or 3 | Skip to the next song |
+| 2 | L or 2 | Low intensity mode on/off |
+
+Button indices are Inspector fields on the conductor, because they are the `.vrx`'s, not standardised.
+`MiddleVRWandButtonProbe` lists them. Keys go through Unity's keyboard, as in the other rooms, so the
+Editor or the build needs focus. There are no 3D / 2D / 2D-Fixed views here: those live in VR-Demo
+(`Scripts/CaveView`) and weren't brought over.
+
+**Photosensitivity.** Nothing flashes faster than the conductor's **Max Flash Hz** (3 Hz). Each animal
+scales a per-note flash down when its notes come faster than that: the woodpecker's 16th-note hats
+glow only on accents, and only softly. Fireflies blink on independent phases, so the room never
+flashes as a whole. **Low intensity mode** dims every glow to 45% and lowers the cap to 1.5 Hz. The
+plan also says to warn at the door, which is for whoever runs the session.
+
+## Room check
+
+After building, the builder checks every animal against the room and logs a warning naming the
+animal and the rule it breaks:
+
+- every animal is inside the room;
+- the elephant and the gorilla are at least 30 cm from a corner (big animals are anchored to the
+  middle of one wall);
+- the inner animals are under 1.5 m across;
+- the inner animals are **visible**. From 27 test eyes (heights 1.5, 1.6 and 1.75 m, around the
+  default spot at (0, 0, −0.35)), every line through an animal's centre and top corners must land on
+  a screen. The CAVE has no ceiling and no back wall, so a line leaving through either means part of
+  the animal vanishes.
+
+The jellyfish are why the visibility check exists. "Overhead" in this CAVE has a ceiling: a crown is
+seen only while the line from the eye through it still lands on the front wall, so the nearer a jelly
+is to the viewer, the lower it has to hang. Their heights were set by this rule.
+
+The tracked viewer's default spot is 35 cm behind the room centre, so the inner volume is in front of
+them. The inner animals are fixed in room coordinates and don't follow the head, so if the tracker
+drops out they simply stay put (the plan's fallback). Only the parrot's gaze uses the head, and it
+falls back to the default eye.
+
+## Cost
+
+Drawing is light: a few hundred primitive parts across eleven animals (the jellyfish's beaded
+tentacles are most of them), on two instanced materials, plus 410 particles. The water is a 143 × 90 sheet. Per frame on the CPU, the
+jellyfish update about 235 property blocks (their colour drifts continuously), the whale rewrites
+its body mesh, and the starlings run 150 springs. All of that is small next to MiddleVR's eight
+eye cameras.
+
+## Checking it at a desk
+
+Press Play. Fireflies fill the room for a few seconds while the first song renders; the Console logs
+`Rendered 'Lagoon Lights'`, then `Now playing …` with the parts the song has. Then the sky glows
+orange behind the elephant, the elephant stomps and the water rings toward you, and the gorilla beats
+its chest on 2 and 4. Pads come in first, so the jellyfish pulse from the opening chord, and the
+wolves howl in the intro. Press **N** to skip and **L** for low intensity.
+
+If the animals are magenta, a shader didn't compile and the Console will say why; the builder logs an
+error rather than building if `Shader.Find` can't see one. If a screen shows the old coloured wall
+instead of sky, the wall wasn't switched off; the line starting `[AnimalOrchestra] Switched off`
+lists what was. Judge sync and frame rate only in a standalone build launched on the CAVE's A6000,
+not from Play mode, which runs at about 14 FPS here (`MiddleVR_A6000_GPU_Placement.md`).
+
+## Against the plan
+
+| Phase | Built | Gate (in the room) |
+| --- | --- | --- |
+| 1. Pipeline and room check | Song format, MIDI and stem loader, transport clock, built-in songs | One song in sync. Measure with a 240 fps phone and set **Visual Offset** |
+| 2. Outer layer | Fireflies, starlings, whale, elephant, gorilla, wolves | A full song reads from the open back with no glasses |
+| 3. First inner performer | Parrot at eye level, looking at the tracked head | Lip sync looks right to an untrained viewer |
+| 4. Rest of the inner ensemble | Bullfrog, woodpecker, jellyfish | All five zones for three songs back to back at a stable frame rate |
+| 5. Stretch and polish | Octopus, playlist and attract mode (the idle between songs), low intensity mode | Runs unattended for a full session |
+
+Not done:
+
+- the plan's *"reuse the room audio visualizer from the hands-off demo"*: `RoomVisualizer` is in this
+  repository, but the orchestra doesn't use it yet, so the outer layer is built fresh;
+- the plan's 2D rigged sprites for the outer animals: they are shallow 3D figures against their walls
+  instead, standing close to theirs (the elephant's feet are 35 cm from the front wall).
+
+Still open, as in the plan: the speaker layout and routing out of Unity (the songs are panned for
+stereo); real songs with stems and MIDI; and the dry run.
