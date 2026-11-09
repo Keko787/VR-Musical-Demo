@@ -4,7 +4,7 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The bass line: a bullfrog on a mossy stump at waist height, left of the viewer. Every bass note
+    /// The bass line: a bullfrog on a mossy stump at knee height, left of the viewer. Every bass note
     /// blows its throat sac up — bigger for a harder note — and it sinks back over the note and after,
     /// while the body gives a small squash on the hit. A sac that swells with each pluck is the clearest
     /// picture of a low note there is: you can almost see the air move.
@@ -26,6 +26,9 @@ namespace VRShootingGallery.AnimalOrchestra
     {
         // Sac size at full inflation, as a multiple of its resting size.
         static readonly Vector3 k_FullSac = new(2.4f, 2.7f, 2.4f);
+
+        /// <summary>The stump's height to its cut face, and its width, metres.</summary>
+        const float k_StumpHeight = 0.46f, k_StumpDiameter = 0.3f;
 
         [Header("Throat")]
         [SerializeField, Range(0f, 2f), Tooltip("How far a full-velocity note inflates the sac: 1 is about two and a " +
@@ -68,15 +71,20 @@ namespace VRShootingGallery.AnimalOrchestra
             var gold = new Color(0.95f, 0.72f, 0.16f);
             var black = new Color(0.05f, 0.05f, 0.06f);
 
-            // The stump: bark, a pale cut face, a mossy cap, and roots spreading at the floor.
-            kit.Solid(transform, "Stump", kit.Cylinder, new Vector3(0f, 0.38f, 0f), new Vector3(0.36f, 0.38f, 0.36f), bark);
-            kit.Solid(transform, "Stump_Face", kit.Cylinder, new Vector3(0f, 0.765f, 0f), new Vector3(0.34f, 0.01f, 0.34f), wood);
-            kit.Solid(transform, "Moss_Cap", kit.Cylinder, new Vector3(0f, 0.778f, 0f), new Vector3(0.30f, 0.012f, 0.30f), moss);
+            // The stump: bark, a pale cut face, a mossy cap, and roots spreading at the floor. Knee height (it
+            // was waist height, 0.76 m by 0.36 m, until Kevin asked for a smaller one).
+            const float height = k_StumpHeight, radius = k_StumpDiameter * 0.5f;
+            kit.Solid(transform, "Stump", kit.Cylinder, new Vector3(0f, height * 0.5f, 0f),
+                new Vector3(k_StumpDiameter, height * 0.5f, k_StumpDiameter), bark);
+            kit.Solid(transform, "Stump_Face", kit.Cylinder, new Vector3(0f, height + 0.005f, 0f),
+                new Vector3(k_StumpDiameter - 0.02f, 0.01f, k_StumpDiameter - 0.02f), wood);
+            kit.Solid(transform, "Moss_Cap", kit.Cylinder, new Vector3(0f, height + 0.018f, 0f),
+                new Vector3(k_StumpDiameter - 0.06f, 0.012f, k_StumpDiameter - 0.06f), moss);
             for (int i = 0; i < 5; i++)
             {
                 float a = (i * 72f + 20f) * Mathf.Deg2Rad;
-                var at = new Vector3(Mathf.Sin(a) * 0.16f, 0.77f, Mathf.Cos(a) * 0.16f);
-                kit.Ball(transform, $"Moss_{i}", at, new Vector3(0.09f, 0.04f, 0.07f), i % 2 == 0 ? moss : mossDark,
+                var at = new Vector3(Mathf.Sin(a) * (radius - 0.02f), height + 0.01f, Mathf.Cos(a) * (radius - 0.02f));
+                kit.Ball(transform, $"Moss_{i}", at, new Vector3(0.08f, 0.035f, 0.06f), i % 2 == 0 ? moss : mossDark,
                     new Vector3(0f, i * 72f + 20f, 0f));
             }
 
@@ -84,12 +92,12 @@ namespace VRShootingGallery.AnimalOrchestra
             {
                 float yaw = i * 90f + 45f;
                 float a = yaw * Mathf.Deg2Rad;
-                kit.Ball(transform, $"Root_{i}", new Vector3(Mathf.Sin(a) * 0.17f, 0.03f, Mathf.Cos(a) * 0.17f),
-                    new Vector3(0.09f, 0.07f, 0.16f), bark, new Vector3(0f, yaw, 0f));
+                kit.Ball(transform, $"Root_{i}", new Vector3(Mathf.Sin(a) * (radius - 0.01f), 0.025f, Mathf.Cos(a) * (radius - 0.01f)),
+                    new Vector3(0.08f, 0.06f, 0.14f), bark, new Vector3(0f, yaw, 0f));
             }
 
             // The frog, on the moss, facing +Z. Everything under one pivot at its feet so it squashes in place.
-            m_Frog = kit.Node(transform, "Frog", new Vector3(0f, 0.79f, 0f));
+            m_Frog = kit.Node(transform, "Frog", new Vector3(0f, height + 0.03f, 0f));
             kit.Ball(m_Frog, "Body", new Vector3(0f, 0.075f, -0.03f), new Vector3(0.24f, 0.14f, 0.24f), skin);
             kit.Ball(m_Frog, "Head", new Vector3(0f, 0.09f, 0.08f), new Vector3(0.22f, 0.11f, 0.16f), skin);
             kit.Ball(m_Frog, "Mouth", new Vector3(0f, 0.079f, 0.148f), new Vector3(0.17f, 0.012f, 0.03f), mouth);

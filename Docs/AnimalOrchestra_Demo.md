@@ -58,7 +58,7 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Starling_Flock      StarlingFlock         Arp       the sky 1.2 m beyond the front wall
 ├── Fireflies           FireflySwarm          Texture   every free surface; the idle state
 ├── Parrot              ParrotPerformer       Vocal     eye level, front left, on a stand
-├── Bullfrog            BullfrogPerformer     Bass      waist height, left, beside the viewer's spot, on a stump
+├── Bullfrog            BullfrogPerformer     Bass      knee height, left, beside the viewer's spot, on a stump
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
 ├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
