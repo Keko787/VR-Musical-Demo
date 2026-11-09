@@ -3,7 +3,8 @@ using UnityEngine;
 namespace VRShootingGallery.Haunted
 {
     /// <summary>
-    /// The ghost's shadow on the walls, with nothing there to cast it. While the ghost is unseen
+    /// A ghost's shadow on the walls, with nothing there to cast it — one of these per ghost, so
+    /// the two shadows go separate ways as the ghosts do. While the ghost is unseen
     /// its shadow slides across whichever walls it is near — sharper and darker close to a wall,
     /// larger, fainter and thrown higher further off, as a shadow from the room's low light would
     /// be — and it fades as the ghost itself appears.
@@ -17,6 +18,9 @@ namespace VRShootingGallery.Haunted
     public class GhostShadows : MonoBehaviour
     {
         [SerializeField] Haunting m_Haunting;
+
+        [SerializeField, Tooltip("The ghost casting these. None, the haunting's first ghost, as in scenes built when there was one.")]
+        SpectreGhost m_Ghost;
 
         [SerializeField, Tooltip("One quad per wall, each a child of its wall's frame: x along the wall, y up, −z into the room.")]
         Renderer[] m_Shadows;
@@ -57,10 +61,11 @@ namespace VRShootingGallery.Haunted
 
         void LateUpdate()
         {
-            if (m_Haunting == null || m_Haunting.Ghost == null || m_Shadows == null)
+            var caster = m_Ghost != null ? m_Ghost : m_Haunting != null ? m_Haunting.Ghost : null;
+            if (m_Haunting == null || caster == null || m_Shadows == null)
                 return;
 
-            var ghost = m_Haunting.Ghost.Position;
+            var ghost = caster.Position;
             float time = Time.time;
             float presence = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(m_From, m_From + 0.15f, m_Haunting.Possession));
             float hidden = 1f - Mathf.SmoothStep(0f, 1f, m_Haunting.Reveal);

@@ -30,6 +30,19 @@ namespace VRShootingGallery.Haunted
         Spin,
     }
 
+    /// <summary>What lifts a possessed thing off where it rests, on top of whatever motion it has.</summary>
+    public enum LevitateOn
+    {
+        /// <summary>It stays where it is.</summary>
+        Nothing,
+
+        /// <summary>The room's possession: it rises as the song builds. The tea set, the books.</summary>
+        Possession,
+
+        /// <summary>The ghosts showing themselves, or being summoned. The rocking chair.</summary>
+        Reveal,
+    }
+
     /// <summary>
     /// A rigid thing the haunting moves: every piece of furniture that hops, rocks, swings, bangs,
     /// flaps, slides, rattles or spins. The motion is procedural — a spring, a pendulum or a body
@@ -37,9 +50,21 @@ namespace VRShootingGallery.Haunted
     /// exaggeration hides the timing faults realism would expose.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The moving transform's origin is the pivot: the hinge of a door, the nail a frame hangs
     /// from, the centre of a rocking chair's runners. The builder places it there, so every turning
     /// motion is a rotation about the body's own origin.
+    /// </para>
+    /// <para>
+    /// On top of its motion a thing can <b>levitate</b>: lifted toward <see cref="m_FloatTo"/> as its
+    /// cue — the room's possession, or the ghosts' reveal — passes from <see cref="m_FloatFrom"/> to
+    /// <see cref="m_FloatFull"/>, bobbing and slowly tumbling while it is up, and settling back as
+    /// the cue falls. The motion carries on in the air: a teacup trembles, the chair still rocks.
+    /// </para>
+    /// <para>
+    /// The other way round, a thing can go <b>still</b> past <see cref="m_StillFrom"/>: its motion
+    /// fades back to rest. The bookcase shudders until its books float out, then stops.
+    /// </para>
     /// </remarks>
     public class PossessedObject : Possessable
     {
@@ -77,7 +102,34 @@ namespace VRShootingGallery.Haunted
         [SerializeField, Tooltip("Seeds this object's own randomness, so identical objects do not move identically.")]
         int m_Seed;
 
+        [Header("Levitation")]
+        [SerializeField, Tooltip("What lifts it into the air: nothing, the room's possession, or the ghosts showing themselves.")]
+        LevitateOn m_FloatOn = LevitateOn.Nothing;
+
+        [SerializeField, Range(0f, 1f), Tooltip("Cue (possession or reveal) at which it starts to lift.")]
+        float m_FloatFrom = 0.5f;
+
+        [SerializeField, Range(0f, 1f), Tooltip("Cue at which it is as far up and out as it goes.")]
+        float m_FloatFull = 1f;
+
+        [SerializeField, Tooltip("Where it floats to at full lift, metres from where it rests, in its parent's axes: up, and out into " +
+            "the room for a book.")]
+        Vector3 m_FloatTo = new(0f, 0.2f, 0f);
+
+        [SerializeField, Tooltip("Metres it bobs up and down while it floats.")]
+        float m_FloatBob = 0.02f;
+
+        [SerializeField, Tooltip("Degrees it slowly tips and turns while it floats.")]
+        float m_FloatTumble = 10f;
+
+        [Header("Stillness")]
+        [SerializeField, Range(0f, 1f), Tooltip("Possession above which its motion fades away and it goes still, over the next 0.08. " +
+            "The bookcase stops shuddering as its books float out. 1 never.")]
+        float m_StillFrom = 1f;
+
         const float k_Gravity = 9.81f;
+        const float k_LiftRise = 1.5f, k_LiftFall = 2.5f;
+        const float k_StillOver = 0.08f;
 
         Vector3 m_RestPosition;
         Quaternion m_RestRotation;
@@ -88,6 +140,7 @@ namespace VRShootingGallery.Haunted
         float m_Swing;      // the pumped swing's amplitude
         float m_Angle;      // Spin
         float m_Jolt;       // Rattle
+        float m_Lift;       // levitation, 0 resting to 1 fully up
         float m_NoiseSeed;
         System.Random m_Random;
 
@@ -110,6 +163,10 @@ namespace VRShootingGallery.Haunted
         {
             bool kick = m_Haunting.Beat && Woken > 0.1f && m_Random.NextDouble() < m_BeatChance;
             float strength = kick ? 0.4f + 0.6f * m_Haunting.BeatStrength : 0f;
+
+            // Every motion writes its pose from rest, or leaves it there; levitation goes on top.
+            m_Body.localPosition = m_RestPosition;
+            m_Body.localRotation = m_RestRotation;
 
             switch (m_Motion)
             {
@@ -135,6 +192,53 @@ namespace VRShootingGallery.Haunted
                     m_Body.localRotation = m_RestRotation * Quaternion.AngleAxis(m_Angle, m_UnitAxis);
                     break;
             }
+
+            BeStill();
+            Levitate(dt);
+        }
+
+        /// <summary>
+        /// Past <see cref="m_StillFrom"/> the motion fades back to rest, as if whatever was shaking it
+        /// had moved on — for the bookcase, into the books floating out of it. Possession is already
+        /// smoothed, so this eases in and out without a jump.
+        /// </summary>
+        void BeStill()
+        {
+            if (m_StillFrom >= 1f)
+                return;
+
+            float still = Mathf.InverseLerp(m_StillFrom, m_StillFrom + k_StillOver, m_Haunting.Possession);
+            if (still <= 0f)
+                return;
+
+            still = still * still * (3f - 2f * still);
+            m_Body.localPosition = Vector3.Lerp(m_Body.localPosition, m_RestPosition, still);
+            m_Body.localRotation = Quaternion.Slerp(m_Body.localRotation, m_RestRotation, still);
+        }
+
+        /// <summary>
+        /// Lifts the body toward <see cref="m_FloatTo"/> as its cue rises — slowly, and slower still
+        /// coming down — with a bob and a slow tumble while it is up.
+        /// </summary>
+        void Levitate(float dt)
+        {
+            if (m_FloatOn == LevitateOn.Nothing)
+                return;
+
+            float cue = m_FloatOn == LevitateOn.Reveal ? m_Haunting.Reveal : m_Haunting.Possession;
+            float target = Mathf.InverseLerp(m_FloatFrom, Mathf.Max(m_FloatFrom + 0.01f, m_FloatFull), cue);
+            m_Lift = Mathf.MoveTowards(m_Lift, target, dt / (target > m_Lift ? k_LiftRise : k_LiftFall));
+            if (m_Lift <= 0f)
+                return;
+
+            float lift = m_Lift * m_Lift * (3f - 2f * m_Lift);
+            float t = Time.time;
+            float bob = m_FloatBob * Mathf.Sin(t * 1.3f + m_NoiseSeed) * lift;
+            m_Body.localPosition += m_FloatTo * lift + Vector3.up * bob;
+
+            float tumble = m_FloatTumble * lift;
+            var drift = Quaternion.Euler(Noise(t * 0.35f, 31f) * tumble, Noise(t * 0.25f, 37f) * tumble * 1.5f, Noise(t * 0.3f, 41f) * tumble);
+            m_Body.localRotation = drift * m_Body.localRotation;
         }
 
         public override void Nudge(float strength)

@@ -7,7 +7,8 @@ namespace VRShootingGallery.Haunted
     /// The fire in the grate, burning to the music: a row of flame tongues whose heights are the
     /// spectrum — bass in the middle, treble at the sides, the way the walls lay it out in the
     /// visualizer — roaring higher as the room is possessed, throwing embers on the beat, and
-    /// turning ghost-blue while the ghost is out.
+    /// burning in the ghosts' colours while they are out: each tongue blue or rose after whichever
+    /// ghost is nearer it, so the colours move through the fire as the pair waltz in front of it.
     /// </summary>
     /// <remarks>
     /// The flames are hand-written billboard particles, stretched tall, on the additive glow
@@ -36,8 +37,11 @@ namespace VRShootingGallery.Haunted
         [SerializeField, Tooltip("Flame colour up a tongue, base to tip.")]
         Gradient m_Fire;
 
-        [SerializeField, Tooltip("The same, while the ghost is out.")]
+        [SerializeField, Tooltip("The same, while the ghosts are out, nearest the first ghost.")]
         Gradient m_GhostFire;
+
+        [SerializeField, Tooltip("The same, nearest its partner.")]
+        Gradient m_PartnerFire;
 
         [Header("Embers")]
         [SerializeField, Range(0, 128)] int m_Embers = 48;
@@ -47,6 +51,11 @@ namespace VRShootingGallery.Haunted
         [Header("Light")]
         [SerializeField] Color m_LightColour = new(1f, 0.55f, 0.22f);
         [SerializeField] Color m_GhostLightColour = new(0.35f, 0.75f, 1f);
+        [SerializeField] Color m_PartnerLightColour = new(1f, 0.45f, 0.75f);
+
+        static readonly Color k_Ember = new(1f, 0.5f, 0.1f);
+        static readonly Color k_GhostEmber = new(0.4f, 0.8f, 1f);
+        static readonly Color k_PartnerEmber = new(1f, 0.55f, 0.85f);
 
         const int k_Layers = 4;
         static readonly int k_Color = Shader.PropertyToID("_Color");
@@ -61,6 +70,7 @@ namespace VRShootingGallery.Haunted
         Vector3[] m_EmberPosition;
         Vector3[] m_EmberVelocity;
         float[] m_EmberAge;
+        float[] m_EmberShare;
         int m_NextEmber;
         System.Random m_Random;
 
@@ -83,6 +93,7 @@ namespace VRShootingGallery.Haunted
             m_EmberPosition = new Vector3[m_Embers];
             m_EmberVelocity = new Vector3[m_Embers];
             m_EmberAge = new float[m_Embers];
+            m_EmberShare = new float[m_Embers];
             for (int i = 0; i < m_Embers; i++)
                 m_EmberAge[i] = float.MaxValue;
 
@@ -90,6 +101,9 @@ namespace VRShootingGallery.Haunted
                 m_Fire = Make(new Color(0.75f, 0.08f, 0f), new Color(0.95f, 0.3f, 0.02f), new Color(1f, 0.62f, 0.12f));
             if (Palettes.IsUnset(m_GhostFire))
                 m_GhostFire = Make(new Color(0f, 0.12f, 0.9f), new Color(0.05f, 0.4f, 1f), new Color(0.35f, 0.8f, 1f));
+            // Deep magenta through rose, kept as saturated as the blue: the layers add up toward white.
+            if (Palettes.IsUnset(m_PartnerFire))
+                m_PartnerFire = Make(new Color(0.7f, 0f, 0.35f), new Color(1f, 0.15f, 0.5f), new Color(1f, 0.5f, 0.8f));
 
             m_LightIntensity = m_Light != null ? m_Light.intensity : 1f;
         }
@@ -135,12 +149,16 @@ namespace VRShootingGallery.Haunted
                 float x = (centre > 0f ? (i - centre) / centre : 0f) * m_Width * 0.5f;
                 x += 0.015f * (Mathf.PerlinNoise(time * 1.7f, m_Seeds[i] + 9f) - 0.5f);
 
+                // Whose fire this tongue is: the nearer ghost's, blending between.
+                float share = ghost > 0f ? m_Haunting.PartnerShare(transform.TransformPoint(new Vector3(x, height * 0.5f, 0f))) : 0f;
+
                 for (int layer = 0; layer < k_Layers; layer++, p++)
                 {
                     float up = layer / (float)(k_Layers - 1);
                     float width = m_TongueWidth * (1f - 0.55f * up) * (0.85f + 0.3f * flicker);
                     float tall = height * (0.7f - 0.25f * up);
-                    var colour = Color.Lerp(m_Fire.Evaluate(up), m_GhostFire.Evaluate(up), ghost);
+                    var ghostFire = Color.Lerp(m_GhostFire.Evaluate(up), m_PartnerFire.Evaluate(up), share);
+                    var colour = Color.Lerp(m_Fire.Evaluate(up), ghostFire, ghost);
                     float lick = 0.02f * Mathf.Sin(time * 7f + m_Seeds[i] + layer) * up;
 
                     ref var particle = ref m_Particles[p];
@@ -165,7 +183,8 @@ namespace VRShootingGallery.Haunted
                 float glow = 0.75f + 0.45f * m_Haunting.Level(Listen.Loudness) * roar;
                 float waver = 1f + 0.12f * (Mathf.PerlinNoise(time * 2.3f, 3.7f) - 0.5f) * 2f;
                 m_Light.intensity = m_LightIntensity * glow * waver;
-                m_Light.color = Color.Lerp(m_LightColour, m_GhostLightColour, ghost);
+                float share = ghost > 0f ? m_Haunting.PartnerShare(m_Light.transform.position) : 0f;
+                m_Light.color = Color.Lerp(m_LightColour, Color.Lerp(m_GhostLightColour, m_PartnerLightColour, share), ghost);
             }
         }
 
@@ -184,6 +203,8 @@ namespace VRShootingGallery.Haunted
                     m_NextEmber = (m_NextEmber + 1) % m_Embers;
                     m_EmberAge[e] = 0f;
                     m_EmberPosition[e] = new Vector3(((float)m_Random.NextDouble() - 0.5f) * m_Width * 0.7f, 0.05f, 0f);
+                    // It keeps the colour of the side of the fire it flew from.
+                    m_EmberShare[e] = m_Haunting.PartnerShare(transform.TransformPoint(m_EmberPosition[e]));
                     m_EmberVelocity[e] = new Vector3(((float)m_Random.NextDouble() - 0.5f) * 0.25f,
                         0.35f + 0.5f * (float)m_Random.NextDouble(), -0.1f * (float)m_Random.NextDouble());
                 }
@@ -206,7 +227,7 @@ namespace VRShootingGallery.Haunted
                 m_EmberPosition[e] += m_EmberVelocity[e] * dt;
 
                 float life = 1f - m_EmberAge[e] / m_EmberLife;
-                var colour = Color.Lerp(new Color(1f, 0.5f, 0.1f), new Color(0.4f, 0.8f, 1f), ghost) * life;
+                var colour = Color.Lerp(k_Ember, Color.Lerp(k_GhostEmber, k_PartnerEmber, m_EmberShare[e]), ghost) * life;
                 particle.position = m_EmberPosition[e];
                 particle.startSize3D = new Vector3(m_EmberSize, m_EmberSize, 1f) * (0.5f + 0.5f * life);
                 particle.startColor = colour;

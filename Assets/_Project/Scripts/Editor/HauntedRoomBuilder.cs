@@ -4,6 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using VRShootingGallery.CaveView;
 using VRShootingGallery.Haunted;
 using VRShootingGallery.Visualizer;
 using static VRShootingGallery.EditorTools.StringInstrumentBuilder;
@@ -14,7 +15,7 @@ namespace VRShootingGallery.EditorTools
     /// Builds the haunted living room: an ordinary Victorian parlour laid onto the CAVE at one to one,
     /// so its walls are the screens — wallpaper, a fireplace, portraits and sconces on the front wall,
     /// a window and a bookcase on the left, a piano on the right — with a rocking chair, a coffee
-    /// table, a television and a chandelier in the room, every one of them possessable, and the ghost.
+    /// table, a television and a chandelier in the room, every one of them possessable, and two ghosts.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -59,8 +60,9 @@ namespace VRShootingGallery.EditorTools
         static void CreateHauntedScene()
         {
             CreateScene(k_Tag, k_ScenePath, "haunted room", Build,
-                "Drop a track into Assets/_Project/Audio/Music and enter play mode. G summons the ghost, L toggles low " +
-                "intensity, N opens the tracks on the front wall (Shift+N skips), Space pauses.");
+                "Drop a track into Assets/_Project/Audio/Music and enter play mode. G summons the ghosts, L toggles low " +
+                "intensity, N opens the tracks on the front wall (Shift+N skips), Space pauses, F2 / F1 (thumbstick up / " +
+                "down) switch the CAVE to 2D / 3D.");
         }
 
         [MenuItem(k_BuildMenu, false, 710)]
@@ -146,17 +148,21 @@ namespace VRShootingGallery.EditorTools
             BuildCoffeeTable(root, haunting, p);
             BuildChandelier(root, haunting, p);
 
-            var ghost = BuildGhost(root, haunting, p);
-            BuildShadows(root, haunting, p, (front, CaveScreens.Front), (left, CaveScreens.Left), (right, CaveScreens.Right));
+            var ghosts = BuildGhosts(root, haunting, p);
+            for (int i = 0; i < ghosts.Count; i++)
+                BuildShadows(root, haunting, ghosts[i], i, p, (front, CaveScreens.Front), (left, CaveScreens.Left), (right, CaveScreens.Right));
             var sign = BuildSign(root);
             var menu = BuildOverlays(root, deck);
+            var views = BuildViewModes(room);
 
             var so = new SerializedObject(haunting);
             SetRef(k_Tag, so, "m_Analyser", analyser);
             SetRef(k_Tag, so, "m_Deck", deck);
-            SetRef(k_Tag, so, "m_Ghost", ghost);
+            SetArray(k_Tag, so, "m_Ghosts", ghosts);
+            SetRef(k_Tag, so, "m_Ghost", null);     // the one ghost of older scenes
             SetRef(k_Tag, so, "m_Sign", sign);
             SetRef(k_Tag, so, "m_Menu", menu);
+            SetRef(k_Tag, so, "m_Views", views);
             so.ApplyModifiedProperties();
 
             Atmosphere(scene);
@@ -487,16 +493,48 @@ namespace VRShootingGallery.EditorTools
                         p.Books[random.Next(p.Books.Length)]);
 
                     float band = (row + (x - start) / (end - start)) / shelves.Length;
-                    Possess(book, haunting, 0.4f + 0.08f * (float)random.NextDouble(), Listen.Mid,
+                    float threshold = 0.4f + 0.08f * (float)random.NextDouble();
+                    var lift = BookLift(x + w * 0.5f, row, shelves.Length, new System.Random(500 + count));
+                    Possess(book, haunting, threshold, Listen.Mid,
                         Moves.Of(Movement.Slide, Vector3.back, 0.06f, frequency: 3f, damping: 0.5f, kick: 0.4f, chance: 0.35f),
-                        false, band, 100 + count);
+                        false, band, 100 + count, lift);
 
                     x += w + 0.002f;
                     count++;
                 }
             }
 
-            Possess(body, haunting, 0.6f, Listen.Bass, Moves.Of(Movement.Rattle, Vector3.up, 0.0015f, frequency: 14f), true, seed: 99);
+            // It shudders on the bass until the books start to float out, then goes still: whatever was
+            // shaking it has gone into them.
+            var shudder = Possess(body, haunting, 0.6f, Listen.Bass, Moves.Of(Movement.Rattle, Vector3.up, 0.0015f, frequency: 14f), true,
+                seed: 99);
+            var still = new SerializedObject(shudder);
+            SetFloat(k_Tag, still, "m_StillFrom", k_BooksFloatFrom);
+            still.ApplyModifiedProperties();
+        }
+
+        /// <summary>Possession at which the first books start to float out of the shelf, and the bookcase stops shuddering.</summary>
+        const float k_BooksFloatFrom = 0.72f;
+
+        /// <summary>
+        /// Whether a book floats out of the shelf when the room is highly possessed, and where to. About
+        /// half of them do, one by one as possession climbs from 0.72 to 0.87, each drifting its own
+        /// distance into the room and lifting a little, so they hang in the air at different depths
+        /// rather than as a wall of books. They drift a little in toward the middle of the bookcase
+        /// as they come out: its front end is a hand's width from the floor lamp's shade, and its
+        /// back end near the edge of the side screen. The rest stay on the shelf and keep sliding.
+        /// </summary>
+        static Lift? BookLift(float x, int row, int rows, System.Random random)
+        {
+            if (random.NextDouble() > 0.55)
+                return null;
+
+            float from = k_BooksFloatFrom + 0.15f * (float)random.NextDouble();
+            float full = Mathf.Min(from + 0.12f, 0.97f);
+            float outward = 0.15f + 0.4f * (float)random.NextDouble();
+            float rise = 0.02f + 0.12f * (float)random.NextDouble() + 0.04f * (rows - 1 - row) / Mathf.Max(1, rows - 1);
+            float fan = -x * 0.2f * outward + 0.04f * ((float)random.NextDouble() - 0.5f);
+            return Lift.Of(LevitateOn.Possession, from, full, new Vector3(fan, rise, -outward), 0.03f, 22f);
         }
 
         static void BuildFloorLamp(Transform root, Haunting haunting, Palette p)
@@ -515,7 +553,7 @@ namespace VRShootingGallery.EditorTools
         /// <summary>
         /// A rocking chair in the front corner by the window, turned to face whoever is standing in
         /// the room. It rocks on its runners — rolling, not pivoting — at its own natural rate, to
-        /// the low mids.
+        /// the low mids, and while the ghosts are out it floats 0.4 m off the floor, still rocking.
         /// </summary>
         static void BuildRockingChair(Transform root, Haunting haunting, Palette p)
         {
@@ -568,9 +606,11 @@ namespace VRShootingGallery.EditorTools
                     0.015f, 0.015f, 0f, p.DarkWood);
             }
 
+            // While the ghosts are out it rises off the floor and hangs there, still rocking.
             Possess(rockers, haunting, 0.1f, Listen.LowMid,
                 Moves.Of(Movement.Roll, Vector3.right, 10f, frequency: 0.7f, damping: 0.12f, kick: 0.8f, chance: 0.5f,
-                    rollRadius: radius), true, seed: 3);
+                    rollRadius: radius), true, seed: 3,
+                lift: Lift.Of(LevitateOn.Reveal, 0.1f, 0.9f, new Vector3(0f, 0.4f, 0f), 0.04f, 6f));
         }
 
         // ================================================================== right wall and corner
@@ -724,9 +764,13 @@ namespace VRShootingGallery.EditorTools
             Ball(pot, "Knob", new Vector3(0f, 0.135f, 0f), Vector3.one * 0.02f, p.Porcelain);
             Slab(pot, "Spout", new Vector3(0.06f, 0.05f, 0f), new Vector3(0.13f, 0.1f, 0f), 0.016f, 0.016f, 0f, p.Porcelain);
             Slab(pot, "Handle", new Vector3(-0.07f, 0.1f, 0f), new Vector3(-0.1f, 0.04f, 0f), 0.014f, 0.01f, 0f, p.Porcelain);
-            Possess(pot, haunting, 0.3f, Listen.High, Moves.Of(Movement.Rattle, Vector3.up, 0.0018f, frequency: 20f, chance: 0.8f), false, seed: 31);
+            // The tea set rises off the table as the room is possessed — higher the more it is —
+            // trembling as it goes. Each piece to its own height, so they do not rise as one.
+            Possess(pot, haunting, 0.3f, Listen.High, Moves.Of(Movement.Rattle, Vector3.up, 0.0018f, frequency: 20f, chance: 0.8f), false,
+                seed: 31, lift: Lift.Of(LevitateOn.Possession, 0.35f, 0.95f, new Vector3(0.02f, 0.22f, 0f), 0.025f, 8f));
 
             var cups = new[] { new Vector3(-0.2f, 0.43f, 0.08f), new Vector3(-0.04f, 0.43f, -0.11f) };
+            var cupLifts = new[] { new Vector3(-0.04f, 0.3f, 0.03f), new Vector3(0.02f, 0.26f, -0.04f) };
             for (int i = 0; i < cups.Length; i++)
             {
                 var cup = NewChild(body, $"Teacup_{i}");
@@ -735,7 +779,8 @@ namespace VRShootingGallery.EditorTools
                 Cyl(cup, "Cup", new Vector3(0f, 0.033f, 0f), 0.034f, 0.05f, p.Porcelain);
                 Box(cup, "Handle", new Vector3(0.04f, 0.035f, 0f), new Vector3(0.012f, 0.028f, 0.006f), p.Porcelain);
                 Possess(cup, haunting, 0.3f, Listen.High,
-                    Moves.Of(Movement.Rattle, Vector3.up, 0.0025f, frequency: 24f, chance: 0.8f), false, seed: 40 + i);
+                    Moves.Of(Movement.Rattle, Vector3.up, 0.0025f, frequency: 24f, chance: 0.8f), false, seed: 40 + i,
+                    lift: Lift.Of(LevitateOn.Possession, 0.35f + 0.05f * i, 0.95f, cupLifts[i], 0.03f, 14f));
             }
 
             Possess(body, haunting, 0.7f, Listen.Bass,
@@ -775,14 +820,56 @@ namespace VRShootingGallery.EditorTools
             PossessLight(swing, haunting, light, bulbs.ToArray(), 0.5f, Listen.Loudness, false);
         }
 
-        // ================================================================== the ghost
+        // ================================================================== the ghosts
 
-        static SpectreGhost BuildGhost(Transform root, Haunting haunting, Palette p)
+        /// <summary>Where the ghosts start, room metres: either side of the haunting's stage, where they meet to dance.</summary>
+        static readonly Vector3 k_Stage = new(0f, 1.38f, 0.35f);
+
+        /// <summary>
+        /// The two ghosts, either side of the stage. The first is pale violet to white; its partner
+        /// is a tenth smaller and rose to white, so the pair read as two from across the room even
+        /// when the waltz brings one in front of the other.
+        /// </summary>
+        static List<SpectreGhost> BuildGhosts(Transform root, Haunting haunting, Palette p)
         {
-            var go = new GameObject("Spectre", typeof(ParticleSystem));
+            var first = BuildGhost(root, haunting, p, "Spectre", k_Stage + new Vector3(0.5f, 0f, 0f));
+
+            var partner = BuildGhost(root, haunting, p, "Spectre_Partner", k_Stage - new Vector3(0.5f, 0f, 0f));
+            var so = new SerializedObject(partner);
+            SetFloat(k_Tag, so, "m_Height", 0.72f);
+            SetFloat(k_Tag, so, "m_HeadRadius", 0.135f);
+            SetFloat(k_Tag, so, "m_HemRadius", 0.27f);
+            var palette = so.FindProperty("m_Palette");
+            if (palette != null)
+                palette.gradientValue = PartnerPalette();
+            else
+                Debug.LogWarning($"[{k_Tag}] SpectreGhost has no field 'm_Palette'; the partner keeps the first ghost's colours.");
+            so.ApplyModifiedProperties();
+
+            return new List<SpectreGhost> { first, partner };
+        }
+
+        /// <summary>The partner's colours by height: orchid at the hem (bass), rose, near white at the head (treble).</summary>
+        static Gradient PartnerPalette()
+        {
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(new Color(0.8f, 0.3f, 0.85f), 0f),
+                    new GradientColorKey(new Color(1f, 0.5f, 0.75f), 0.5f),
+                    new GradientColorKey(new Color(1f, 0.92f, 0.96f), 1f),
+                },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+            return gradient;
+        }
+
+        static SpectreGhost BuildGhost(Transform root, Haunting haunting, Palette p, string name, Vector3 position)
+        {
+            var go = new GameObject(name, typeof(ParticleSystem));
             Undo.RegisterCreatedObjectUndo(go, "Create ghost");
             go.transform.SetParent(root, false);
-            go.transform.localPosition = new Vector3(0f, 1.38f, 0.35f);
+            go.transform.localPosition = position;
             QuietParticles(go, p.Ghost, 4096);
 
             var ghost = Undo.AddComponent<SpectreGhost>(go);
@@ -792,16 +879,23 @@ namespace VRShootingGallery.EditorTools
             return ghost;
         }
 
-        /// <summary>One shadow quad per wall, hidden until the haunting moves it.</summary>
-        static void BuildShadows(Transform root, Haunting haunting, Palette p, params (Transform frame, CaveScreen screen)[] walls)
+        /// <summary>
+        /// One shadow quad per wall for <paramref name="ghost"/>, hidden until the haunting moves it.
+        /// Each ghost's quads stand a millimetre further off the wall than the last one's, so two
+        /// shadows crossing never fight for the same depth.
+        /// </summary>
+        static void BuildShadows(Transform root, Haunting haunting, SpectreGhost ghost, int index, Palette p,
+            params (Transform frame, CaveScreen screen)[] walls)
         {
-            var holder = NewChild(root, "Ghost_Shadows");
+            string suffix = index == 0 ? "" : $"_{index + 1}";
+            var holder = NewChild(root, "Ghost_Shadows" + suffix);
             var renderers = new List<Renderer>();
             var sizes = new List<Vector2>();
 
             foreach (var (frame, screen) in walls)
             {
-                var shadow = Quad(frame, "Ghost_Shadow", new Vector3(0f, 1.2f, -0.011f), new Vector2(0.7f, 0.7f), p.Shadow);
+                var shadow = Quad(frame, "Ghost_Shadow" + suffix, new Vector3(0f, 1.2f, -0.011f - 0.001f * index), new Vector2(0.7f, 0.7f),
+                    p.Shadow);
                 var renderer = shadow.GetComponent<Renderer>();
                 renderer.enabled = false;
                 renderers.Add(renderer);
@@ -811,12 +905,75 @@ namespace VRShootingGallery.EditorTools
             var component = Undo.AddComponent<GhostShadows>(holder.gameObject);
             var so = new SerializedObject(component);
             SetRef(k_Tag, so, "m_Haunting", haunting);
+            SetRef(k_Tag, so, "m_Ghost", ghost);
             SetArray(k_Tag, so, "m_Shadows", renderers);
             var sizeArray = so.FindProperty("m_WallSizes");
             sizeArray.arraySize = sizes.Count;
             for (int i = 0; i < sizes.Count; i++)
                 sizeArray.GetArrayElementAtIndex(i).vector2Value = sizes[i];
             so.ApplyModifiedProperties();
+        }
+
+        // ================================================================== the CAVE's views
+
+        const string k_ViewRoot = "CAVE_View";
+
+        /// <summary>
+        /// The CAVE's 3D and head-tracked 2D views (<see cref="CaveViewSetup"/>) on the thumbstick: up for 2D, down for
+        /// 3D. The view modes' own wand buttons are off — 1 to 3 here summon the ghosts, toggle low intensity and open
+        /// the tracks — and their desk keys move from the digits, which stand in for those buttons, to F1 (3D) and F2
+        /// (2D), as in the harp's scene. 2D-Fixed is built with them but given no button or key: the room's menu and
+        /// sign are not on the overlay layer it draws.
+        /// </summary>
+        static CaveViewMode BuildViewModes(Transform room)
+        {
+            if (!CaveViewSetup.Build(room, new Vector3(0f, Height * 0.5f, 0f), FallbackScreens()))
+                return null;
+
+            var view = room.Find(k_ViewRoot);
+            if (view == null || !view.TryGetComponent<CaveViewMode>(out var mode))
+                return null;
+
+            var so = new SerializedObject(mode);
+            SetInt(k_Tag, so, "m_Stereo3DButton", -1);
+            SetInt(k_Tag, so, "m_Mono2DButton", -1);
+            SetInt(k_Tag, so, "m_Fixed2DButton", -1);
+            SetBool(k_Tag, so, "m_StickPicksView", true);
+            SetBool(k_Tag, so, "m_KeyboardShortcuts", true);
+
+            var keys = so.FindProperty("m_Keys");
+            if (keys != null)
+            {
+                keys.arraySize = 2;
+                keys.GetArrayElementAtIndex(0).intValue = (int)UnityEngine.InputSystem.Key.F1;
+                keys.GetArrayElementAtIndex(1).intValue = (int)UnityEngine.InputSystem.Key.F2;
+            }
+            else
+            {
+                Debug.LogWarning($"[{k_Tag}] CaveViewMode has no 'm_Keys', so its desk keys stay 1-3, on top of the room's own.", mode);
+            }
+
+            so.ApplyModifiedProperties();
+            Debug.Log($"[{k_Tag}] CAVE views on the thumbstick: up is 2D (head-tracked), down is 3D; F2 / F1 at the desk. " +
+                      "The view modes' wand buttons are off here.", view);
+            return mode;
+        }
+
+        /// <summary>The projected screens from the room model, for 2D-Fixed if <c>MVR.vrx</c> cannot be read.</summary>
+        static FixedEyeView.Screen[] FallbackScreens()
+        {
+            var screens = new List<FixedEyeView.Screen>();
+            foreach (var screen in CaveScreens.Projected)
+                screens.Add(new FixedEyeView.Screen
+                {
+                    Name = screen.Name,
+                    Centre = screen.Centre,
+                    Normal = screen.Normal,
+                    Up = screen.Up,
+                    Size = new Vector2(screen.Width, screen.Height),
+                });
+
+            return screens.ToArray();
         }
 
         // ================================================================== the menu
@@ -922,12 +1079,32 @@ namespace VRShootingGallery.EditorTools
             }
         }
 
+        /// <summary>How a possessed thing levitates on top of its motion; see <see cref="PossessedObject"/>.</summary>
+        struct Lift
+        {
+            public LevitateOn On;
+            public float From, Full, Bob, Tumble;
+            public Vector3 To;
+
+            public static Lift Of(LevitateOn on, float from, float full, Vector3 to, float bob = 0.02f, float tumble = 10f) =>
+                new() { On = on, From = from, Full = full, To = to, Bob = bob, Tumble = tumble };
+        }
+
         static PossessedObject Possess(Transform target, Haunting haunting, float threshold, Listen listen, Moves moves,
-            bool visit, float band = -1f, int seed = 0)
+            bool visit, float band = -1f, int seed = 0, Lift? lift = null)
         {
             var component = Undo.AddComponent<PossessedObject>(target.gameObject);
             var so = new SerializedObject(component);
             Common(so, haunting, threshold, listen, band, visit);
+            if (lift is { } l)
+            {
+                SetEnum(k_Tag, so, "m_FloatOn", (int)l.On);
+                SetFloat(k_Tag, so, "m_FloatFrom", l.From);
+                SetFloat(k_Tag, so, "m_FloatFull", l.Full);
+                SetVector3(k_Tag, so, "m_FloatTo", l.To);
+                SetFloat(k_Tag, so, "m_FloatBob", l.Bob);
+                SetFloat(k_Tag, so, "m_FloatTumble", l.Tumble);
+            }
             SetEnum(k_Tag, so, "m_Motion", (int)moves.Motion);
             SetVector3(k_Tag, so, "m_Axis", moves.Axis);
             SetFloat(k_Tag, so, "m_Amount", moves.Amount);

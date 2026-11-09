@@ -4,10 +4,10 @@ using VRShootingGallery.Visualizer;
 namespace VRShootingGallery.Haunted
 {
     /// <summary>
-    /// The ghost, made of the music — a spectre drawn by spectral analysis. A sheet of points over
+    /// A ghost, made of the music — a spectre drawn by spectral analysis. A sheet of points over
     /// nothing: the treble in the head, the bass in the billowing hem, the live waveform running
     /// round the hem's edge, two eye holes where there are no points at all, and a trail of
-    /// ectoplasm behind it.
+    /// ectoplasm behind it. The room has two, who dance as partners when they show themselves.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -15,8 +15,15 @@ namespace VRShootingGallery.Haunted
     /// to where it is — but it is only <em>seen</em> when the haunting reveals it, and as a faint
     /// shimmer when the room is deeply possessed. It travels on a critically damped spring toward
     /// the target the director gives it, dances around that point in a figure-eight that widens with
-    /// the music, bobs and hops on the beat, twirls now and then while it is out, and always keeps
-    /// its distance from the tracked viewer's head: too close and stereo breaks down.
+    /// the music, bobs and hops on the beat, twirls when the director says so while it is out, and
+    /// always keeps its distance from the tracked viewer's head: too close and stereo breaks down.
+    /// </para>
+    /// <para>
+    /// On show, the partners share the stage: the director turns them round each other in a slow
+    /// waltz (<see cref="Haunting.WaltzOffset"/>), and each one after the first in the pair dances
+    /// the mirror image — its figure-eight, sway and twirls the other way — turned partly toward
+    /// its partner and banking into the turn. Their beats, hops and dance clock are the same music,
+    /// so they keep time with each other without being told.
     /// </para>
     /// <para>
     /// The points are written by hand into a particle system, the same way the visualizer's clouds
@@ -62,11 +69,15 @@ namespace VRShootingGallery.Haunted
         [SerializeField, Tooltip("Metres it hops on a strong beat.")]
         float m_BeatHop = 0.07f;
 
-        [SerializeField, Range(0f, 1f), Tooltip("Chance a beat sets it twirling, while it is on show.")]
-        float m_TwirlChance = 0.25f;
-
         [SerializeField, Tooltip("Degrees it sways with the low mids.")]
         float m_Sway = 8f;
+
+        [SerializeField, Tooltip("Degrees it turns from the viewer toward its partner while they dance together. Not all the way round: " +
+            "the face is what reads.")]
+        float m_PartnerTurn = 25f;
+
+        [SerializeField, Tooltip("Degrees it banks into the waltz, toward its partner.")]
+        float m_Bank = 9f;
 
         [Header("Look")]
         [SerializeField, Tooltip("Colour by height: hem (bass) at 0, head (treble) at 1. Left plain white for pale violet to white.")]
@@ -105,6 +116,7 @@ namespace VRShootingGallery.Haunted
         float m_HopVelocity;
         float m_Yaw;
         float m_TwirlLeft;
+        int m_Index = -1;
 
         readonly Vector3[] m_History = new Vector3[k_History];
         int m_HistoryHead;
@@ -113,6 +125,12 @@ namespace VRShootingGallery.Haunted
 
         public Vector3 Position => transform.position;
         public Vector3 Velocity => m_Velocity;
+
+        /// <summary>Which of the room's ghosts this is, 0 for the first; −1 before Start, or if the haunting does not know it.</summary>
+        public int Index => m_Index;
+
+        /// <summary>Whether it dances the mirror image: the second of each pair.</summary>
+        bool Mirrored => m_Index % 2 == 1;
 
         public void SetTarget(Vector3 world) => m_Target = world;
 
@@ -159,6 +177,9 @@ namespace VRShootingGallery.Haunted
             if (m_System != null && !m_System.isPlaying)
                 m_System.Play();
         }
+
+        // After every Awake, so the haunting has its list of ghosts.
+        void Start() => m_Index = m_Haunting != null ? m_Haunting.IndexOf(this) : -1;
 
         /// <summary>
         /// Spreads the points evenly over the sheet by area: rings down its height, each with a
@@ -267,13 +288,20 @@ namespace VRShootingGallery.Haunted
         void Dance(float dt)
         {
             float energy = m_Haunting.Level(Listen.Loudness);
-            float reveal = m_Haunting.Reveal;
+            float together = m_Haunting.Together;
             float time = Time.time;
+            float mirror = Mirrored ? -1f : 1f;
 
-            // A figure-eight around where it is, wider and quicker with the music.
+            // A figure-eight around where it is, wider and quicker with the music; a partner dances
+            // the mirror image of it. Mostly folded away while partnered: the waltz is the dance
+            // then, and the room has no depth to spare for both.
             m_DancePhase += dt * (0.5f + 1.3f * energy);
-            float reach = m_Dance * (0.3f + 0.7f * energy);
-            var offset = new Vector3(Mathf.Sin(m_DancePhase), 0f, 0.5f * Mathf.Sin(2f * m_DancePhase)) * reach;
+            float reach = m_Dance * (0.3f + 0.7f * energy) * (1f - 0.7f * together);
+            var offset = new Vector3(mirror * Mathf.Sin(m_DancePhase), 0f, 0.5f * Mathf.Sin(2f * m_DancePhase)) * reach;
+
+            // Its place in the waltz, from the middle of the dance, which is where its centre is
+            // heading while the pair is on show.
+            var waltz = m_Haunting.WaltzOffset(m_Index);
 
             if (m_Haunting.Beat)
                 m_HopVelocity += m_BeatHop * (0.5f + 0.5f * m_Haunting.BeatStrength) * 9f;
@@ -281,37 +309,61 @@ namespace VRShootingGallery.Haunted
             m_HopVelocity += (-60f * m_Hop - 9f * m_HopVelocity) * dt;
             m_Hop += m_HopVelocity * dt;
 
+            // The keep-away again, on where it actually is: the dance and the waltz swing it out from
+            // its centre, toward the viewer as often as not.
             float bob = m_Bob * Mathf.Sin(time * 2.6f);
-            transform.position = m_Centre + offset + Vector3.up * (bob + m_Hop);
+            transform.position = KeepAway(m_Centre + waltz + offset + Vector3.up * (bob + m_Hop));
 
-            // Face the viewer, turning slowly; twirl now and then while on show.
+            // Face the viewer, turning slowly, and partly its partner while they dance; twirl when
+            // the director says, partners opposite ways.
             var toHead = m_Haunting.HeadPosition - transform.position;
             toHead.y = 0f;
+            var inward = new Vector3(-waltz.x, 0f, -waltz.z);
             if (toHead.sqrMagnitude > 1e-4f)
             {
                 float facing = Mathf.Atan2(toHead.x, toHead.z) * Mathf.Rad2Deg;
+                if (inward.sqrMagnitude > 1e-4f)
+                {
+                    float partner = Mathf.Atan2(inward.x, inward.z) * Mathf.Rad2Deg;
+                    facing = Mathf.MoveTowardsAngle(facing, partner, m_PartnerTurn * together);
+                }
+
                 m_Yaw = Mathf.MoveTowardsAngle(m_Yaw, facing, 60f * dt);
             }
 
-            if (m_Haunting.Beat && reveal > 0.5f && m_TwirlLeft <= 0f &&
-                m_Random.NextDouble() < m_TwirlChance * m_Haunting.BeatStrength)
+            if (m_Haunting.Twirl && m_TwirlLeft <= 0f)
                 m_TwirlLeft = 360f;
 
             if (m_TwirlLeft > 0f)
             {
                 float turn = Mathf.Min(m_TwirlLeft, 330f * dt);
-                m_Yaw += turn;
+                m_Yaw += mirror * turn;
                 m_TwirlLeft -= turn;
             }
 
-            // Lean into its travel, and sway with the low mids.
+            // Lean into its travel, bank into the waltz, and sway with the low mids.
             var travel = new Vector3(m_Velocity.x, 0f, m_Velocity.z);
             var lean = Quaternion.identity;
             if (travel.sqrMagnitude > 1e-4f)
                 lean = Quaternion.AngleAxis(14f * travel.magnitude / m_MaxSpeed, Vector3.Cross(Vector3.up, travel.normalized));
 
-            float sway = m_Sway * m_Haunting.Level(Listen.LowMid) * Mathf.Sin(time * 2.1f);
+            if (inward.sqrMagnitude > 1e-4f)
+                lean = Quaternion.AngleAxis(m_Bank * together, Vector3.Cross(Vector3.up, inward.normalized)) * lean;
+
+            float sway = mirror * m_Sway * m_Haunting.Level(Listen.LowMid) * Mathf.Sin(time * 2.1f);
             transform.rotation = lean * Quaternion.AngleAxis(m_Yaw, Vector3.up) * Quaternion.AngleAxis(sway, Vector3.forward);
+        }
+
+        /// <summary><paramref name="world"/>, pushed out to <see cref="m_KeepAway"/> from the tracked head if it is nearer.</summary>
+        Vector3 KeepAway(Vector3 world)
+        {
+            var head = m_Haunting.HeadPosition;
+            var fromHead = world - head;
+            if (fromHead.sqrMagnitude >= m_KeepAway * m_KeepAway)
+                return world;
+
+            var push = fromHead.sqrMagnitude > 1e-4f ? fromHead.normalized : Vector3.forward;
+            return head + push * m_KeepAway;
         }
 
         void Record(float dt)

@@ -5,8 +5,8 @@ namespace VRShootingGallery.Haunted
     /// <summary>
     /// A portrait whose eyes follow you. The haunted-house trick, except here it is real: the CAVE
     /// tracks the viewer's head, so the painted face's eyes — two small eyeballs set into the
-    /// canvas — turn to wherever the tracked viewer actually is. When the ghost comes close, or
-    /// shows itself, they look at the ghost instead.
+    /// canvas — turn to wherever the tracked viewer actually is. When a ghost comes close, or the
+    /// ghosts show themselves, they look at the nearer ghost instead, and follow the dance.
     /// </summary>
     /// <remarks>
     /// The eyes are on the wall, so the people without glasses see them move too; only the
@@ -44,7 +44,7 @@ namespace VRShootingGallery.Haunted
             if (m_Eyes == null)
                 return;
 
-            var ghost = m_Haunting.Ghost;
+            var ghost = m_Haunting.NearestGhost(transform.position);
             bool watchGhost = ghost != null &&
                               (m_Haunting.Reveal > 0.4f || m_Haunting.WakeAt(transform.position) > m_GhostNear);
             var target = watchGhost ? ghost.Position : m_Haunting.HeadPosition;

@@ -21,6 +21,11 @@ namespace VRShootingGallery.Haunted
     /// neighbouring keys share bins and the local-maximum rule picks one of them. It is a show,
     /// not a transcription.
     /// </para>
+    /// <para>
+    /// A key that is down glows with the player's touch. With two ghosts in the room they play
+    /// four hands: the first ghost's blue below middle C, its partner's rose above, blending over
+    /// a few notes where the hands meet.
+    /// </para>
     /// </remarks>
     public class PossessedPiano : Possessable
     {
@@ -46,8 +51,15 @@ namespace VRShootingGallery.Haunted
         [SerializeField, Tooltip("Seconds for the keyboard's running peak to fall by half.")]
         float m_PeakHalfLife = 2.5f;
 
-        [SerializeField, Tooltip("Emission a key gets while it is down: the invisible player's touch.")]
+        [SerializeField, Tooltip("Emission a key gets while it is down: the invisible player's touch. With two ghosts, the first's, " +
+            "which plays the keys below the split.")]
         [ColorUsage(false, true)] Color m_Touch = new(0.25f, 0.55f, 1.1f);
+
+        [SerializeField, Tooltip("The partner's touch, on the keys above the split.")]
+        [ColorUsage(false, true)] Color m_PartnerTouch = new(1.1f, 0.3f, 0.7f);
+
+        [SerializeField, Tooltip("MIDI note where the two ghosts' hands meet: middle C is 60. The colours blend over a few notes either side.")]
+        float m_SplitNote = 60f;
 
         static readonly int k_EmissionColor = Shader.PropertyToID("_EmissionColor");
 
@@ -157,7 +169,10 @@ namespace VRShootingGallery.Haunted
             if (m_Renderers[k] == null)
                 return;
 
-            m_Block.SetColor(k_EmissionColor, m_Touch * m_Press[k]);
+            float hand = m_Haunting.HasPartner
+                ? Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(m_SplitNote - 2.5f, m_SplitNote + 2.5f, m_LowestNote + k))
+                : 0f;
+            m_Block.SetColor(k_EmissionColor, Color.Lerp(m_Touch, m_PartnerTouch, hand) * m_Press[k]);
             m_Renderers[k].SetPropertyBlock(m_Block);
         }
     }

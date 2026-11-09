@@ -28,6 +28,12 @@ calls `CaveViewSetup.Build`, and any other room's builder can do the same with o
 music rooms buttons 1–3 do other things (world, low intensity, next track), so a room that takes the
 views moves those, as the orchestra does to 4 and 6.
 
+**Or the thumbstick**, for a room that keeps its buttons: tick **Stick Picks View** and set the
+buttons to −1 (none — a negative index is never read as the trigger). Then the stick pushed up picks
+2D and pushed down picks 3D, one change per push, the stick back in the middle before the next, and
+not while a wall menu is open (the stick is the menu's then). The haunted room does this
+([HauntedRoom_Demo.md](HauntedRoom_Demo.md)), with its desk keys moved to F1 / F2.
+
 ## How each view works
 
 **2D** sets every MiddleVR stereo camera's inter-eye distance to 0, on the kernel's cameras rather

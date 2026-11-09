@@ -3,9 +3,10 @@ using UnityEngine;
 namespace VRShootingGallery.Haunted
 {
     /// <summary>
-    /// A candle flame that gives the ghost away: it leans away from the ghost as it passes, the
-    /// way a flame bends in a draught, and turns blue while the ghost is out. Otherwise it burns,
-    /// taller with the treble.
+    /// A candle flame that gives the ghosts away: it leans away from the nearer ghost as it passes,
+    /// the way a flame bends in a draught, and while the ghosts are out it burns in the nearer
+    /// one's colour — blue or rose, blending between — so the candles swap colours as the pair
+    /// waltz past them. Otherwise it burns, taller with the treble.
     /// </summary>
     /// <remarks>
     /// This transform is the wick: the flame's renderer is a child above it, so leaning is a
@@ -17,7 +18,11 @@ namespace VRShootingGallery.Haunted
         [SerializeField] Renderer m_Flame;
 
         [SerializeField, ColorUsage(false, true)] Color m_Colour = new(1f, 0.6f, 0.2f);
-        [SerializeField, ColorUsage(false, true)] Color m_GhostColour = new(0.3f, 0.7f, 1.2f);
+        [SerializeField, ColorUsage(false, true), Tooltip("The flame while the ghosts are out, nearest the first ghost.")]
+        Color m_GhostColour = new(0.3f, 0.7f, 1.2f);
+
+        [SerializeField, ColorUsage(false, true), Tooltip("The same, nearest its partner.")]
+        Color m_PartnerColour = new(1.2f, 0.4f, 0.8f);
 
         [SerializeField, Tooltip("Degrees the flame leans at the ghost's nearest.")]
         float m_Lean = 35f;
@@ -45,9 +50,9 @@ namespace VRShootingGallery.Haunted
             float time = Time.time;
             float flicker = Mathf.PerlinNoise(time * 6f, m_Seed);
             float wake = m_Haunting.WakeAt(transform.position);
-            var ghost = m_Haunting.Ghost;
+            var ghost = m_Haunting.NearestGhost(transform.position);
 
-            // Away from the ghost, horizontally, with a small idle sway so a still flame is still alive.
+            // Away from the nearer ghost, horizontally, with a small idle sway so a still flame is still alive.
             var away = ghost != null ? transform.position - ghost.Position : Vector3.forward;
             away.y = 0f;
             var tilt = away.sqrMagnitude > 1e-4f ? Vector3.Cross(Vector3.up, away.normalized) : Vector3.right;
@@ -59,7 +64,8 @@ namespace VRShootingGallery.Haunted
             float tall = 1f + 0.15f * (flicker - 0.5f) * 2f + 0.3f * m_Haunting.Level(Listen.High) + 0.25f * wake;
             m_Flame.transform.localScale = new Vector3(m_FlameScale.x, m_FlameScale.y * tall, m_FlameScale.z);
 
-            var colour = Color.Lerp(m_Colour, m_GhostColour, Mathf.SmoothStep(0f, 1f, m_Haunting.Reveal));
+            var ghostColour = Color.Lerp(m_GhostColour, m_PartnerColour, m_Haunting.PartnerShare(transform.position));
+            var colour = Color.Lerp(m_Colour, ghostColour, Mathf.SmoothStep(0f, 1f, m_Haunting.Reveal));
             m_Block.SetColor(k_EmissionColor, colour * (0.85f + 0.3f * flicker));
             m_Flame.SetPropertyBlock(m_Block);
         }
