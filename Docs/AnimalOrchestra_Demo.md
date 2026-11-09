@@ -21,9 +21,9 @@ seen from above, front wall at the top            hills on the horizon, the suns
                             ELEPHANT, wading (1 m beyond the wall)         moon, far out
               ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈ rippling water runs in under the wall ≈≈≈≈≈≈≈≈
  GORILLA    ┌────────────────────────── front wall ───────────────────────┐   ridge,
- on a bank  │ jellyfish ~ (high)        tiger cub    jellyfish ~ (lower)  │   WOLVES
- (beyond    │          parrot          (on a rock)   woodpecker           │   (beyond
- the left   │                       jellyfish ~ (chest height)            │   the right
+ on a bank  │ jellyfish ~ (high)                     jellyfish ~ (lower)  │   WOLVES
+ (beyond    │          parrot                        woodpecker           │   (beyond
+ the left   │           tiger cub   jellyfish ~ (chest height)            │   the right
  wall)      │      bullfrog         ◉ viewer                 octopus      │   wall);
             │                                                             │   TIGER on a
             │                                                             │   crag behind
@@ -62,10 +62,10 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
 ├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal, facing the
-│                                                       viewer over its own two-octave keyboard
+│                                                       open back over its own two-octave keyboard
 ├── Tiger               TigerPerformer        Roar      beyond the right wall on a crag, further out than the wolves'
 │                                                       ridge, between the back and middle wolves, its head above theirs, ×1.1
-├── Tiger_Cub           TigerCubPerformer     Vocal     front and centre on its own rock, facing the viewer (with the parrot)
+├── Tiger_Cub           TigerCubPerformer     Vocal     on its own rock just in front of the parrot, singing with it
 └── Menu                OrchestraTrackMenu: the music folder's tracks on the front wall, hidden until
                         the joystick brings it up; on the CaveOverlay layer
 
@@ -278,7 +278,7 @@ pull in opposite directions, so only the room can say which wins.
 | Bullfrog | Bass | Throat sac inflates by note velocity; body squashes | — | Throat breathes, blinks |
 | Woodpecker | HiHat | One peck per hat note, striking the trunk on the note; accents glow; the open hat lifts the head and crest | — | An occasional tap, head tilts |
 | Jellyfish | Pads | Bell contracts on each chord and the jelly rises a little | Gentle throb with loudness; colour from the chord root | Slow pulse and drift |
-| Octopus | Keys | Plays a two-octave keyboard on a stand between it and the viewer: for each note an arm arches over the key, winds up, strikes it on the note and holds it; the key tips down and **lights in the note's colour** while held. Four front arms share the keys, two side arms help with big chords | Mantle swells with loudness | Arms hover over the keys between notes; between songs they drape over the pedestal and wave; breathing, blinks |
+| Octopus | Keys | Plays a two-octave keyboard on a stand in front of it, facing the open back: for each note an arm arches over the key, winds up, strikes it on the note and holds it; the key tips down and **lights in the note's colour** while held. Four front arms share the keys, two side arms help with big chords | Mantle swells with loudness | Arms hover over the keys between notes; between songs they drape over the pedestal and wave; breathing, blinks |
 | Tiger cub | Vocal (with the parrot) | On held notes: both front paws up and out, head tipped further back, jaw and head quiver with vibrato | Jaw drops (dark mouth, pink tongue, little fangs), head tips back, ears prick up and chest puffs as it sings out; shut fully between phrases | Bobs to the beat, swishes its tail, blinks, **looks at the tracked head** |
 | Tiger | Roar | Before a drop it crouches, ears back, and draws breath; on it, it rears up, turns to the viewer and roars, jaws wide, eyes lit, tail lashing; holds it about a second and settles | — | Sits on its crag looking about — the moon, the wolves, the room — breathing, tail sweeping |
 

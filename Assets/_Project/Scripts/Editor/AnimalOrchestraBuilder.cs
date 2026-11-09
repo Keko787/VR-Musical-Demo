@@ -199,16 +199,17 @@ namespace VRShootingGallery.EditorTools
             new("Bullfrog", typeof(BullfrogPerformer), Part.Bass, true, b => new Vector3(-0.634f, 0f, -0.571f), Facing.Yaw, 122.829f),
             new("Woodpecker", typeof(WoodpeckerPerformer), Part.HiHat, true, b => new Vector3(0.826f, 0f, 0.485f), Facing.Yaw, 144.545f),
             new("Jellyfish", typeof(JellyfishPerformer), Part.Pads, true, b => new Vector3(0.098f, 0f, 0.13f), Facing.Room),
-            // The octopus stays where Kevin put it but faces the viewer, so its keyboard is between them.
-            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Viewer),
+            // The octopus where Kevin put it, turned (2026-11-08) to face the open back and the audience there,
+            // its keyboard in front of it.
+            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Yaw, 180f),
 
             // The tigers. The adult roars on the drops from a crag beyond the right wall, further out than the
             // wolves' ridge and between the back and middle wolves, its head above theirs; turned toward the
-            // moon, it turns its head to the viewer to roar. The cub sings lead with the parrot, front and
-            // centre on its own rock, facing the viewer, low enough to keep under the track list's panel.
+            // moon, it turns its head to the viewer to roar. The cub sings lead with the parrot, on its own rock
+            // just in front of the parrot's stand, where Kevin moved and turned it in the scene (2026-11-08).
             new("Tiger", typeof(TigerPerformer), Part.Roar, false, b => new Vector3(b.RightX + 1.5f, 0f, -0.35f), Facing.Yaw, -50f,
                 Wall.Right, 1.1f),
-            new("Tiger_Cub", typeof(TigerCubPerformer), Part.Vocal, true, b => new Vector3(0.3f, 0f, 0.62f), Facing.Viewer),
+            new("Tiger_Cub", typeof(TigerCubPerformer), Part.Vocal, true, b => new Vector3(-0.382f, 0f, 0.154f), Facing.Yaw, 170f),
         };
 
         // ================================================================== menus

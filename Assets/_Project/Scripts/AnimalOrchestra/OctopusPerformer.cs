@@ -4,8 +4,8 @@ using UnityEngine;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The keys: an octopus on a stone pedestal playing a small two-octave keyboard that stands between it
-    /// and the viewer. For each note an arm arches out over the note's key, lifts as it winds up, comes down
+    /// The keys: an octopus on a stone pedestal playing a small two-octave keyboard on a stand in front of
+    /// it. For each note an arm arches out over the note's key, lifts as it winds up, comes down
     /// on the key exactly as the note sounds and holds it there while the note lasts; the key tips down and
     /// lights in the note's colour, so every note is a key you can see go down and glow. Between notes its
     /// arms hover over the keys; between songs they drape over the pedestal and wave.
@@ -68,7 +68,7 @@ namespace VRShootingGallery.AnimalOrchestra
         static readonly int[] k_White = { 0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6 };
         static readonly bool[] k_Black = { false, true, false, true, false, false, true, false, true, false, true, false };
 
-        // The keyboard, in the octopus's frame: +Z toward the keyboard and the viewer beyond it.
+        // The keyboard, in the octopus's frame: +Z toward the keyboard, the way the octopus faces.
         const float k_KeyBed = 0.435f;          // height of the white keys' hinge line
         const float k_KeyBack = 0.385f;         // z of the keys' back edge, where they hinge
         const float k_WhiteWidth = 0.042f;
