@@ -128,6 +128,16 @@ namespace VRShootingGallery.Visualizer
             "read through them. The water, on the walls behind the panel, stays.")]
         float m_MenuDim = 0.75f;
 
+        [Header("Musica Universalis with the tree")]
+        [SerializeField, Tooltip("How far Musica Universalis moves while the tree is on with it, so the two do not run into each " +
+            "other: up, its spheres clear above the crown, its top still under the top of the walls. Measured in batch: with the " +
+            "tree's move, the nearest points of the two stay about 15 cm apart.")]
+        Vector3 m_BodyBesideTree = new(0f, 0.3f, 0f);
+
+        [SerializeField, Tooltip("How far the tree moves while Musica Universalis is on with it: to the left, its crown still about " +
+            "10 cm off the left wall as it sways, and back from the front wall.")]
+        Vector3 m_TreeBesideBody = new(-0.85f, 0f, -0.45f);
+
         [Header("Wand")]
         [SerializeField, Tooltip("Wand button that opens the modes on the front wall (or, without a menu, steps to the next mode). " +
             "Indices are whatever the .vrx says; the VisBox wand has 0-4, 6-8, 11 and 15, and 0 is the trigger, which picks in the menu.")]
@@ -164,6 +174,8 @@ namespace VRShootingGallery.Visualizer
         float m_BlendRipples;
         float m_BlendLava;
         float m_BlendTree;
+        float m_BlendPair;                            // Musica Universalis and the tree both on: each eases to its place beside the other
+        Vector3 m_BodyHome;
         float m_BlendLasers;
         float m_BlendCloud;
         float m_BlendBody;
@@ -223,6 +235,8 @@ namespace VRShootingGallery.Visualizer
         void Awake()
         {
             m_On = Bit(m_Mode);
+            if (m_AstralBody != null)
+                m_BodyHome = m_AstralBody.transform.localPosition;
 
             // Before the deck's Start, which plays or cues the first track.
             if (m_StartPaused && m_Deck != null)
@@ -263,6 +277,7 @@ namespace VRShootingGallery.Visualizer
             m_BlendRipples = IsOn(VisualizerMode.Ripples) ? 1f : 0f;
             m_BlendLava = IsOn(VisualizerMode.LavaLamp) ? 1f : 0f;
             m_BlendTree = IsOn(VisualizerMode.Tree) ? 1f : 0f;
+            m_BlendPair = Paired ? 1f : 0f;
             m_BlendLasers = IsOn(VisualizerMode.Room3D) ? 1f : 0f;
             m_BlendCloud = IsOn(VisualizerMode.PointCloud) ? 1f : 0f;
             m_BlendBody = IsOn(VisualizerMode.AstralBody) ? 1f : 0f;
@@ -348,6 +363,9 @@ namespace VRShootingGallery.Visualizer
 
         static int Bit(VisualizerMode mode) => 1 << (int)mode;
 
+        /// <summary>Musica Universalis and the tree both on, layered: the one pair of shows that would otherwise run into each other.</summary>
+        bool Paired => IsOn(VisualizerMode.AstralBody) && IsOn(VisualizerMode.Tree);
+
         public void NextMode() => StepMode(1);
         public void PreviousMode() => StepMode(-1);
 
@@ -385,6 +403,7 @@ namespace VRShootingGallery.Visualizer
             m_BlendRipples = Mathf.MoveTowards(m_BlendRipples, IsOn(VisualizerMode.Ripples) ? 1f : 0f, step);
             m_BlendLava = Mathf.MoveTowards(m_BlendLava, IsOn(VisualizerMode.LavaLamp) ? 1f : 0f, step);
             m_BlendTree = Mathf.MoveTowards(m_BlendTree, IsOn(VisualizerMode.Tree) ? 1f : 0f, step);
+            m_BlendPair = Mathf.MoveTowards(m_BlendPair, Paired ? 1f : 0f, step);
             m_BlendLasers = Mathf.MoveTowards(m_BlendLasers, IsOn(VisualizerMode.Room3D) ? 1f : 0f, step);
             m_BlendCloud = Mathf.MoveTowards(m_BlendCloud, IsOn(VisualizerMode.PointCloud) ? 1f : 0f, step);
             m_BlendBody = Mathf.MoveTowards(m_BlendBody, IsOn(VisualizerMode.AstralBody) ? 1f : 0f, step);
@@ -445,6 +464,14 @@ namespace VRShootingGallery.Visualizer
                 m_Tree.Intensity = intensity;
                 Show(m_Tree.gameObject, m_BlendTree > 0f);
             }
+
+            // Musica Universalis and the tree on together would run into each other, so each moves aside,
+            // as it fades in, and back once the other has gone.
+            float pair = Mathf.SmoothStep(0f, 1f, m_BlendPair);
+            if (m_AstralBody != null)
+                m_AstralBody.transform.localPosition = m_BodyHome + m_BodyBesideTree * pair;
+            if (m_Tree != null)
+                m_Tree.Shift = m_TreeBesideBody * pair;
 
             float lasers = Mathf.SmoothStep(0f, 1f, m_BlendLasers);
             bool showLasers = m_BlendLasers > 0f;

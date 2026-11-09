@@ -415,6 +415,19 @@ the room, turning autumn amber as it goes, lies on the floor `m_LieSeconds` (4 s
 back on its twig over `m_RegrowSeconds` (3 s). Like the other shows in the volume, it dims while
 the menu is open.
 
+**With Musica Universalis.** The two, layered, would run into each other: the astral body's spheres
+fill the middle of the room at the crown's height. So while both are on, each moves aside as it
+fades in — the astral body up 0.3 m, centred as before (`m_BodyBesideTree` on the `RoomVisualizer`;
+its top ring then reaches about 2.08 m, under the top of the walls), and the tree 0.85 m to the left
+and 0.45 m back from the front wall (`m_TreeBesideBody`; its crown stays about 10 cm off the left
+wall as it sways) — and both glide home when either is turned off. Leaves already falling or lying
+on the floor stay where they are. Measured in batch with a track playing: with the tree moved left
+but the astral body not raised, about a hundred of their points came within 5 cm of each other every
+frame; with both moves, none come within about 15 cm, and none leave the room. Raised, the outermost
+(most tilted) sphere's top arc passes above the front wall's top edge as seen from the back of the
+room, where the CAVE has no ceiling to draw it, so that arc goes out of sight until it turns down
+again. A rise of 0.2 m also keeps the two apart (about 9 cm between them) with less of that.
+
 ## The lasers and the ribbons
 
 **Lasers** (`LaserShow`): 3 emitters, 5 beams each, built at run time from `CaveScreens`. An
@@ -550,6 +563,7 @@ Everything is in the Inspector, per component. The ones worth knowing:
 | | `m_FadeSeconds` | 1.5 | Cross-fade between modes, and a layered mode's fade in or out |
 | | `m_AutoCycleSeconds` | 0 (off) | Hands-off mode switching; waits while the menu is open or a mix is layered |
 | | `m_MenuDim` | 0.75 | How far the volume's shows dim while the menu is open |
+| | `m_BodyBesideTree` / `m_TreeBesideBody` | (0, 0.3, 0) / (−0.85, 0, −0.45) m | Where Musica Universalis and the tree move to while both are on |
 | | `m_Intensity` | 1 | Master brightness |
 | | `m_MaxFlashesPerSecond` / `m_LowIntensityFlashesPerSecond` | 3 / 2 | Beat rate cap |
 | `VisualizerMenu` | `m_DoublePickSeconds` | 0.35 | How quick a second pick must be to layer a mode; also how long a single pick waits |

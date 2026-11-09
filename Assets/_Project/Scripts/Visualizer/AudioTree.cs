@@ -108,6 +108,12 @@ namespace VRShootingGallery.Visualizer
         public float Intensity { get; set; } = 1f;
         public AudioAnalyser Analyser { get => m_Analyser; set => m_Analyser = value; }
 
+        /// <summary>
+        /// Metres the tree stands away from <see cref="m_Base"/>, for making room for another show. The
+        /// tree moves; leaves already falling or lying on the floor stay where they are.
+        /// </summary>
+        public Vector3 Shift { get; set; }
+
         static readonly int k_Color = Shader.PropertyToID("_Color");
 
         struct Branch
@@ -415,7 +421,7 @@ namespace VRShootingGallery.Visualizer
                 if (branch.Parent < 0)
                 {
                     parentTurn = turn;
-                    start = m_Base;
+                    start = m_Base + Shift;
                 }
                 else
                 {
