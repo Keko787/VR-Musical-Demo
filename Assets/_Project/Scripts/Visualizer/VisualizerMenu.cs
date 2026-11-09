@@ -4,17 +4,19 @@ using UnityEngine;
 namespace VRShootingGallery.Visualizer
 {
     /// <summary>
-    /// The visualizer's menu on the front wall. The mode button opens the five shows, with the ones on
+    /// The visualizer's menu on the front wall. The mode button opens the shows as two tables side by
+    /// side — 2D on the surfaces in one, 3D holograms in the volume in the other — with the ones on
     /// marked; the track button opens the playlist, with the track playing and the one up next marked.
     /// Picking a mode cross-fades to it alone as the menu closes; picking it twice in quick succession
-    /// layers it with whatever else is on, or takes it back out, and leaves the menu open for more.
-    /// Picking a track plays it from the start.
+    /// layers it with whatever else is on, from either table, or takes it back out, and leaves the
+    /// menu open for more. Picking a track plays it from the start.
     /// </summary>
     /// <remarks>
-    /// The panel, the wand's ray, the joystick, the keys and the scrolling are the shared
+    /// The panel, the tables, the wand's ray, the joystick, the keys and the scrolling are the shared
     /// <see cref="WallMenu"/>'s — the same menu, worked the same way, as the glass room's. While it is
     /// open the shows in the room's volume dim (<see cref="RoomVisualizer"/> does that), so it can be
-    /// read through them; the water stays, behind the panel.
+    /// read through them; the surface shows stay, behind the panel. A menu built before it had tables
+    /// lists the modes as one list, 2D first.
     /// </remarks>
     [DefaultExecutionOrder(-50)] // after the RoomVisualizer, which opens it, has read its buttons
     public class VisualizerMenu : WallMenu
@@ -25,6 +27,7 @@ namespace VRShootingGallery.Visualizer
 
         Page m_Page;
         MusicDeck m_Watched;
+        bool m_ToldNoTables;
 
         public bool ShowingModes => IsOpen && m_Page == Page.Modes;
         public bool ShowingTracks => IsOpen && m_Page == Page.Tracks;
@@ -75,6 +78,7 @@ namespace VRShootingGallery.Visualizer
                 OpenTracks();
         }
 
+        /// <summary>Opens the modes as two tables, the surface shows on the left and the volume's on the right, with the one on selected.</summary>
         public void OpenModes()
         {
             if (m_Visualizer == null)
@@ -84,9 +88,22 @@ namespace VRShootingGallery.Visualizer
             Entries.Clear();
             var modes = RoomVisualizer.Modes;
             for (int i = 0; i < modes.Count; i++)
-                Entries.Add(i);
+                if (RoomVisualizer.IsSurface(modes[i]))
+                    Entries.Add(i);
 
-            Open(Mathf.Max(0, IndexOf(m_Visualizer.Mode)));
+            int split = Entries.Count;
+            for (int i = 0; i < modes.Count; i++)
+                if (!RoomVisualizer.IsSurface(modes[i]))
+                    Entries.Add(i);
+
+            if (!HasTables && !m_ToldNoTables)
+            {
+                m_ToldNoTables = true;
+                Debug.LogWarning("[Visualizer] This menu was built before it had the 2D and 3D tables, so the modes are one list. " +
+                                 "Open the scene, run VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
+            }
+
+            Open(Mathf.Max(0, Entries.IndexOf(IndexOf(m_Visualizer.Mode))), split);
         }
 
         public void OpenTracks()
@@ -136,6 +153,8 @@ namespace VRShootingGallery.Visualizer
             ? "VISUALIZER   <size=60%><alpha=#99>double-pick to add or remove<alpha=#FF></size>"
             : Paged("TRACKS");
 
+        protected override string TableHeading(int table) => table == 0 ? "2D / SURFACE" : "3D / HOLOGRAMS";
+
         protected override void Describe(int entry, StringBuilder text, ref Color colour)
         {
             if (m_Page == Page.Tracks)
@@ -152,8 +171,14 @@ namespace VRShootingGallery.Visualizer
             }
 
             // The ones on are told by their colour and their bullet, as the glass room marks the world
-            // outside; a word after them would not fit beside the longest name.
-            text.Append(RoomVisualizer.TitleOf(mode)).Append("   <alpha=#99>").Append(RoomVisualizer.KindOf(mode)).Append("<alpha=#FF>");
+            // outside. In a table the few words on what the show is go on a line of their own, small,
+            // since the column is narrow; the table's heading already says 2D or 3D.
+            string kind = m_Visualizer.Has(mode) ? RoomVisualizer.KindOf(mode) : "rebuild the scene to get this";
+            text.Append(RoomVisualizer.TitleOf(mode));
+            if (InTables)
+                text.Append("\n<size=70%><alpha=#99>").Append(kind).Append("<alpha=#FF></size>");
+            else
+                text.Append("   <alpha=#99>").Append(RoomVisualizer.IsSurface(mode) ? "2D · " : "3D · ").Append(kind).Append("<alpha=#FF>");
         }
     }
 }

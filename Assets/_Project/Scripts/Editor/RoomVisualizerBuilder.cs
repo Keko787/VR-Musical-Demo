@@ -9,12 +9,13 @@ using static VRShootingGallery.EditorTools.StringInstrumentBuilder;
 namespace VRShootingGallery.EditorTools
 {
     /// <summary>
-    /// Builds the room audio visualizer: the analyser and its music source, a water-tube panel on
-    /// each of the four projected screens for the 2D mode, the laser rig and three waveform
-    /// ribbons, the three point clouds (the spectrum field, the astral body, the fireflies), a status line on
-    /// the front wall, and the <see cref="RoomVisualizer"/> that switches between them. Everything lives under <c>CAVE_User_Room/Room_Visualizer</c> and
-    /// is registered with Undo; the <see cref="RoomVisualizer"/> on the root is reused, so its
-    /// Inspector settings survive a rebuild.
+    /// Builds the room audio visualizer: the analyser and its music source, a water-tube panel, a lava
+    /// lamp panel and a ripple panel on each of the four projected screens for the three 2D modes, the
+    /// laser rig and three waveform ribbons, the three point clouds (the spectrum field, the astral
+    /// body, the fireflies) and the holographic tree, a status line on the front wall, the menu with
+    /// its 2D and 3D tables, and the <see cref="RoomVisualizer"/> that switches between them. Everything lives under
+    /// <c>CAVE_User_Room/Room_Visualizer</c> and is registered with Undo; the
+    /// <see cref="RoomVisualizer"/> on the root is reused, so its Inspector settings survive a rebuild.
     /// </summary>
     /// <remarks>
     /// The panels are placed from <see cref="CaveScreens"/>, which is the CAVE's <c>.vrx</c> in
@@ -32,6 +33,9 @@ namespace VRShootingGallery.EditorTools
         const string k_AnalyserName = "Analyser";
         const string k_MusicName = "Music";
         const string k_SurfacesName = "Surfaces_2D";
+        const string k_RipplesName = "Ripples_2D";
+        const string k_LavaName = "LavaLamp_2D";
+        const string k_TreeName = "Tree_3D";
         const string k_LasersName = "Lasers_3D";
         const string k_WaveformsName = "Waveforms_3D";
         const string k_CloudName = "PointCloud_3D";
@@ -41,8 +45,12 @@ namespace VRShootingGallery.EditorTools
 
         const string k_MusicFolder = RoomVisualizer.MusicFolder;
         const string k_WaterShaderPath = "Assets/_Project/Art/Shaders/WaterTubes.shader";
+        const string k_RippleShaderPath = "Assets/_Project/Art/Shaders/RippleSurface.shader";
+        const string k_LavaShaderPath = "Assets/_Project/Art/Shaders/LavaLamp.shader";
+        const string k_LavaMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_LavaLamp.mat";
         const string k_BeamShaderPath = "Assets/_Project/Art/Shaders/LaserBeam.shader";
         const string k_WaterMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Water.mat";
+        const string k_RippleMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Ripples.mat";
         const string k_BeamMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Beam.mat";
         const string k_SpotMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Spot.mat";
         const string k_RibbonMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Ribbon.mat";
@@ -58,6 +66,13 @@ namespace VRShootingGallery.EditorTools
         /// wall quads, far too little to read as depth from anywhere in the room.
         /// </summary>
         const float k_PanelInset = 0.005f;
+
+        /// <summary>
+        /// The other 2D shows lie over the water panels, the lava lamp first and the ripples over it,
+        /// and all under the status line (at twice the panels' inset).
+        /// </summary>
+        const float k_LavaInset = 0.0062f;
+        const float k_RippleInset = 0.0075f;
 
         /// <summary>Tubes per screen. The front and floor are wider than the sides; the pitch comes out near 15 cm on all four.</summary>
         const int k_FrontTubes = 24;
@@ -103,10 +118,12 @@ namespace VRShootingGallery.EditorTools
                 return false;
 
             var waterShader = AssetDatabase.LoadAssetAtPath<Shader>(k_WaterShaderPath);
+            var rippleShader = AssetDatabase.LoadAssetAtPath<Shader>(k_RippleShaderPath);
+            var lavaShader = AssetDatabase.LoadAssetAtPath<Shader>(k_LavaShaderPath);
             var beamShader = AssetDatabase.LoadAssetAtPath<Shader>(k_BeamShaderPath);
-            if (waterShader == null || beamShader == null)
+            if (waterShader == null || rippleShader == null || lavaShader == null || beamShader == null)
             {
-                Debug.LogError($"[{k_Tag}] Missing '{k_WaterShaderPath}' or '{k_BeamShaderPath}'.");
+                Debug.LogError($"[{k_Tag}] Missing '{k_WaterShaderPath}', '{k_RippleShaderPath}', '{k_LavaShaderPath}' or '{k_BeamShaderPath}'.");
                 return false;
             }
 
@@ -117,6 +134,8 @@ namespace VRShootingGallery.EditorTools
             Clear(root);
 
             var water = ShaderMaterial(k_WaterMaterialPath, waterShader, m => { });
+            var rippleMaterial = ShaderMaterial(k_RippleMaterialPath, rippleShader, ShaderDefaults);
+            var lavaMaterial = ShaderMaterial(k_LavaMaterialPath, lavaShader, ShaderDefaults);
             var beam = ShaderMaterial(k_BeamMaterialPath, beamShader, m =>
             {
                 m.SetFloat("_Softness", 2.5f);
@@ -145,14 +164,17 @@ namespace VRShootingGallery.EditorTools
             var playlist = Playlist();
             var (analyser, deck) = BuildAnalyser(root, playlist);
             var panels = BuildPanels(NewChild(root, k_SurfacesName), analyser, water);
+            var ripples = BuildRipples(NewChild(root, k_RipplesName), analyser, rippleMaterial);
+            var lava = BuildLavaLamp(NewChild(root, k_LavaName), analyser, lavaMaterial);
             var lasers = BuildLasers(NewChild(root, k_LasersName), analyser, beam, spot);
             var ribbons = BuildRibbons(NewChild(root, k_WaveformsName), analyser, ribbon);
             var cloud = BuildCloud(root, k_CloudName, CloudShape.SpectrumField, analyser, point);
             var body = BuildCloud(root, k_BodyName, CloudShape.AstralBody, analyser, point);
             var flies = BuildCloud(root, k_FirefliesName, CloudShape.Fireflies, analyser, point);
+            var tree = BuildTree(root, analyser, point);
             var sign = BuildSign(root);
 
-            var visualizer = Wire(root, analyser, deck, panels, lasers, ribbons, cloud, body, flies, sign);
+            var visualizer = Wire(root, analyser, deck, panels, ripples, lava, lasers, ribbons, cloud, body, flies, tree, sign);
             BuildOverlays(root, visualizer, deck);
             DarkenCamera(scene);
 
@@ -160,8 +182,9 @@ namespace VRShootingGallery.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeGameObject = root.gameObject;
 
-            Debug.Log($"[{k_Tag}] Built the visualizer: {panels.Count} water panels, {ribbons.Count} ribbons, " +
-                      $"three point clouds, the menu and the track strip, {playlist.Count} track(s) in the playlist.", root);
+            Debug.Log($"[{k_Tag}] Built the visualizer: {panels.Count} water panels, the ripples, the lava lamp, " +
+                      $"{ribbons.Count} ribbons, three point clouds, the tree, the menu with its 2D and 3D tables and the track " +
+                      $"strip, {playlist.Count} track(s) in the playlist.", root);
 
             if (playlist.Count == 0)
                 Debug.LogWarning($"[{k_Tag}] No audio clips in '{k_MusicFolder}'. Drop a track there and press Play — " +
@@ -251,6 +274,65 @@ namespace VRShootingGallery.EditorTools
             so.ApplyModifiedProperties();
 
             return panel;
+        }
+
+        /// <summary>
+        /// The rainbow ripples: a see-through quad on each projected screen, just in front of the water
+        /// panel, and the <see cref="RippleSurface"/> that drops rings into all four as one surface. It
+        /// reads each quad's place and size back at run time, so the quads are its own children, in the
+        /// room's frame. Built switched off; the visualizer turns it on when its mode is.
+        /// </summary>
+        static RippleSurface BuildRipples(Transform parent, AudioAnalyser analyser, Material material)
+        {
+            var quads = SurfaceQuads(parent, "Ripples", material, k_RippleInset);
+            var ripples = Undo.AddComponent<RippleSurface>(parent.gameObject);
+            var so = new SerializedObject(ripples);
+            SetRef(k_Tag, so, "m_Analyser", analyser);
+            SetArray(k_Tag, so, "m_Panels", quads);
+            so.ApplyModifiedProperties();
+
+            parent.gameObject.SetActive(false);
+            return ripples;
+        }
+
+        /// <summary>
+        /// The lava lamp: a quad on each projected screen, between the water panel and the ripples, and
+        /// the <see cref="LavaLamp"/> that moves the wax across all four as one surface. Built switched
+        /// off, like the ripples.
+        /// </summary>
+        static LavaLamp BuildLavaLamp(Transform parent, AudioAnalyser analyser, Material material)
+        {
+            var quads = SurfaceQuads(parent, "Lava", material, k_LavaInset);
+            var lamp = Undo.AddComponent<LavaLamp>(parent.gameObject);
+            var so = new SerializedObject(lamp);
+            SetRef(k_Tag, so, "m_Analyser", analyser);
+            SetArray(k_Tag, so, "m_Panels", quads);
+            so.ApplyModifiedProperties();
+
+            parent.gameObject.SetActive(false);
+            return lamp;
+        }
+
+        /// <summary>One unlit quad per projected screen, <paramref name="inset"/> metres into the room, children of <paramref name="parent"/>.</summary>
+        static List<MeshRenderer> SurfaceQuads(Transform parent, string prefix, Material material, float inset)
+        {
+            var quads = new List<MeshRenderer>();
+            foreach (var screen in CaveScreens.Projected)
+            {
+                var quad = Primitive(parent, PrimitiveType.Quad, $"{prefix}_{screen.Name}", material);
+                quad.localPosition = screen.Point(0.5f, 0.5f, inset);
+                quad.localRotation = screen.FacingRotation;
+                quad.localScale = new Vector3(screen.Width, screen.Height, 1f);
+
+                var renderer = quad.GetComponent<MeshRenderer>();
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+                quads.Add(renderer);
+            }
+
+            return quads;
         }
 
         // ---------------------------------------------------------------- 3D
@@ -354,6 +436,48 @@ namespace VRShootingGallery.EditorTools
             return cloud;
         }
 
+        /// <summary>
+        /// The holographic tree: a particle system written by hand, like the clouds, on the same point
+        /// sprite, with the <see cref="AudioTree"/> that grows it at run time. Built quiet, like them.
+        /// </summary>
+        static AudioTree BuildTree(Transform parent, AudioAnalyser analyser, Material material)
+        {
+            var go = new GameObject(k_TreeName, typeof(ParticleSystem));
+            Undo.RegisterCreatedObjectUndo(go, "Create tree");
+            go.transform.SetParent(parent, false);
+
+            var system = go.GetComponent<ParticleSystem>();
+            var main = system.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.scalingMode = ParticleSystemScalingMode.Local;
+            main.startSpeed = 0f;
+            main.gravityModifier = 0f;
+            main.maxParticles = 8192;
+
+            var emission = system.emission;
+            emission.enabled = false;
+            var shape = system.shape;
+            shape.enabled = false;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.alignment = ParticleSystemRenderSpace.View;
+            renderer.sortMode = ParticleSystemSortMode.None;
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            var tree = Undo.AddComponent<AudioTree>(go);
+            var so = new SerializedObject(tree);
+            SetRef(k_Tag, so, "m_Analyser", analyser);
+            so.ApplyModifiedProperties();
+
+            go.SetActive(false);
+            return tree;
+        }
+
         // ---------------------------------------------------------------- sign
 
         /// <summary>
@@ -371,8 +495,8 @@ namespace VRShootingGallery.EditorTools
         // ---------------------------------------------------------------- wiring
 
         static RoomVisualizer Wire(Transform root, AudioAnalyser analyser, MusicDeck deck, List<WaterTubePanel> panels,
-            LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud, AudioPointCloud body, AudioPointCloud flies,
-            TMPro.TextMeshPro sign)
+            RippleSurface ripples, LavaLamp lava, LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud,
+            AudioPointCloud body, AudioPointCloud flies, AudioTree tree, TMPro.TextMeshPro sign)
         {
             // Reused rather than re-added, so the mode, the buttons, the auto-cycle and anything else
             // tuned in the Inspector survive a rebuild.
@@ -384,6 +508,9 @@ namespace VRShootingGallery.EditorTools
             SetRef(k_Tag, so, "m_Analyser", analyser);
             SetRef(k_Tag, so, "m_Deck", deck);
             SetArray(k_Tag, so, "m_Panels", panels);
+            SetRef(k_Tag, so, "m_Ripples", ripples);
+            SetRef(k_Tag, so, "m_LavaLamp", lava);
+            SetRef(k_Tag, so, "m_Tree", tree);
             SetRef(k_Tag, so, "m_Lasers", lasers);
             SetArray(k_Tag, so, "m_Ribbons", ribbons);
             SetRef(k_Tag, so, "m_PointCloud", cloud);
@@ -396,11 +523,12 @@ namespace VRShootingGallery.EditorTools
 
         /// <summary>
         /// The front-wall overlays every room with music has, built the glass room's way: the menu the
-        /// mode and track buttons open, and the strip that says what is playing and what is up next.
+        /// mode and track buttons open, with the two tables its modes page is laid out as (2D on the
+        /// surfaces, 3D holograms), and the strip that says what is playing and what is up next.
         /// </summary>
         static void BuildOverlays(Transform root, RoomVisualizer visualizer, MusicDeck deck)
         {
-            var menu = WallMenuBuilder.BuildMenu<VisualizerMenu>(k_Tag, root, k_MenuMaterialPrefix);
+            var menu = WallMenuBuilder.BuildMenu<VisualizerMenu>(k_Tag, root, k_MenuMaterialPrefix, tables: true);
             var so = new SerializedObject(menu);
             SetRef(k_Tag, so, "m_Visualizer", visualizer);
             so.ApplyModifiedProperties();
@@ -461,6 +589,33 @@ namespace VRShootingGallery.EditorTools
 
             AssetDatabase.SaveAssets();
             return material;
+        }
+
+        /// <summary>
+        /// Writes the shader's own defaults into <paramref name="material"/>: for the shaders whose look
+        /// lives in their defaults, so a material made by an earlier build takes up a changed default
+        /// instead of keeping the old value. Tune these in the shader, not on the material.
+        /// </summary>
+        static void ShaderDefaults(Material material)
+        {
+            var shader = material.shader;
+            for (int i = 0; i < shader.GetPropertyCount(); i++)
+            {
+                int id = shader.GetPropertyNameId(i);
+                switch (shader.GetPropertyType(i))
+                {
+                    case UnityEngine.Rendering.ShaderPropertyType.Float:
+                    case UnityEngine.Rendering.ShaderPropertyType.Range:
+                        material.SetFloat(id, shader.GetPropertyDefaultFloatValue(i));
+                        break;
+                    case UnityEngine.Rendering.ShaderPropertyType.Color:
+                        material.SetColor(id, shader.GetPropertyDefaultVectorValue(i));
+                        break;
+                    case UnityEngine.Rendering.ShaderPropertyType.Vector:
+                        material.SetVector(id, shader.GetPropertyDefaultVectorValue(i));
+                        break;
+                }
+            }
         }
 
         // ================================================================== serialized fields

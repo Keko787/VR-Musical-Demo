@@ -49,12 +49,25 @@ namespace VRShootingGallery.EditorTools
         const float k_ScrollX = 0.725f;
 
         /// <summary>
+        /// A page of two tables: the middle of the left-hand one, the right-hand one, and half a table's
+        /// width; the height of each heading, and of the top row and the step down. Taller rows than
+        /// the list's, so each has room for a line of its own under its name.
+        /// </summary>
+        static readonly Vector3 k_TableColumns = new(-0.375f, 0.375f, 0.355f);
+        const float k_TableHeadingY = 0.43f;
+        static readonly Vector2 k_TableRows = new(0.3f, 0.125f);
+        const int k_TableRowCount = 7;
+
+        /// <summary>
         /// The menu, on the front wall: a dark glass panel, a bar behind the selected row, the title and
         /// the rows, the wand's ray and a cursor where it meets the panel. Closed until a button opens
         /// it, in the editor too. <paramref name="height"/> is its middle above the floor and
-        /// <paramref name="inset"/> how far it stands off the front screen.
+        /// <paramref name="inset"/> how far it stands off the front screen. With
+        /// <paramref name="tables"/>, it also has the two tables a page can be laid out as instead of
+        /// the list: each a pale frame with a heading, a rule under it and seven rows.
         /// </summary>
-        public static T BuildMenu<T>(string tag, Transform root, string materialPrefix, float height = MenuHeight, float inset = Inset)
+        public static T BuildMenu<T>(string tag, Transform root, string materialPrefix, float height = MenuHeight, float inset = Inset,
+            bool tables = false)
             where T : WallMenu
         {
             var front = CaveScreens.Front;
@@ -128,13 +141,70 @@ namespace VRShootingGallery.EditorTools
             SetRef(tag, so, "m_MoreBelow", moreBelow);
             SetRef(tag, so, "m_ScrollTrack", scrollTrack);
             SetRef(tag, so, "m_ScrollThumb", scrollThumb);
+            if (tables)
+                BuildTables(tag, content, materialPrefix, so);
             so.ApplyModifiedProperties();
+            Stack(holder);
 
             content.gameObject.SetActive(false);
             cursor.gameObject.SetActive(false);
             foreach (var hidden in new Component[] { moreAbove, moreBelow, scrollTrack, scrollThumb })
                 hidden.gameObject.SetActive(false);
             return menu;
+        }
+
+        /// <summary>
+        /// The two tables, under the title where the list's rows would be: each a pale frame on the
+        /// panel with its heading at the top, a rule under the heading and its rows below. The menu
+        /// shows them, and hides the list, on a page laid out as tables.
+        /// </summary>
+        static void BuildTables(string tag, Transform content, string materialPrefix, SerializedObject so)
+        {
+            var holder = NewChild(content, "Tables");
+            var frame = Material(materialPrefix, "Menu_Table", new Color(0.35f, 0.55f, 0.85f, 0.1f), 2982);
+            var rule = Material(materialPrefix, "Menu_Edge", new Color(0.75f, 0.9f, 1f, 0.9f), 2985);
+
+            float width = k_TableColumns.z * 2f;
+            float top = k_TableHeadingY + 0.05f;
+            float bottom = k_TableRows.x - (k_TableRowCount - 0.5f) * k_TableRows.y - 0.025f;
+
+            var headings = new List<TMP_Text>();
+            var sides = new[] { new List<TMP_Text>(), new List<TMP_Text>() };
+            for (int table = 0; table < 2; table++)
+            {
+                float x = table == 0 ? k_TableColumns.x : k_TableColumns.y;
+                string side = table == 0 ? "Left" : "Right";
+
+                Quad(holder, $"Table_{side}", new Vector3(x, (top + bottom) * 0.5f, -0.0005f), new Vector2(width, top - bottom), frame);
+                Quad(holder, $"Table_{side}_Rule", new Vector3(x, k_TableHeadingY - 0.045f, -0.001f), new Vector2(width - 0.06f, 0.004f), rule);
+
+                var heading = Text(tag, holder, $"Table_{side}_Heading", new Vector3(x, k_TableHeadingY, -0.004f), 0.5f, "",
+                    new Color(0.75f, 0.9f, 1f), new Vector2(width, 0.08f));
+                heading.overflowMode = TextOverflowModes.Ellipsis;
+                headings.Add(heading);
+
+                for (int i = 0; i < k_TableRowCount; i++)
+                {
+                    var row = Text(tag, holder, $"Table_{side}_Row_{i}", new Vector3(x, k_TableRows.x - i * k_TableRows.y, -0.004f), 0.46f,
+                        "", new Color(0.86f, 0.9f, 0.96f), new Vector2(width - 0.03f, k_TableRows.y));
+                    row.overflowMode = TextOverflowModes.Ellipsis;
+                    row.lineSpacing = -12f;
+                    sides[table].Add(row);
+                }
+            }
+
+            SetRef(tag, so, "m_Tables", holder);
+            SetArray(tag, so, "m_TableHeadings", headings);
+            SetArray(tag, so, "m_LeftRows", sides[0]);
+            SetArray(tag, so, "m_RightRows", sides[1]);
+            SetVector2(tag, so, "m_TableRowLayout", k_TableRows);
+            var columns = so.FindProperty("m_TableColumns");
+            if (columns == null)
+                Debug.LogWarning($"[{tag}] {so.targetObject.GetType().Name} has no field 'm_TableColumns'.");
+            else
+                columns.vector3Value = k_TableColumns;
+
+            holder.gameObject.SetActive(false);
         }
 
         /// <summary>
@@ -177,9 +247,41 @@ namespace VRShootingGallery.EditorTools
             SetFloat(tag, so, "m_BarLength", length);
             SetArray(tag, so, "m_Fade", new[] { panel.GetComponent<Renderer>(), track.GetComponent<Renderer>(), bar.GetComponent<Renderer>() });
             so.ApplyModifiedProperties();
+            Stack(holder);
 
             content.gameObject.SetActive(false);
             return indicator;
+        }
+
+        /// <summary>
+        /// Draws an overlay's parts back to front in the order they are stacked: the panel, then the
+        /// frames, rules and tracks on it, the highlight, the bars, the text, and the cursor and ray.
+        /// They are all see-through, write no depth and sit in one queue (Unity puts URP's
+        /// transparents back at 3000 whatever <see cref="Material"/> asks), so without this they sort
+        /// by distance from the eye, and a row of text farther off than the panel's middle — the top
+        /// and bottom rows, seen from eye height — drew first and was dimmed by the panel.
+        /// </summary>
+        static void Stack(Transform overlay)
+        {
+            foreach (var renderer in overlay.GetComponentsInChildren<Renderer>(true))
+            {
+                string name = renderer.name;
+                int order;
+                if (renderer is LineRenderer || name == "Cursor")
+                    order = 6;
+                else if (renderer.GetComponent<TMP_Text>() != null)
+                    order = 5;
+                else if (name == "Scroll_Thumb" || name == "Bar")
+                    order = 4;
+                else if (name == "Highlight")
+                    order = 3;
+                else if (name == "Panel")
+                    order = 1;
+                else
+                    order = 2;                       // the edge, the tables' frames and rules, the tracks the bars run in
+
+                renderer.sortingOrder = order;
+            }
         }
 
         // ================================================================== pieces

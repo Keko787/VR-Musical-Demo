@@ -5,13 +5,24 @@ demo from the deck — *3D and Room Audio Visualization* and *Rave Room Visualiz
 the piece that runs first because it tests the room config, alignment and audio routing without
 depending on the wand, and the idle state the room can sit in between visitors.
 
-It has five modes, cross-faded rather than cut — one on the surfaces, four in the volume:
+It has eight modes, cross-faded rather than cut — three on the surfaces, five in the volume:
 
 - **2D — water walls.** Every projected screen carries a row of glass tubes with water in them,
   drawn flat on the surface and mapped 1:1 to the CAVE's screens. Each tube is one frequency band;
   the water rises and sloshes with it. Content on the surface has no parallax, so everyone in the
   room sees the same thing wherever they stand, glasses or not. This is the layer that scales to a
   crowd.
+- **2D — rainbow ripples.** The four screens as one sheet of rainbow liquid the music drops things
+  into. A kick lands a big drop, mostly on the floor; a hit in the mids lands a smaller one on a
+  wall; hats and cymbals patter small quick ones everywhere. Each drop's rings are a rainbow, crest
+  by crest, over a gradient that lies across the whole room and turns slowly; they stand up off the
+  surface in relief (the 2.5D part), and they run round the corners unbroken — a ring dropped on
+  the floor climbs the wall. On the surface, so right for everyone, like the water.
+- **2D — lava lamp.** The room as a lava lamp: the floor is the heater, and the bass turns it up.
+  Wax warms on the floor, slides out to a wall, climbs it, cools near the top and sinks back down;
+  blobs merge as they meet and neck apart as they part. The beat swells them, the mids churn their
+  outlines, the highs make glitter twinkle in the liquid, and the lamp's colouring drifts through
+  five classic ones.
 - **3D — lasers and waveforms.** Emitters on the walls fan beams across the volume to other walls,
   re-aiming on the beat, and three oscilloscope traces hang in the air at arm's reach. The beams
   are only right from the tracked viewpoint; where each one lands on a screen there is a hit-spot
@@ -28,6 +39,11 @@ It has five modes, cross-faded rather than cut — one on the surfaces, four in 
   are lit, how fast they dart and how they blink, and a beat flashes the whole swarm at once. The
   fixed scale is the point: a change in the audio is a change in the swarm, never in its extent,
   so it reads more clearly than a cloud that grows and shrinks.
+- **3D — holographic tree.** A tree of points, two metres tall, standing toward the front of the
+  room. It sways with the song — the bass sets how far, each beat sends a gust through it from the
+  trunk out to the twigs — and the beat shakes leaves loose, which flutter down turning autumn
+  colours, lie on the floor a while, fade, and grow back on their twig. Each leaf is lit by one band,
+  bass low in the crown and treble at the top.
 
 ## Build it
 
@@ -64,6 +80,13 @@ Room_Visualizer            RoomVisualizer — modes, fade, intensity, input
 │  ├─ Panel_Left           Quad on the left screen, 16 tubes, bass at the back
 │  ├─ Panel_Right          Quad on the right screen, 16 tubes, bass at the back
 │  └─ Panel_Floor          Quad on the floor, 24 tubes, water rising toward the front wall
+├─ Ripples_2D              RippleSurface — the drops; switched off until its mode is on
+│  ├─ Ripples_Front        See-through quad 2.5 mm in front of each water panel, VRMusic/RippleSurface
+│  ├─ Ripples_Floor
+│  ├─ Ripples_Left
+│  └─ Ripples_Right
+├─ LavaLamp_2D             LavaLamp — the wax; switched off until its mode is on
+│  └─ Lava_Front … Lava_Right  Quads 1.2 mm in front of the water panels (under the ripples), VRMusic/LavaLamp
 ├─ Lasers_3D               LaserShow — builds its emitters and beams at run time
 ├─ Waveforms_3D
 │  ├─ Ribbon_Across        LineRenderer + WaveformRibbon, wall to wall at chest height
@@ -72,10 +95,12 @@ Room_Visualizer            RoomVisualizer — modes, fade, intensity, input
 ├─ PointCloud_3D           ParticleSystem + AudioPointCloud, SpectrumField
 ├─ AstralBody_3D           ParticleSystem + AudioPointCloud, AstralBody
 ├─ Fireflies_3D            ParticleSystem + AudioPointCloud, Fireflies
+├─ Tree_3D                 ParticleSystem + AudioTree — grows the tree at run time; switched off until its mode is on
 ├─ Status_Sign             TMP line along the bottom of the front wall: mode, track, next track
 ├─ Menu                    VisualizerMenu on the front wall: Content (panel, highlight, title, rows,
-│                          'more' strips, scrollbar, cursor) and Wand_Ray; hidden until the mode or
-│                          track button opens it
+│                          'more' strips, scrollbar, cursor, and Tables — the 2D and 3D tables the
+│                          modes page is laid out as) and Wand_Ray; hidden until the mode or track
+│                          button opens it
 └─ Track_Indicator         TrackIndicator, high on the front wall: now playing, up next, and a bar
 ```
 
@@ -117,16 +142,22 @@ height — the same menu as the glass room's, worked the same way. Both are a `W
 the panel, the pointer, the joystick and the keys; this room's pages are `VisualizerMenu`, and
 `WallMenuBuilder` builds the panel and the strip below.
 
-**Modes** (button 1 / **M**). The five shows, in order: Water Tubes, Lasers & Waveforms, Point
-Cloud, Musica Universalis, Fireflies, each with a few words on what kind of show it is. The ones on
-are marked in amber. A mode can be picked two ways:
+**Modes** (button 1 / **M**). The eight shows as two tables side by side. On the left, **2D /
+SURFACE**: Water Tubes, Rainbow Ripples and Lava Lamp, drawn on the screens and right for everyone
+in the room. On the right, **3D / HOLOGRAMS**: Lasers & Waveforms, Point Cloud, Musica Universalis,
+Fireflies and Holographic Tree, standing in the volume and right from the tracked viewpoint. Each row has the show's name
+and, in small type under it, a few words on what it is. The ones on are marked in amber. Point at a
+row in either table; with the joystick or the arrows, up and down step through a table (round from
+the bottom to the top), right goes across to the 3D table and left back to the 2D one, and left from
+the 2D table closes the menu. A mode can be picked two ways:
 
 - **Pick it once** and the room cross-fades (1.5 s) to that mode alone, and the menu closes.
 - **Pick it twice in quick succession** (the trigger or **Enter**, twice within 0.35 s) and it is
   layered with whatever is on: it fades in beside them, or, if it was on, fades out and leaves the
-  rest. The menu stays open, so a few can be added in a row. Water on the walls with fireflies in
-  the room, or the astral body inside the point cloud, are combinations worth trying. The last mode
-  on stays on — the room always has a show — so a double pick on it does nothing.
+  rest. The menu stays open, so a few can be added in a row, from either table. Water on the walls
+  with fireflies in the room, the ripples running over the tubes, or the astral body inside the
+  point cloud, are combinations worth trying. The last mode on stays on — the room always has a
+  show — so a double pick on it does nothing.
 
 A single pick waits those 0.35 s before it acts, to be sure it is not the first of two; the track
 page has no double pick, so a track plays the moment it is picked. The status line names a mix by
@@ -156,12 +187,26 @@ first and last track.
 | Trigger on the scrollbar, held to drag | **Home** / **End** | Jump through the list; to the first or last row |
 | Trigger (button 0) | **Enter** | Pick the selected row |
 | Trigger twice | **Enter** twice | On a mode: layer it with the others, or take it out; the menu stays open |
-| Joystick left | **Backspace**, **Esc**, ← | Close |
+| Joystick right / left | → / ← | On the modes: across to the 3D table, back to the 2D one |
+| Joystick left | **Backspace**, **Esc**, ← | Close (from the 2D table, on the modes) |
 | Button 1 / button 3 | **M** / **N** | Close, or switch to the other list |
 
+The tables are the shared `WallMenu`'s, so any room's menu can have a page of two: its builder
+passes `tables: true` to `WallMenuBuilder.BuildMenu`, and the subclass opens the page with the split
+between them (`Open(selected, split)`) and names the headings (`TableHeading`). Each table has seven
+rows and does not scroll. A visualizer scene built before the tables shows the modes as one list,
+2D first, and says so in the console until it is rebuilt.
+
+The panel's see-through parts all sit in one render queue, so `WallMenuBuilder` gives each a sorting
+order in the order they are stacked — panel, frames, highlight, bars, text, cursor — rather than
+leaving them to sort by distance. Before, rows of text farther from the eye than the panel's middle
+(the top and bottom rows, seen from eye height) drew first and were dimmed by the panel. Every
+room's menu gets this when its scene is rebuilt, except the animal orchestra's: its builder then sets
+one sorting order on the whole menu (to draw it after the starlings), which flattens the stack again.
+
 While the menu is open the shows in the room's volume — lasers, ribbons, the point clouds — dim to a
-quarter (`m_MenuDim`), so the panel can be read through them; the water, on the walls behind the
-panel, stays. The auto-cycle waits while it is open. The other buttons and keys keep working. The
+quarter (`m_MenuDim`), so the panel can be read through them; the water and the ripples, on the
+walls behind the panel, stay. The auto-cycle waits while it is open. The other buttons and keys keep working. The
 pointer looks for MiddleVR's `HandNode`; at a desk with no wand, the keys work alone. Without a
 `VisualizerMenu` on the `RoomVisualizer`, the buttons go back to stepping to the next mode and
 skipping to the next track.
@@ -175,7 +220,7 @@ it fades away, so the show has the wall to itself. It steps aside while the menu
 the track list marks the same two tracks. **Always** on the `TrackIndicator` keeps it up all the
 time. The status line at the foot of the front wall also names the next track.
 
-**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the five modes on its own, one
+**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the eight modes on its own, one
 at a time; a mix someone layered from the menu is left alone until a single pick or **Shift+M**
 goes back to one mode. With `m_LoopPlaylist` on the `MusicDeck` it plays the folder round and
 round, and with `m_StartPaused` off it starts without anyone pressing play. When the music stops the analyser reports
@@ -259,6 +304,116 @@ The palette (`m_Palette`, a Gradient) runs navy at the bass end to aqua-white at
 saves an unassigned Gradient as plain white, so plain white means "use the default"; paint any
 colour into it and yours is used instead (`Palettes.IsUnset`). The same holds for every palette
 in the project.
+
+## The rainbow ripples
+
+`RippleSurface` owns the drops; the look is the `VRMusic/RippleSurface` shader, on one quad per
+screen 7.5 mm inside the screen plane — 2.5 mm in front of the water panels and behind the status
+line. The quads are see-through (premultiplied: a crest adds light, a trough's shade darkens what
+is under it), so alone the rings run over the water panels' dark wash, which stays on in every mode,
+and layered with the tubes they run over the tubes.
+
+**Drops.** Four kinds (`RippleKind`: wavelength, speed, life, height, hue, share on the floor):
+
+| Kind | When | Rings | Lands |
+| --- | --- | --- | --- |
+| `m_Kick` | every beat the analyser fires, strength from the beat's | 0.42 m apart, 1.2 m/s, 3.2 s | half on the floor |
+| `m_Mid` | a jump in the mids (150 Hz–2 kHz) well over their recent level | 0.24 m, 0.85 m/s, 2.4 s | mostly the walls |
+| `m_High` | the same in the highs (2–14 kHz) | 0.13 m, 0.6 m/s, 1.4 s | anywhere |
+| `m_Drizzle` | nothing playing, or nothing landed for 2 s | 0.3 m, 0.55 m/s, 3.6 s, soft | anywhere |
+
+A hit in the mids or highs has to fall back toward the band's level before it can fire again, and
+not sooner than 0.2 s / 0.12 s after the last, so a held chord is one drop. Sixteen drops run at
+once; a new one takes a free slot or the one that has died down the most. Of three random spots on
+the chosen screen, a drop lands on the one farthest from the drops still running, so they spread.
+Each drop is a packet of rings: a sharp leading crest and a train behind it that grows longer as it
+spreads, falling away with time and with the ring's growing circumference.
+
+**One surface, not four.** When a drop lands, its centre is worked out once for every panel,
+*unfolded* into that panel's plane — the screen it landed on folded flat about the edge the two
+share — so a distance on a panel is the distance along the walls and floor, and a ring crosses a
+corner at the speed it crossed the floor, unbroken at the seam. The side walls face each other with
+no shared edge, so a drop on one reaches the other two ways round, over the floor and over the
+front wall, and the shader takes the nearer. The panels' places are read back from the quads at run
+time, so the drops follow the screens if the layout changes.
+
+**Colour.** A rainbow gradient lies across the whole room (one full rainbow per `m_GradientSpan`,
+6 m of surface, along a direction that leans upward and comes round in 140 s), and the colour wheel
+turns once every `m_HueCycleSeconds` (90 s), a little faster on a busy track (`m_HuePerKick`). Each
+kind starts at its own place on the wheel — kicks warm, mids yellow-green, highs blue, drizzle
+violet — and each crest behind a drop's front is a step further round (`_HueSpread`), so a drop's
+rings are concentric rainbows. Where rings cross, their colours mix on the colour wheel, passing
+through the hues between; where the surface is quiet, the gradient shows through faintly
+(`_Sheen`), so the room is a dim rainbow pool between drops.
+
+**Relief (the 2.5D part).** The rings and a slow four-wave swell (higher with the bass) make a
+height field; its slope tilts the surface, a lamp inside the room (`m_Lamp`, above and behind the
+middle) lights it, and the flanks that face the lamp catch a glint seen from a fixed eye (`m_Eye`).
+Lamp and eye are fixed, not the tracked head, so every eye and every viewer sees the same picture:
+it is surface content, like the tubes. A beat brightens the whole surface a little (`m_BeatLift`),
+not in low intensity, and low intensity dims it like everything else.
+
+## The lava lamp
+
+`LavaLamp` moves the wax; the look is the `VRMusic/LavaLamp` shader, on one quad per screen
+6.2 mm inside the screen plane — over the water panels and under the ripples, so the ripples can
+run over the wax when the two are layered. The liquid is mostly opaque (`_LiquidAlpha` 0.86): it
+hides the wash, and over the tubes the tubes show faintly through.
+
+**The wax.** Eighteen blobs (`m_Blobs`, radius 0.13–0.3 m) on the screens as one surface, the same
+`SurfaceMap` the ripples use. Each has a heat: the heater warms what is on the floor or low on a wall
+(`m_HeaterReach` 0.45 m), slowly (`m_HeatRate`), so the wax pools on the floor a while; it cools a
+little on the way up and most near the top (`m_CoolRate`). A blob warmed past 0.7 sets off up and
+keeps rising until it has cooled below 0.3, then sinks all the way down until it has warmed again —
+without that gap it would hover at the height where warming and cooling balance, which is what the
+first renders showed. It moves at `m_RiseSpeed` (0.12 m/s, slower across the floor), faster with
+the music's loudness (`m_MusicPace`), and takes a moment to turn round. On a wall, rising is up; on the floor it is out toward the nearest wall (front,
+left or right — the back is open), so a hot blob slides off the floor and climbs the wall it
+reached, and a cold one sinks off the bottom of a wall and drifts back into the middle of the
+floor to warm again. A blob that drifts round a corner goes on along the next wall; one at the top
+of a wall can climb no further and cools there. Blobs on the same screen ease apart when they
+crowd, so the wax does not all end up in one lump.
+
+**The music.** The bass turns the heater up (`m_BassHeat`) — quick to warm, slow to cool, like a
+real element — so a heavy track keeps the wax moving and a quiet one lets it settle. The beat swells
+the blobs for a moment (`m_BeatSwell`, off in low intensity), the mids churn their outlines, and
+the highs set how many glitter flecks twinkle in the liquid.
+
+**The look.** The blobs are metaballs: each a soft bump that reaches twice its radius, summed, and
+wax where the sum crosses a threshold, so two that touch flow into one and one pulling away necks
+and parts. The wax is lit as a rounded lump by the same fixed lamp as the ripples, with a gloss
+where it faces it, and glows from inside, brighter deeper in and when hot. The liquid is lit from
+below by the heater (the floor is the brightest part of the lamp) and glows round the wax. The
+colouring — hot wax, cooled wax, the liquid low and high — drifts through five every
+`m_PaletteSeconds` (70 s): classic orange in purple, aqua in navy, magenta in teal, yellow in
+crimson, lime in violet.
+
+## The holographic tree
+
+`AudioTree`, a particle system written by hand like the point clouds, on the same additive point
+sprite. The tree is grown once from `m_Seed`: a trunk that splits two or three ways `m_Depth` (5)
+times, each branch 62–80% of its parent's length, tilted 25–42° from it and reaching a little
+upward, one of every three coming off part way along; then scaled so the top is at `m_Height`
+(2.0 m) and the crown reaches no more than `m_Spread` (0.8 m) from the trunk, which stands at
+`m_Base` (z = 0.2 m), so the whole tree is inside the room. The trunk and branches are about 3,200
+points (`m_BranchPoints`), in rings round the thick ones so they read as a shell, with scanlines
+running up them; each twig carries 14 leaves (`m_LeavesPerTwig`). The whole tree turns slowly
+(`m_Turn`, a turn in about two minutes) so its depth shows to someone standing still.
+
+**Sway.** The wind's strength is a calm `m_CalmSway`, plus `m_BassSway` at full bass, plus a gust
+on each beat (`m_Gust`, by the beat's strength) that dies away over a second; it swings at
+`m_SwayHz` (0.3 Hz), a little faster with loudness, and its direction comes slowly round. Every
+branch bends on its parent toward the wind, by `m_Flex` for its depth — thin branches more — and a
+little later than its parent, so a gust runs from the trunk out to the twigs. Leaves flutter on
+their twigs, more with the mids.
+
+**Leaves.** Each is lit by one band, bass low in the crown and treble at the top, green through
+aqua to a pale violet (`m_LeafPalette`), brighter and bigger with its band. Each beat shakes
+`m_LeavesPerBeat` loose (more on a strong one) while more than `m_KeepLeaves` (45%) are still on
+the tree; a loose leaf falls rocking side to side, carried a little by the wind and held inside
+the room, turning autumn amber as it goes, lies on the floor `m_LieSeconds` (4 s), fades, and grows
+back on its twig over `m_RegrowSeconds` (3 s). Like the other shows in the volume, it dims while
+the menu is open.
 
 ## The lasers and the ribbons
 
@@ -369,9 +524,9 @@ Colour by band, amber for the bass through the classic yellow-green to a cool wh
   idea of a spatial mix that follows the tracked user is a later experiment: set
   `spatialBlend` on the music source and move it, and the analyser is unaffected because it reads
   the source, not the listener.
-- **Untracked viewers.** 2D mode is right for everyone. 3D mode is right for the tracked user; the
-  hit-spots on the walls and the wash are what carry the rest of the room, which is why they exist.
-  For a large group, run 2D and leave 3D for when someone has the glasses on.
+- **Untracked viewers.** The 2D table's modes are right for everyone. The 3D table's are right for
+  the tracked user; the hit-spots on the walls and the wash are what carry the rest of the room,
+  which is why they exist. For a large group, run 2D and leave 3D for when someone has the glasses on.
 
 ## Where it stands
 
@@ -409,6 +564,28 @@ Everything is in the Inspector, per component. The ones worth knowing:
 | | `m_Stiffness` / `m_Damping` | 80 / 0.55 | Level spring: snap and overshoot |
 | | `m_SloshHz` / `m_SloshDamping` / `m_SloshDrive` | 1.4 / 0.12 / 0.012 | Surface wave: pitch, ring time, how hard a rise kicks it |
 | | `m_WashBass` / `m_BeatFlash` | 0.35 / 0.3 | Wall wash response |
+| `RippleSurface` | `m_Kick` / `m_Mid` / `m_High` / `m_Drizzle` | see *The rainbow ripples* | Each kind's ring spacing, speed, life, height, hue and floor share |
+| | `m_OnsetJump` / `m_OnsetGap` | 0.16 / 0.2 s, 0.12 s | How big a jump in the mids or highs drops a ring, and how often |
+| | `m_HueCycleSeconds` / `m_GradientSpan` | 90 s / 6 m | How fast the colours turn; how much surface one rainbow spans |
+| | `m_IdleSwell` / `m_BassSwell` | 0.28 / 0.45 | The swell between drops, and how much the bass raises it |
+| | `m_Lamp` / `m_Eye` | room points | Where the relief is lit from and the glints seen from |
+| `LavaLamp` | `m_Blobs` / `m_Radius` | 18 / 0.13–0.3 m | How much wax, and how big |
+| | `m_RiseSpeed` / `m_MusicPace` | 0.12 m/s / 1.4 | How fast the wax moves, and how much faster with loudness |
+| | `m_HeatRate` / `m_CoolRate` / `m_HeaterReach` | 0.12 / 0.2 / 0.45 m | How long the wax pools on the floor; how fast it cools at the top; how far up the heater reaches |
+| | `m_BassHeat` / `m_BeatSwell` | 1.2 / 0.12 | How much the bass turns the heater up; the swell on a beat |
+| | `m_PaletteSeconds` | 70 s | How long each colouring lasts |
+| `VRMusic/LavaLamp` defaults¹ | `_Threshold` / `_Bulge` | 0.42 / 0.07 | Where the wax's edge is; how rounded it looks |
+| | `_Glow` / `_Gloss` / `_Glitter` | 0.7 / 0.6 / 0.8 | Inner glow, gloss, glitter |
+| | `_LiquidAlpha` / `_HeaterGlow` | 0.86 / 0.7 | How much of the wash the liquid hides; the floor's glow |
+| `AudioTree` | `m_Height` / `m_Spread` / `m_Base` | 2 m / 0.8 m / z 0.2 m | The tree's size and where it stands |
+| | `m_Depth` / `m_LeavesPerTwig` / `m_BranchPoints` | 5 / 14 / 3200 | How bushy, how leafy, how dense the bark |
+| | `m_CalmSway` / `m_BassSway` / `m_Gust` | 0.2 / 0.9 / 0.6 | Sway at rest, with the bass, and on a beat |
+| | `m_SwayHz` / `m_Flex` | 0.3 Hz / 0.02…0.14 rad | Swing rate; how far each depth of branch bends |
+| | `m_LeavesPerBeat` / `m_KeepLeaves` | 14 / 0.45 | Leaves a beat drops; the share always kept on the tree |
+| | `m_LieSeconds` / `m_RegrowSeconds` | 4 s / 3 s | How long a fallen leaf lies, and grows back |
+| `VRMusic/RippleSurface` defaults¹ | `_Relief` | 0.05 | How far the rings stand up off the surface |
+| | `_Sheen` / `_RingGlow` / `_Glint` | 0.06 / 1 / 0.9 | The quiet pool's glow, the rings' glow, the glints |
+| | `_HueSpread` / `_HueByHeight` / `_Saturation` | 0.18 / 0.08 / 0.9 | Hue step per crest, crest-to-trough hue shift, how vivid |
 | `LaserShow` | `m_Emitters` × `m_BeamsPerEmitter` | 3 × 5 | Beam count |
 | | `m_HopOnBeat` | 0.55 | How often a beat moves an emitter |
 | | `m_FanClosed` / `m_FanOpen` | 0.08 / 0.45 | Fan spread at silence / full band |
@@ -429,3 +606,6 @@ Everything is in the Inspector, per component. The ones worth knowing:
 | Shader `M_Visualizer_Water` | `_TubeFill` | 0.7 | Tube diameter as a fraction of its cell |
 | | `_Bubbles` / `_Ripple` / `_Caustics` | 0.75 / 0.6 / 0.5 | The water's decoration |
 | | `_GlassStrength` | 0.35 | Rim and streak |
+
+¹ Tune these in the shader's defaults, not on the material: each Rebuild writes the shader's defaults into
+`M_Visualizer_Ripples` and `M_Visualizer_LavaLamp`, so a material made by an earlier build never keeps an old look.

@@ -6,7 +6,11 @@ using UnityEngine.InputSystem;
 
 namespace VRShootingGallery.Visualizer
 {
-    /// <summary>One of the room's shows. One is on, or several layered. The order is the order the menu lists them in.</summary>
+    /// <summary>
+    /// One of the room's shows. One is on, or several layered. The menu lists them in
+    /// <see cref="RoomVisualizer.Modes"/>' order, the surface ones in one table and the volume ones in
+    /// the other; the values are saved in scenes, so a new mode goes on the end.
+    /// </summary>
     public enum VisualizerMode
     {
         /// <summary>Water tubes flat on the four screens. Reads from anywhere, no glasses needed.</summary>
@@ -23,14 +27,23 @@ namespace VRShootingGallery.Visualizer
 
         /// <summary>A swarm of fireflies in a box of fixed size; the music is how many are lit, how they dart and blink.</summary>
         Fireflies,
+
+        /// <summary>The four screens as one sheet of rainbow liquid the music drops things into. 2D, like the water.</summary>
+        Ripples,
+
+        /// <summary>The room as a lava lamp: wax warmed on the floor by the bass climbs the walls, cools, and sinks. 2D.</summary>
+        LavaLamp,
+
+        /// <summary>A holographic tree of points that sways with the song and drops its leaves on the beat. 3D.</summary>
+        Tree,
     }
 
     /// <summary>
     /// The room audio visualizer and the rave visualizer as one build, per the deck: the hands-off
-    /// demo that runs first and needs nothing tracked. Five modes — 2D on the surfaces, and four
-    /// in the volume — cross-faded rather than cut and layered as well as switched, an intensity
-    /// control with a low-intensity setting for visitors who need it, and an auto-cycle so the room
-    /// can run unattended between visitors.
+    /// demo that runs first and needs nothing tracked. Eight modes — three on the surfaces, five in
+    /// the volume — cross-faded rather than cut and layered as well as switched, an intensity control
+    /// with a low-intensity setting for visitors who need it, and an auto-cycle so the room can run
+    /// unattended between visitors.
     /// </summary>
     /// <remarks>
     /// This component owns the switches; the <see cref="MusicDeck"/> owns the playlist, the analyser
@@ -80,6 +93,12 @@ namespace VRShootingGallery.Visualizer
         [SerializeField, Tooltip("The four screens' water panels. Filled in by the builder.")]
         WaterTubePanel[] m_Panels;
 
+        [SerializeField, Tooltip("The rainbow ripples over the four screens. Filled in by the builder.")]
+        RippleSurface m_Ripples;
+
+        [SerializeField, Tooltip("The lava lamp over the four screens. Filled in by the builder.")]
+        LavaLamp m_LavaLamp;
+
         [SerializeField] LaserShow m_Lasers;
 
         [SerializeField, Tooltip("The waveform traces. Filled in by the builder.")]
@@ -93,6 +112,9 @@ namespace VRShootingGallery.Visualizer
 
         [SerializeField, Tooltip("The firefly swarm. Filled in by the builder.")]
         AudioPointCloud m_Fireflies;
+
+        [SerializeField, Tooltip("The holographic tree. Filled in by the builder.")]
+        AudioTree m_Tree;
 
         [SerializeField, Tooltip("A small line on the front wall with the mode and the track, for whoever is running the demo.")]
         TMP_Text m_Sign;
@@ -130,14 +152,18 @@ namespace VRShootingGallery.Visualizer
         /// <summary>Where tracks go. Every clip in here, by name, is the playlist.</summary>
         public const string MusicFolder = MusicDeck.MusicFolder;
 
+        // The surface shows first, then the volume's: the order the menu's tables, Shift+M and the auto-cycle go in.
         static readonly VisualizerMode[] k_Modes =
         {
-            VisualizerMode.Surface2D, VisualizerMode.Room3D, VisualizerMode.PointCloud, VisualizerMode.AstralBody,
-            VisualizerMode.Fireflies,
+            VisualizerMode.Surface2D, VisualizerMode.Ripples, VisualizerMode.LavaLamp,
+            VisualizerMode.Room3D, VisualizerMode.PointCloud, VisualizerMode.AstralBody, VisualizerMode.Fireflies, VisualizerMode.Tree,
         };
 
         // One blend per layer, 0 … 1. A layer eases toward 1 while its mode is on and toward 0 otherwise.
         float m_BlendTubes;
+        float m_BlendRipples;
+        float m_BlendLava;
+        float m_BlendTree;
         float m_BlendLasers;
         float m_BlendCloud;
         float m_BlendBody;
@@ -164,6 +190,30 @@ namespace VRShootingGallery.Visualizer
 
         /// <summary>The modes, in the order the menu lists them.</summary>
         public static IReadOnlyList<VisualizerMode> Modes => k_Modes;
+
+        /// <summary>
+        /// Whether <paramref name="mode"/> is drawn on the screens themselves — the same for everyone in
+        /// the room, glasses or not — rather than standing in the volume, right only from the tracked
+        /// viewpoint. The menu lists the two kinds in separate tables.
+        /// </summary>
+        public static bool IsSurface(VisualizerMode mode) =>
+            mode == VisualizerMode.Surface2D || mode == VisualizerMode.Ripples || mode == VisualizerMode.LavaLamp;
+
+        /// <summary>Whether this scene has the layer <paramref name="mode"/> shows. One built before the mode existed does not.</summary>
+        public bool Has(VisualizerMode mode)
+        {
+            switch (mode)
+            {
+                case VisualizerMode.Ripples: return m_Ripples != null;
+                case VisualizerMode.LavaLamp: return m_LavaLamp != null;
+                case VisualizerMode.Tree: return m_Tree != null;
+                case VisualizerMode.Room3D: return m_Lasers != null || (m_Ribbons != null && m_Ribbons.Length > 0);
+                case VisualizerMode.PointCloud: return m_PointCloud != null;
+                case VisualizerMode.AstralBody: return m_AstralBody != null;
+                case VisualizerMode.Fireflies: return m_Fireflies != null;
+                default: return m_Panels != null && m_Panels.Length > 0;
+            }
+        }
 
 #if UNITY_EDITOR
         /// <summary>Every audio clip in <see cref="MusicFolder"/>, sorted by name. See <see cref="MusicDeck.ClipsInMusicFolder"/>.</summary>
@@ -203,8 +253,16 @@ namespace VRShootingGallery.Visualizer
                                  "buttons step and skip instead of opening it, and there is no now-playing strip. Open the scene, " +
                                  "run VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
 
+            if (m_Ripples == null || m_LavaLamp == null || m_Tree == null)
+                Debug.LogWarning("[Visualizer] This scene was built before the visualizer had its rainbow ripples, lava lamp and " +
+                                 "tree, so those modes show nothing (the menu says so). Open the scene, run VR-Music-Demo ▸ " +
+                                 "Visualizer ▸ Rebuild Visualizer, and save it.", this);
+
             // Start on the chosen mode with no fade-in.
             m_BlendTubes = IsOn(VisualizerMode.Surface2D) ? 1f : 0f;
+            m_BlendRipples = IsOn(VisualizerMode.Ripples) ? 1f : 0f;
+            m_BlendLava = IsOn(VisualizerMode.LavaLamp) ? 1f : 0f;
+            m_BlendTree = IsOn(VisualizerMode.Tree) ? 1f : 0f;
             m_BlendLasers = IsOn(VisualizerMode.Room3D) ? 1f : 0f;
             m_BlendCloud = IsOn(VisualizerMode.PointCloud) ? 1f : 0f;
             m_BlendBody = IsOn(VisualizerMode.AstralBody) ? 1f : 0f;
@@ -324,6 +382,9 @@ namespace VRShootingGallery.Visualizer
         {
             float step = m_FadeSeconds > 0f ? Time.deltaTime / m_FadeSeconds : 1f;
             m_BlendTubes = Mathf.MoveTowards(m_BlendTubes, IsOn(VisualizerMode.Surface2D) ? 1f : 0f, step);
+            m_BlendRipples = Mathf.MoveTowards(m_BlendRipples, IsOn(VisualizerMode.Ripples) ? 1f : 0f, step);
+            m_BlendLava = Mathf.MoveTowards(m_BlendLava, IsOn(VisualizerMode.LavaLamp) ? 1f : 0f, step);
+            m_BlendTree = Mathf.MoveTowards(m_BlendTree, IsOn(VisualizerMode.Tree) ? 1f : 0f, step);
             m_BlendLasers = Mathf.MoveTowards(m_BlendLasers, IsOn(VisualizerMode.Room3D) ? 1f : 0f, step);
             m_BlendCloud = Mathf.MoveTowards(m_BlendCloud, IsOn(VisualizerMode.PointCloud) ? 1f : 0f, step);
             m_BlendBody = Mathf.MoveTowards(m_BlendBody, IsOn(VisualizerMode.AstralBody) ? 1f : 0f, step);
@@ -358,6 +419,31 @@ namespace VRShootingGallery.Visualizer
                     panel.Intensity = intensity;
                     panel.BeatFlashEnabled = !m_LowIntensity;
                 }
+            }
+
+            // On the screens like the water, so it stays bright while the menu is open; off once faded out.
+            if (m_Ripples != null)
+            {
+                m_Ripples.Opacity = Mathf.SmoothStep(0f, 1f, m_BlendRipples);
+                m_Ripples.Intensity = intensity;
+                m_Ripples.BeatFlashEnabled = !m_LowIntensity;
+                Show(m_Ripples.gameObject, m_BlendRipples > 0f);
+            }
+
+            if (m_LavaLamp != null)
+            {
+                m_LavaLamp.Opacity = Mathf.SmoothStep(0f, 1f, m_BlendLava);
+                m_LavaLamp.Intensity = intensity;
+                m_LavaLamp.BeatFlashEnabled = !m_LowIntensity;
+                Show(m_LavaLamp.gameObject, m_BlendLava > 0f);
+            }
+
+            // In the volume like the clouds: dims while the menu is open.
+            if (m_Tree != null)
+            {
+                m_Tree.Opacity = Mathf.SmoothStep(0f, 1f, m_BlendTree) * volume;
+                m_Tree.Intensity = intensity;
+                Show(m_Tree.gameObject, m_BlendTree > 0f);
             }
 
             float lasers = Mathf.SmoothStep(0f, 1f, m_BlendLasers);
@@ -499,6 +585,9 @@ namespace VRShootingGallery.Visualizer
         {
             switch (mode)
             {
+                case VisualizerMode.Ripples: return "Rainbow Ripples";
+                case VisualizerMode.LavaLamp: return "Lava Lamp";
+                case VisualizerMode.Tree: return "Holographic Tree";
                 case VisualizerMode.Room3D: return "Lasers & Waveforms";
                 case VisualizerMode.PointCloud: return "Point Cloud";
                 case VisualizerMode.AstralBody: return "Musica Universalis";
@@ -507,16 +596,19 @@ namespace VRShootingGallery.Visualizer
             }
         }
 
-        /// <summary>What kind of show a mode is, in a few words, for the menu.</summary>
+        /// <summary>What a mode shows, in a few words, for the line under its name in the menu. Its table says whether it is 2D or 3D.</summary>
         public static string KindOf(VisualizerMode mode)
         {
             switch (mode)
             {
-                case VisualizerMode.Room3D: return "3D · wall to wall";
-                case VisualizerMode.PointCloud: return "3D · the song flowing past";
-                case VisualizerMode.AstralBody: return "3D · sun and spheres";
-                case VisualizerMode.Fireflies: return "3D · a swarm lit by the music";
-                default: return "2D · on the walls, for all";
+                case VisualizerMode.Ripples: return "rainbow rings on every surface";
+                case VisualizerMode.LavaLamp: return "wax rising on the heat of the bass";
+                case VisualizerMode.Tree: return "sways, and drops leaves on the beat";
+                case VisualizerMode.Room3D: return "beams from wall to wall";
+                case VisualizerMode.PointCloud: return "the song flowing past";
+                case VisualizerMode.AstralBody: return "a sun and its spheres";
+                case VisualizerMode.Fireflies: return "a swarm lit by the music";
+                default: return "water rising in glass tubes";
             }
         }
 
@@ -526,6 +618,9 @@ namespace VRShootingGallery.Visualizer
         {
             switch (mode)
             {
+                case VisualizerMode.Ripples: return "RIPPLES";
+                case VisualizerMode.LavaLamp: return "LAVA LAMP";
+                case VisualizerMode.Tree: return "TREE";
                 case VisualizerMode.Room3D: return "LASERS";
                 case VisualizerMode.PointCloud: return "POINT CLOUD";
                 case VisualizerMode.AstralBody: return "MUSICA UNIVERSALIS";
@@ -542,7 +637,7 @@ namespace VRShootingGallery.Visualizer
             m_Text.Clear();
             if (!Layered)
             {
-                m_Text.Append(m_Mode == VisualizerMode.Surface2D ? "2D  " : "3D  ").Append(SignNameOf(m_Mode));
+                m_Text.Append(IsSurface(m_Mode) ? "2D  " : "3D  ").Append(SignNameOf(m_Mode));
             }
             else
             {
