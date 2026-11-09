@@ -36,11 +36,14 @@ namespace VRShootingGallery.Visualizer
 
         /// <summary>A holographic tree of points that sways with the song and drops its leaves on the beat. 3D.</summary>
         Tree,
+
+        /// <summary>The room under the sea: sunlight through the waves, bubbles on the beat, kelp and a school of fish. 2D.</summary>
+        Underwater,
     }
 
     /// <summary>
     /// The room audio visualizer and the rave visualizer as one build, per the deck: the hands-off
-    /// demo that runs first and needs nothing tracked. Eight modes — three on the surfaces, five in
+    /// demo that runs first and needs nothing tracked. Nine modes — four on the surfaces, five in
     /// the volume — cross-faded rather than cut and layered as well as switched, an intensity control
     /// with a low-intensity setting for visitors who need it, and an auto-cycle so the room can run
     /// unattended between visitors.
@@ -98,6 +101,9 @@ namespace VRShootingGallery.Visualizer
 
         [SerializeField, Tooltip("The lava lamp over the four screens. Filled in by the builder.")]
         LavaLamp m_LavaLamp;
+
+        [SerializeField, Tooltip("The sea over the four screens. Filled in by the builder.")]
+        Underwater m_Underwater;
 
         [SerializeField] LaserShow m_Lasers;
 
@@ -166,7 +172,7 @@ namespace VRShootingGallery.Visualizer
         // The surface shows first, then the volume's: the order the menu's tables, Shift+M and the auto-cycle go in.
         static readonly VisualizerMode[] k_Modes =
         {
-            VisualizerMode.Surface2D, VisualizerMode.Ripples, VisualizerMode.LavaLamp,
+            VisualizerMode.Surface2D, VisualizerMode.Ripples, VisualizerMode.LavaLamp, VisualizerMode.Underwater,
             VisualizerMode.Room3D, VisualizerMode.PointCloud, VisualizerMode.AstralBody, VisualizerMode.Fireflies, VisualizerMode.Tree,
         };
 
@@ -174,6 +180,7 @@ namespace VRShootingGallery.Visualizer
         float m_BlendTubes;
         float m_BlendRipples;
         float m_BlendLava;
+        float m_BlendSea;
         float m_BlendTree;
         float m_BlendPair;                            // Musica Universalis and the tree both on: each eases to its place beside the other
         Vector3 m_BodyHome;
@@ -210,7 +217,8 @@ namespace VRShootingGallery.Visualizer
         /// viewpoint. The menu lists the two kinds in separate tables.
         /// </summary>
         public static bool IsSurface(VisualizerMode mode) =>
-            mode == VisualizerMode.Surface2D || mode == VisualizerMode.Ripples || mode == VisualizerMode.LavaLamp;
+            mode == VisualizerMode.Surface2D || mode == VisualizerMode.Ripples || mode == VisualizerMode.LavaLamp ||
+            mode == VisualizerMode.Underwater;
 
         /// <summary>Whether this scene has the layer <paramref name="mode"/> shows. One built before the mode existed does not.</summary>
         public bool Has(VisualizerMode mode)
@@ -219,6 +227,7 @@ namespace VRShootingGallery.Visualizer
             {
                 case VisualizerMode.Ripples: return m_Ripples != null;
                 case VisualizerMode.LavaLamp: return m_LavaLamp != null;
+                case VisualizerMode.Underwater: return m_Underwater != null;
                 case VisualizerMode.Tree: return m_Tree != null;
                 case VisualizerMode.Room3D: return m_Lasers != null || (m_Ribbons != null && m_Ribbons.Length > 0);
                 case VisualizerMode.PointCloud: return m_PointCloud != null;
@@ -268,15 +277,16 @@ namespace VRShootingGallery.Visualizer
                                  "buttons step and skip instead of opening it, and there is no now-playing strip. Open the scene, " +
                                  "run VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
 
-            if (m_Ripples == null || m_LavaLamp == null || m_Tree == null)
-                Debug.LogWarning("[Visualizer] This scene was built before the visualizer had its rainbow ripples, lava lamp and " +
-                                 "tree, so those modes show nothing (the menu says so). Open the scene, run VR-Music-Demo ▸ " +
-                                 "Visualizer ▸ Rebuild Visualizer, and save it.", this);
+            if (m_Ripples == null || m_LavaLamp == null || m_Underwater == null || m_Tree == null)
+                Debug.LogWarning("[Visualizer] This scene was built before the visualizer had all of its rainbow ripples, lava " +
+                                 "lamp, underwater and tree, so the missing modes show nothing (the menu says so). Open the scene, " +
+                                 "run VR-Music-Demo ▸ Visualizer ▸ Rebuild Visualizer, and save it.", this);
 
             // Start on the chosen mode with no fade-in.
             m_BlendTubes = IsOn(VisualizerMode.Surface2D) ? 1f : 0f;
             m_BlendRipples = IsOn(VisualizerMode.Ripples) ? 1f : 0f;
             m_BlendLava = IsOn(VisualizerMode.LavaLamp) ? 1f : 0f;
+            m_BlendSea = IsOn(VisualizerMode.Underwater) ? 1f : 0f;
             m_BlendTree = IsOn(VisualizerMode.Tree) ? 1f : 0f;
             m_BlendPair = Paired ? 1f : 0f;
             m_BlendLasers = IsOn(VisualizerMode.Room3D) ? 1f : 0f;
@@ -403,6 +413,7 @@ namespace VRShootingGallery.Visualizer
             m_BlendTubes = Mathf.MoveTowards(m_BlendTubes, IsOn(VisualizerMode.Surface2D) ? 1f : 0f, step);
             m_BlendRipples = Mathf.MoveTowards(m_BlendRipples, IsOn(VisualizerMode.Ripples) ? 1f : 0f, step);
             m_BlendLava = Mathf.MoveTowards(m_BlendLava, IsOn(VisualizerMode.LavaLamp) ? 1f : 0f, step);
+            m_BlendSea = Mathf.MoveTowards(m_BlendSea, IsOn(VisualizerMode.Underwater) ? 1f : 0f, step);
             m_BlendTree = Mathf.MoveTowards(m_BlendTree, IsOn(VisualizerMode.Tree) ? 1f : 0f, step);
             m_BlendPair = Mathf.MoveTowards(m_BlendPair, Paired ? 1f : 0f, step);
             m_BlendLasers = Mathf.MoveTowards(m_BlendLasers, IsOn(VisualizerMode.Room3D) ? 1f : 0f, step);
@@ -456,6 +467,14 @@ namespace VRShootingGallery.Visualizer
                 m_LavaLamp.Intensity = intensity;
                 m_LavaLamp.BeatFlashEnabled = !m_LowIntensity;
                 Show(m_LavaLamp.gameObject, m_BlendLava > 0f);
+            }
+
+            if (m_Underwater != null)
+            {
+                m_Underwater.Opacity = Mathf.SmoothStep(0f, 1f, m_BlendSea);
+                m_Underwater.Intensity = intensity;
+                m_Underwater.BeatFlashEnabled = !m_LowIntensity;
+                Show(m_Underwater.gameObject, m_BlendSea > 0f);
             }
 
             // In the volume like the clouds: dims while the menu is open.
@@ -619,6 +638,7 @@ namespace VRShootingGallery.Visualizer
             {
                 case VisualizerMode.Ripples: return "Rainbow Ripples";
                 case VisualizerMode.LavaLamp: return "Lava Lamp";
+                case VisualizerMode.Underwater: return "Underwater";
                 case VisualizerMode.Tree: return "Holographic Tree";
                 case VisualizerMode.Room3D: return "Lasers & Waveforms";
                 case VisualizerMode.PointCloud: return "Point Cloud";
@@ -635,6 +655,7 @@ namespace VRShootingGallery.Visualizer
             {
                 case VisualizerMode.Ripples: return "rainbow rings on every surface";
                 case VisualizerMode.LavaLamp: return "wax rising on the heat of the bass";
+                case VisualizerMode.Underwater: return "sunlit waves, bubbles on the beat";
                 case VisualizerMode.Tree: return "sways, and drops leaves on the beat";
                 case VisualizerMode.Room3D: return "beams from wall to wall";
                 case VisualizerMode.PointCloud: return "the song flowing past";
@@ -652,6 +673,7 @@ namespace VRShootingGallery.Visualizer
             {
                 case VisualizerMode.Ripples: return "RIPPLES";
                 case VisualizerMode.LavaLamp: return "LAVA LAMP";
+                case VisualizerMode.Underwater: return "UNDERWATER";
                 case VisualizerMode.Tree: return "TREE";
                 case VisualizerMode.Room3D: return "LASERS";
                 case VisualizerMode.PointCloud: return "POINT CLOUD";

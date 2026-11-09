@@ -5,7 +5,7 @@ demo from the deck — *3D and Room Audio Visualization* and *Rave Room Visualiz
 the piece that runs first because it tests the room config, alignment and audio routing without
 depending on the wand, and the idle state the room can sit in between visitors.
 
-It has eight modes, cross-faded rather than cut — three on the surfaces, five in the volume:
+It has nine modes, cross-faded rather than cut — four on the surfaces, five in the volume:
 
 - **2D — water walls.** Every projected screen carries a row of glass tubes with water in them,
   drawn flat on the surface and mapped 1:1 to the CAVE's screens. Each tube is one frequency band;
@@ -23,6 +23,13 @@ It has eight modes, cross-faded rather than cut — three on the surfaces, five 
   blobs merge as they meet and neck apart as they part. The beat swells them, the mids churn their
   outlines, the highs make glitter twinkle in the liquid, and the lamp's colouring drifts through
   five classic ones.
+- **2D — underwater.** The room under the sea. Sunlight comes down through the waves and dances
+  over the sand on the floor as a net of caustics, and up the walls as slanting shafts; bubbles rise
+  from vents at the foot of the walls, kelp sways along the sides, a school of fish cruises round
+  the room, and plankton drifts down through it all. Loudness quickens the current, the bass
+  brightens the light and leans the kelp over, a beat sends up a burst of bubbles and now and then
+  turns the school, which flashes silver as it wheels, and the highs make the plankton glitter. The
+  sea drifts through four: a lagoon, the open ocean, a kelp forest, and the sea at night.
 - **3D — lasers and waveforms.** Emitters on the walls fan beams across the volume to other walls,
   re-aiming on the beat, and three oscilloscope traces hang in the air at arm's reach. The beams
   are only right from the tracked viewpoint; where each one lands on a screen there is a hit-spot
@@ -87,6 +94,8 @@ Room_Visualizer            RoomVisualizer — modes, fade, intensity, input
 │  └─ Ripples_Right
 ├─ LavaLamp_2D             LavaLamp — the wax; switched off until its mode is on
 │  └─ Lava_Front … Lava_Right  Quads 1.2 mm in front of the water panels (under the ripples), VRMusic/LavaLamp
+├─ Underwater_2D           Underwater — the bubbles, the fish, the kelp; switched off until its mode is on
+│  └─ Sea_Front … Sea_Right    Quads 0.6 mm in front of the water panels (under the lava lamp), VRMusic/Underwater
 ├─ Lasers_3D               LaserShow — builds its emitters and beams at run time
 ├─ Waveforms_3D
 │  ├─ Ribbon_Across        LineRenderer + WaveformRibbon, wall to wall at chest height
@@ -151,8 +160,8 @@ height — the same menu as the glass room's, worked the same way. Both are a `W
 the panel, the pointer, the joystick and the keys; this room's pages are `VisualizerMenu`, and
 `WallMenuBuilder` builds the panel and the strip below.
 
-**Modes** (button 1 / **M**). The eight shows as two tables side by side. On the left, **2D /
-SURFACE**: Water Tubes, Rainbow Ripples and Lava Lamp, drawn on the screens and right for everyone
+**Modes** (button 1 / **M**). The nine shows as two tables side by side. On the left, **2D /
+SURFACE**: Water Tubes, Rainbow Ripples, Lava Lamp and Underwater, drawn on the screens and right for everyone
 in the room. On the right, **3D / HOLOGRAMS**: Lasers & Waveforms, Point Cloud, Musica Universalis,
 Fireflies and Holographic Tree, standing in the volume and right from the tracked viewpoint. Each row has the show's name
 and, in small type under it, a few words on what it is. The ones on are marked in amber. Point at a
@@ -229,7 +238,7 @@ it fades away, so the show has the wall to itself. It steps aside while the menu
 the track list marks the same two tracks. **Always** on the `TrackIndicator` keeps it up all the
 time. The status line at the foot of the front wall also names the next track.
 
-**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the eight modes on its own, one
+**Hands off.** Set `m_AutoCycleSeconds` (say 90) and the room walks the nine modes on its own, one
 at a time; a mix someone layered from the menu is left alone until a single pick or **Shift+M**
 goes back to one mode. With `m_LoopPlaylist` on the `MusicDeck` it plays the folder round and
 round, and with `m_StartPaused` off it starts without anyone pressing play. When the music stops the analyser reports
@@ -396,6 +405,60 @@ below by the heater (the floor is the brightest part of the lamp) and glows roun
 colouring — hot wax, cooled wax, the liquid low and high — drifts through five every
 `m_PaletteSeconds` (70 s): classic orange in purple, aqua in navy, magenta in teal, yellow in
 crimson, lime in violet.
+
+## Underwater
+
+`Underwater` moves what lives in the sea; the look is the `VRMusic/Underwater` shader, on one quad
+per screen 5.6 mm inside the screen plane — over the water panels and under the lava lamp and the
+ripples, so either can run over the sea when layered. It is mostly opaque (`_WaterAlpha` 0.92).
+
+**The light.** The caustic net — the bright lines the waves overhead focus the sunlight into — is two
+animated cell patterns, warped so their borders curve, on the plane under the waves, carried down
+along the sun's slant (`m_SunSlant`: 16 cm across and 10 cm toward the front for each metre down) to
+wherever it lands. The floor cuts straight across it, so the sand gets the sharp net. A wall cuts it
+nearly lengthways, which draws the net out into slanting shafts, softer the higher up they are
+(`_WallSoftness`). Broad beams come down the same way, strongest high on the walls, and land on the
+sand as brighter patches. All of it is worked out from the point in the room rather than from the
+screen, so nothing breaks at a corner; and every term is written in two numbers that are both 0 where
+the floor meets a wall — the height up the wall and the distance out across the floor — so it is
+unbroken at that seam too. The water deepens from blue-green at the top of the walls to near black
+at their foot; the sand has ripples and fades into the blue toward the walls (`_BedFade`); along the
+top of the walls is the underside of the surface, a bright wavering band that glints where the two
+nets cross. A slow wobble bends all of it a little, the way things look through water.
+
+**What lives there.** The bubbles, the fish and the kelp live on the walls in one coordinate that runs
+round them, from the open end of the left wall across the front to the open end of the right, so a
+fish swims round a corner without a break.
+
+- **Bubbles** rise from six vents along the foot of the walls (`m_Vents`): a stream from each, quicker
+  the louder the music (`m_StreamRate`), and on a beat a burst of big ones from one vent
+  (`m_BurstSize`, at most one burst every `m_BurstGap`). A big bubble rises faster and wobbles as it
+  goes; each forms at its vent, grows a third on the way up and fades out at the surface. At most 64
+  (`MaxBubbles`); a loud track in the batch preview peaked at 48–58.
+- **A school of fish** (`m_Fish`, 26) cruises round the walls (`m_SchoolSpeed`), the farther fish
+  smaller and hazier. Each fish heads for its place in the school a little late, so a turn ripples
+  through it. The school turns back before either open end, and now and then on a strong beat (at
+  least `m_TurnGap` apart). A fish turns about its own spine, end on half way round, and flashes
+  silver as it does: its flank catches the light.
+- **Kelp**: twelve stalks in four clumps (`m_Kelp`), toward the front corners and along the side
+  walls, clear of the middle of the front wall, where the menu opens. Long ruffled blades stream up
+  off each stalk and curl at their tips. The kelp sways with the current, further the louder the music
+  is (`m_KelpSway`); the bass leans it over in a surge (`m_KelpSurge`), one way and then, a minute or so
+  later, the other; and it glows where the light falls on it.
+- **Plankton**: specks drifting down the walls and over the sand, in two layers at different paces,
+  nearest of all. Their sinking offset wraps every 30 m, and their pattern repeats over exactly that
+  distance, so a room left running all day never jumps and never runs out of float precision.
+
+**The music.** Loudness quickens the current: the caustics dance faster, the plankton sinks faster,
+the school swims faster and the kelp sways further. The bass brightens the light (`m_BassLight`) and
+surges the kelp. A beat brightens the light for a moment (`m_BeatLight`, off in low intensity) and
+sends up a burst of bubbles, and a strong one may turn the school. The highs make the plankton and
+the surface glitter. With nothing playing it settles: slow light, a bubble now and then, the fish
+cruising.
+
+**The seas.** Four, each lasting `m_PaletteSeconds` (80 s) before it fades into the next: a turquoise
+lagoon over pale sand, the blue open ocean, a green kelp forest, and the sea at night, with moonlight,
+dark water and plankton glowing blue-green by itself in drifting patches.
 
 ## The holographic tree
 
@@ -605,6 +668,19 @@ Everything is in the Inspector, per component. The ones worth knowing:
 | `VRMusic/LavaLamp` defaults¹ | `_Threshold` / `_Bulge` | 0.42 / 0.07 | Where the wax's edge is; how rounded it looks |
 | | `_Glow` / `_Gloss` / `_Glitter` | 0.7 / 0.6 / 0.8 | Inner glow, gloss, glitter |
 | | `_LiquidAlpha` / `_HeaterGlow` | 0.86 / 0.7 | How much of the wash the liquid hides; the floor's glow |
+| `Underwater` | `m_Current` / `m_MusicPace` | 1.1 / 1.0 | How fast the light dances, and how much faster everything moves with loudness |
+| | `m_SunSlant` | 0.16 / 0.1 | The sun's slant, which draws the net into shafts up the walls |
+| | `m_BassLight` / `m_BeatLight` | 0.45 / 0.2 | How much the bass and a beat brighten the light |
+| | `m_Vents` / `m_StreamRate` | 6 / 0.45 a second | Bubble vents, and each one's stream at full loudness |
+| | `m_BurstSize` / `m_BurstGap` / `m_BubbleRadius` | 5 / 0.8 s / 6–24 mm | A beat's burst, how often, and how big bubbles start |
+| | `m_Fish` / `m_FishLength` | 26 / 9–16 cm | The school |
+| | `m_SchoolSpeed` / `m_TurnGap` | 0.3 m/s / 8 s | How fast it cruises; how seldom a beat turns it |
+| | `m_Kelp` / `m_KelpSway` / `m_KelpSurge` | 12 / 5–14 cm / 10 cm | Kelp stalks; their sway, quiet and loud; how far the bass leans them |
+| | `m_PaletteSeconds` | 80 s | How long each sea lasts |
+| `VRMusic/Underwater` defaults¹ | `_Caustics` / `_CausticCell` / `_CausticLine` | 1 / 0.34 m / 0.04 | Caustic brightness, net size, line width (in cells) |
+| | `_WallSoftness` / `_Beams` / `_Surface` | 3.5 / 0.6 / 0.8 | How soft the shafts are up the walls; the broad beams; the surface band |
+| | `_Snow` / `_SandRipples` / `_Wobble` | 0.7 / 0.14 / 25 mm | Plankton, the sand's ripples, the water's wobble |
+| | `_BedFade` / `_WaterAlpha` | 0.45 m / 0.92 | How far out the sand fades into the blue; how much the sea hides of what is behind it |
 | `AudioTree` | `m_Height` / `m_Spread` / `m_Base` | 2 m / 0.8 m / z 0.2 m | The tree's size and where it stands |
 | | `m_Depth` / `m_LeavesPerTwig` / `m_BranchPoints` | 5 / 14 / 3200 | How bushy, how leafy, how dense the bark |
 | | `m_CalmSway` / `m_BassSway` / `m_Gust` | 0.2 / 0.9 / 0.6 | Sway at rest, with the bass, and on a beat |
@@ -636,4 +712,5 @@ Everything is in the Inspector, per component. The ones worth knowing:
 | | `_GlassStrength` | 0.35 | Rim and streak |
 
 ¹ Tune these in the shader's defaults, not on the material: each Rebuild writes the shader's defaults into
-`M_Visualizer_Ripples` and `M_Visualizer_LavaLamp`, so a material made by an earlier build never keeps an old look.
+`M_Visualizer_Ripples`, `M_Visualizer_LavaLamp` and `M_Visualizer_Underwater`, so a material made by an earlier build never
+keeps an old look.

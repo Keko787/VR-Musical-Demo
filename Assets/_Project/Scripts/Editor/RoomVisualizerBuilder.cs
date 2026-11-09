@@ -9,8 +9,8 @@ using static VRShootingGallery.EditorTools.StringInstrumentBuilder;
 namespace VRShootingGallery.EditorTools
 {
     /// <summary>
-    /// Builds the room audio visualizer: the analyser and its music source, a water-tube panel, a lava
-    /// lamp panel and a ripple panel on each of the four projected screens for the three 2D modes, the
+    /// Builds the room audio visualizer: the analyser and its music source, a water-tube panel, a sea
+    /// panel, a lava lamp panel and a ripple panel on each of the four projected screens for the four 2D modes, the
     /// laser rig and three waveform ribbons, the three point clouds (the spectrum field, the astral
     /// body, the fireflies) and the holographic tree, a status line on the front wall, the menu with
     /// its 2D and 3D tables, and the <see cref="RoomVisualizer"/> that switches between them. Everything lives under
@@ -35,6 +35,7 @@ namespace VRShootingGallery.EditorTools
         const string k_SurfacesName = "Surfaces_2D";
         const string k_RipplesName = "Ripples_2D";
         const string k_LavaName = "LavaLamp_2D";
+        const string k_SeaName = "Underwater_2D";
         const string k_TreeName = "Tree_3D";
         const string k_LasersName = "Lasers_3D";
         const string k_WaveformsName = "Waveforms_3D";
@@ -48,6 +49,8 @@ namespace VRShootingGallery.EditorTools
         const string k_RippleShaderPath = "Assets/_Project/Art/Shaders/RippleSurface.shader";
         const string k_LavaShaderPath = "Assets/_Project/Art/Shaders/LavaLamp.shader";
         const string k_LavaMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_LavaLamp.mat";
+        const string k_SeaShaderPath = "Assets/_Project/Art/Shaders/Underwater.shader";
+        const string k_SeaMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Underwater.mat";
         const string k_BeamShaderPath = "Assets/_Project/Art/Shaders/LaserBeam.shader";
         const string k_WaterMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Water.mat";
         const string k_RippleMaterialPath = "Assets/_Project/Art/Materials/M_Visualizer_Ripples.mat";
@@ -68,9 +71,10 @@ namespace VRShootingGallery.EditorTools
         const float k_PanelInset = 0.005f;
 
         /// <summary>
-        /// The other 2D shows lie over the water panels, the lava lamp first and the ripples over it,
-        /// and all under the status line (at twice the panels' inset).
+        /// The other 2D shows lie over the water panels, the sea first, the lava lamp over it and the
+        /// ripples over that, and all under the status line (at twice the panels' inset).
         /// </summary>
+        const float k_SeaInset = 0.0056f;
         const float k_LavaInset = 0.0062f;
         const float k_RippleInset = 0.0075f;
 
@@ -120,10 +124,12 @@ namespace VRShootingGallery.EditorTools
             var waterShader = AssetDatabase.LoadAssetAtPath<Shader>(k_WaterShaderPath);
             var rippleShader = AssetDatabase.LoadAssetAtPath<Shader>(k_RippleShaderPath);
             var lavaShader = AssetDatabase.LoadAssetAtPath<Shader>(k_LavaShaderPath);
+            var seaShader = AssetDatabase.LoadAssetAtPath<Shader>(k_SeaShaderPath);
             var beamShader = AssetDatabase.LoadAssetAtPath<Shader>(k_BeamShaderPath);
-            if (waterShader == null || rippleShader == null || lavaShader == null || beamShader == null)
+            if (waterShader == null || rippleShader == null || lavaShader == null || seaShader == null || beamShader == null)
             {
-                Debug.LogError($"[{k_Tag}] Missing '{k_WaterShaderPath}', '{k_RippleShaderPath}', '{k_LavaShaderPath}' or '{k_BeamShaderPath}'.");
+                Debug.LogError($"[{k_Tag}] Missing '{k_WaterShaderPath}', '{k_RippleShaderPath}', '{k_LavaShaderPath}', " +
+                               $"'{k_SeaShaderPath}' or '{k_BeamShaderPath}'.");
                 return false;
             }
 
@@ -136,6 +142,7 @@ namespace VRShootingGallery.EditorTools
             var water = ShaderMaterial(k_WaterMaterialPath, waterShader, m => { });
             var rippleMaterial = ShaderMaterial(k_RippleMaterialPath, rippleShader, ShaderDefaults);
             var lavaMaterial = ShaderMaterial(k_LavaMaterialPath, lavaShader, ShaderDefaults);
+            var seaMaterial = ShaderMaterial(k_SeaMaterialPath, seaShader, ShaderDefaults);
             var beam = ShaderMaterial(k_BeamMaterialPath, beamShader, m =>
             {
                 m.SetFloat("_Softness", 2.5f);
@@ -166,6 +173,7 @@ namespace VRShootingGallery.EditorTools
             var panels = BuildPanels(NewChild(root, k_SurfacesName), analyser, water);
             var ripples = BuildRipples(NewChild(root, k_RipplesName), analyser, rippleMaterial);
             var lava = BuildLavaLamp(NewChild(root, k_LavaName), analyser, lavaMaterial);
+            var sea = BuildUnderwater(NewChild(root, k_SeaName), analyser, seaMaterial);
             var lasers = BuildLasers(NewChild(root, k_LasersName), analyser, beam, spot);
             var ribbons = BuildRibbons(NewChild(root, k_WaveformsName), analyser, ribbon);
             var cloud = BuildCloud(root, k_CloudName, CloudShape.SpectrumField, analyser, point);
@@ -174,7 +182,7 @@ namespace VRShootingGallery.EditorTools
             var tree = BuildTree(root, analyser, point);
             var sign = BuildSign(root);
 
-            var visualizer = Wire(root, analyser, deck, panels, ripples, lava, lasers, ribbons, cloud, body, flies, tree, sign);
+            var visualizer = Wire(root, analyser, deck, panels, ripples, lava, sea, lasers, ribbons, cloud, body, flies, tree, sign);
             BuildOverlays(root, visualizer, deck);
             DarkenCamera(scene);
 
@@ -186,7 +194,7 @@ namespace VRShootingGallery.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeGameObject = root.gameObject;
 
-            Debug.Log($"[{k_Tag}] Built the visualizer: {panels.Count} water panels, the ripples, the lava lamp, " +
+            Debug.Log($"[{k_Tag}] Built the visualizer: {panels.Count} water panels, the ripples, the lava lamp, the sea, " +
                       $"{ribbons.Count} ribbons, three point clouds, the tree, the menu with its 2D and 3D tables and the track " +
                       $"strip, {playlist.Count} track(s) in the playlist.", root);
 
@@ -315,6 +323,24 @@ namespace VRShootingGallery.EditorTools
 
             parent.gameObject.SetActive(false);
             return lamp;
+        }
+
+        /// <summary>
+        /// The sea: a quad on each projected screen, between the water panel and the lava lamp, and the
+        /// <see cref="Underwater"/> that moves its bubbles, fish and kelp round the walls. Built switched
+        /// off, like the ripples.
+        /// </summary>
+        static Underwater BuildUnderwater(Transform parent, AudioAnalyser analyser, Material material)
+        {
+            var quads = SurfaceQuads(parent, "Sea", material, k_SeaInset);
+            var sea = Undo.AddComponent<Underwater>(parent.gameObject);
+            var so = new SerializedObject(sea);
+            SetRef(k_Tag, so, "m_Analyser", analyser);
+            SetArray(k_Tag, so, "m_Panels", quads);
+            so.ApplyModifiedProperties();
+
+            parent.gameObject.SetActive(false);
+            return sea;
         }
 
         /// <summary>One unlit quad per projected screen, <paramref name="inset"/> metres into the room, children of <paramref name="parent"/>.</summary>
@@ -499,7 +525,7 @@ namespace VRShootingGallery.EditorTools
         // ---------------------------------------------------------------- wiring
 
         static RoomVisualizer Wire(Transform root, AudioAnalyser analyser, MusicDeck deck, List<WaterTubePanel> panels,
-            RippleSurface ripples, LavaLamp lava, LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud,
+            RippleSurface ripples, LavaLamp lava, Underwater sea, LaserShow lasers, List<WaveformRibbon> ribbons, AudioPointCloud cloud,
             AudioPointCloud body, AudioPointCloud flies, AudioTree tree, TMPro.TextMeshPro sign)
         {
             // Reused rather than re-added, so the mode, the buttons, the auto-cycle and anything else
@@ -514,6 +540,7 @@ namespace VRShootingGallery.EditorTools
             SetArray(k_Tag, so, "m_Panels", panels);
             SetRef(k_Tag, so, "m_Ripples", ripples);
             SetRef(k_Tag, so, "m_LavaLamp", lava);
+            SetRef(k_Tag, so, "m_Underwater", sea);
             SetRef(k_Tag, so, "m_Tree", tree);
             SetRef(k_Tag, so, "m_Lasers", lasers);
             SetArray(k_Tag, so, "m_Ribbons", ribbons);
