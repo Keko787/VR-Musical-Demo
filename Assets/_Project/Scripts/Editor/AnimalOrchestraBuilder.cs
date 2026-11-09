@@ -199,7 +199,8 @@ namespace VRShootingGallery.EditorTools
             new("Bullfrog", typeof(BullfrogPerformer), Part.Bass, true, b => new Vector3(-0.634f, 0f, -0.571f), Facing.Yaw, 122.829f),
             new("Woodpecker", typeof(WoodpeckerPerformer), Part.HiHat, true, b => new Vector3(0.826f, 0f, 0.485f), Facing.Yaw, 144.545f),
             new("Jellyfish", typeof(JellyfishPerformer), Part.Pads, true, b => new Vector3(0.098f, 0f, 0.13f), Facing.Room),
-            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Yaw, -168.69f),
+            // The octopus stays where Kevin put it but faces the viewer, so its keyboard is between them.
+            new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Viewer),
 
             // The tigers. The adult roars on the drops from a crag beyond the right wall, further out than the
             // wolves' ridge and between the back and middle wolves, its head above theirs; turned toward the

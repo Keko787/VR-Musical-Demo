@@ -61,7 +61,8 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Bullfrog            BullfrogPerformer     Bass      knee height, left, beside the viewer's spot, on a stump
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
-├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
+├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal, facing the
+│                                                       viewer over its own two-octave keyboard
 ├── Tiger               TigerPerformer        Roar      beyond the right wall on a crag, further out than the wolves'
 │                                                       ridge, between the back and middle wolves, its head above theirs, ×1.1
 ├── Tiger_Cub           TigerCubPerformer     Vocal     front and centre on its own rock, facing the viewer (with the parrot)
@@ -277,7 +278,7 @@ pull in opposite directions, so only the room can say which wins.
 | Bullfrog | Bass | Throat sac inflates by note velocity; body squashes | — | Throat breathes, blinks |
 | Woodpecker | HiHat | One peck per hat note, striking the trunk on the note; accents glow; the open hat lifts the head and crest | — | An occasional tap, head tilts |
 | Jellyfish | Pads | Bell contracts on each chord and the jelly rises a little | Gentle throb with loudness; colour from the chord root | Slow pulse and drift |
-| Octopus | Keys | One arm per sounding note, low notes left, high right, like a keyboard; suckers flash on note-on | Mantle swells with loudness | Waves down the arms, breathing, blinks |
+| Octopus | Keys | Plays a two-octave keyboard on a stand between it and the viewer: for each note an arm arches over the key, winds up, strikes it on the note and holds it; the key tips down and **lights in the note's colour** while held. Four front arms share the keys, two side arms help with big chords | Mantle swells with loudness | Arms hover over the keys between notes; between songs they drape over the pedestal and wave; breathing, blinks |
 | Tiger cub | Vocal (with the parrot) | On held notes: both front paws up and out, head tipped further back, jaw and head quiver with vibrato | Jaw drops (dark mouth, pink tongue, little fangs), head tips back, ears prick up and chest puffs as it sings out; shut fully between phrases | Bobs to the beat, swishes its tail, blinks, **looks at the tracked head** |
 | Tiger | Roar | Before a drop it crouches, ears back, and draws breath; on it, it rears up, turns to the viewer and roars, jaws wide, eyes lit, tail lashing; holds it about a second and settles | — | Sits on its crag looking about — the moon, the wolves, the room — breathing, tail sweeping |
 
