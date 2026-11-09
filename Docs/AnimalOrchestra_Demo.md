@@ -5,7 +5,8 @@ moves to its part's notes and its part's sound: a note fires, an animal moves. T
 stand **beyond the walls**, each wall a window onto one of them, with starlings in the sky past the
 front wall and a whale in the water underfoot: that outer layer reads from the open back without
 glasses. Five more stand in a bounded volume within arm's reach of the tracked viewer, where the
-stereo pays off. Between songs, fireflies fill the room, so the demo can run unattended as the idle
+stereo pays off. Two tigers, for Mizzou: a **cub** front and centre sings lead with the parrot, and a
+**tiger** on a crag behind the wolves roars on each drop. Between songs, fireflies fill the room, so the demo can run unattended as the idle
 state for open houses and school groups. For the audience there are Sit-Rep-CAVE's three views,
 **3D**, **2D** and **2D-Fixed**, on wand buttons 1–3 ([CAVE_View_Modes.md](CAVE_View_Modes.md)).
 The **visualize mode**, joystick right, has the animals play the room's own music folder instead,
@@ -20,10 +21,12 @@ seen from above, front wall at the top            hills on the horizon, the suns
                             ELEPHANT, wading (1 m beyond the wall)         moon, far out
               ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈ rippling water runs in under the wall ≈≈≈≈≈≈≈≈
  GORILLA    ┌────────────────────────── front wall ───────────────────────┐   ridge,
- on a bank  │ jellyfish ~ (high)                     jellyfish ~ (lower)  │   WOLVES
- (beyond    │          parrot                        woodpecker           │   (beyond
+ on a bank  │ jellyfish ~ (high)        tiger cub    jellyfish ~ (lower)  │   WOLVES
+ (beyond    │          parrot          (on a rock)   woodpecker           │   (beyond
  the left   │                       jellyfish ~ (chest height)            │   the right
- wall)      │      bullfrog         ◉ viewer                 octopus      │   wall)
+ wall)      │      bullfrog         ◉ viewer                 octopus      │   wall);
+            │                                                             │   TIGER on a
+            │                                                             │   crag behind
             │         ~~~~~~~~~~~ WHALE in the water ~~~~~~~~~~~          │
             └──────────────────── open back: audience ────────────────────┘
        still lagoon all round, out to the horizon; fireflies in the room
@@ -59,6 +62,9 @@ Animal_Orchestra        OrchestraConductor: the playlist and the one clock
 ├── Woodpecker          WoodpeckerPerformer   HiHat     waist height, front right, on a trunk
 ├── Jellyfish           JellyfishPerformer    Pads      three: high by the left wall, lower by the right, chest height in front of the viewer
 ├── Octopus             OctopusPerformer      Keys      low, right, beside the viewer's spot, on a pedestal
+├── Tiger               TigerPerformer        Roar      beyond the right wall on a crag, further out than the wolves'
+│                                                       ridge, between the back and middle wolves, its head above theirs, ×1.1
+├── Tiger_Cub           TigerCubPerformer     Vocal     front and centre on its own rock, facing the viewer (with the parrot)
 └── Menu                OrchestraTrackMenu: the music folder's tracks on the front wall, hidden until
                         the joystick brings it up; on the CaveOverlay layer
 
@@ -131,7 +137,10 @@ synthesised by `SongSynth.cs`, so there is nothing to license and nothing to loa
 | Night Parade | D major, 96 BPM, I–V–vi–IV | half-time groove led by keys and voice | all eleven |
 | Deep Current | E minor, 124 BPM, i–iv–VI–v | electronic, arpeggio-led | no vocal, no keys |
 
-Deep Current leaves the parrot and the octopus out on purpose: *"songs without a part simply leave
+Each song also has a **drop**: a crash cymbal on the downbeat of each chorus the energy jumps into
+(twice a song), which is the tiger's roar. It has a part of its own, `Roar`, so it can be that rare.
+
+Deep Current leaves the singers and the octopus out on purpose: *"songs without a part simply leave
 that animal idle."* Parts come and go between sections in the other two, so animals take turns
 resting.
 
@@ -164,7 +173,8 @@ first, then the built-in songs.
 }
 ```
 
-- `part` is one of `Kick SubBass Snare Choir Arp Texture Vocal Bass HiHat Pads Keys`.
+- `part` is one of `Kick SubBass Snare Choir Arp Texture Vocal Bass HiHat Pads Keys Roar`. `Roar` is the
+  drops: map it to the crash cymbal (`"pitches": "49,57"`) and the tiger roars on every crash.
 - `track` is a MIDI track's name (or its index). `channel` (1–16) and `pitches` (a list or a range
   like `"60-84"`) narrow it, which is how one drum track feeds the elephant, the gorilla and the
   woodpecker.
@@ -191,7 +201,7 @@ MIDI. The visualize mode plays them anyway, and reads every part off the mix (`M
   | Kick | The elephant |
   | Snare, tom | The gorilla: chest on the snare, alternating fists on the toms |
   | Hi-hat | The woodpecker, and a firefly flicker |
-  | Crash, where the music jumps up | The elephant's trumpet, the woodpecker's open hat, a burst of fireflies |
+  | Crash, where the music jumps up | **The tiger's roar**, with the elephant's trumpet, the woodpecker's open hat and a burst of fireflies |
   | Bass note | The bullfrog; the strongest, at most two a second, the whale too |
   | Mid note (the chords' and keys' range) | The octopus |
   | High note (the melody's range) | The starlings and the parrot; the strongest, firefly glints |
@@ -263,11 +273,13 @@ pull in opposite directions, so only the room can say which wins.
 | Wolf pack | Choir | One wolf per voice: the head rises higher the higher its pitch | Jaw opens with loudness; the moon brightens | Ears, glances, tails |
 | Starlings | Arp | Each note ripples a flash through the flock | The flock's centre rises and falls with pitch while sweeping the wall over 8 bars | Wheels about the band |
 | Fireflies | Texture | Glints (high notes) light a handful at once | The high band sets how many are lit and how fast they blink | All lit, blinking slowly: the room between songs |
-| Parrot | Vocal | Wings flare on held notes | Beak opens and crest fans with loudness | Bobs to the beat, **looks at the tracked head** |
+| Parrot | Vocal | On held notes: head tipped back further, body leans back, beak and head quiver with vibrato, wings flare | Beak gapes (both halves part, showing a dark mouth and a pink tongue), head tips back and chest puffs as it sings out, crest fans; shut fully between phrases | Bobs to the beat, **looks at the tracked head** |
 | Bullfrog | Bass | Throat sac inflates by note velocity; body squashes | — | Throat breathes, blinks |
 | Woodpecker | HiHat | One peck per hat note, striking the trunk on the note; accents glow; the open hat lifts the head and crest | — | An occasional tap, head tilts |
 | Jellyfish | Pads | Bell contracts on each chord and the jelly rises a little | Gentle throb with loudness; colour from the chord root | Slow pulse and drift |
 | Octopus | Keys | One arm per sounding note, low notes left, high right, like a keyboard; suckers flash on note-on | Mantle swells with loudness | Waves down the arms, breathing, blinks |
+| Tiger cub | Vocal (with the parrot) | On held notes: both front paws up and out, head tipped further back, jaw and head quiver with vibrato | Jaw drops (dark mouth, pink tongue, little fangs), head tips back, ears prick up and chest puffs as it sings out; shut fully between phrases | Bobs to the beat, swishes its tail, blinks, **looks at the tracked head** |
+| Tiger | Roar | Before a drop it crouches, ears back, and draws breath; on it, it rears up, turns to the viewer and roars, jaws wide, eyes lit, tail lashing; holds it about a second and settles | — | Sits on its crag looking about — the moon, the wolves, the room — breathing, tail sweeping |
 
 Each performer has a **Gain** (0–2), the plan's *"per-stem gain on visual intensity: mix the visuals
 like audio"*. It scales that animal's glows and continuous motion.

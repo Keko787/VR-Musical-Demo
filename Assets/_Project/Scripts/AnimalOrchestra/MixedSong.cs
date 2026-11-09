@@ -19,7 +19,8 @@ namespace VRShootingGallery.AnimalOrchestra
     /// notes with their pitch class. Each goes to the animal whose part it is nearest: kicks to the
     /// elephant, snares and toms to the gorilla, hats to the woodpecker, bass notes to the bullfrog (the
     /// strongest of them to the whale as well), mid notes to the octopus, high notes to the starlings and
-    /// the parrot. A crash is the elephant's trumpet, the woodpecker's open hat and a burst of fireflies.
+    /// the parrot and the tiger cub. A crash — the music jumping up into a chorus or a drop — is the tiger's
+    /// roar, and the elephant's trumpet, the woodpecker's open hat and a burst of fireflies with it.
     /// Pitches are pitch classes only, so each part sings in one octave of its own.
     /// </para>
     /// <para>
@@ -285,6 +286,7 @@ namespace VRShootingGallery.AnimalOrchestra
             song.Analysis[(int)Part.Keys] = middle;
             song.Analysis[(int)Part.Choir] = middle;
             song.Analysis[(int)Part.Texture] = full;
+            song.Analysis[(int)Part.Roar] = full;
 
             // Two seconds of the whole mix's level about each moment, ranked against the rest of the song.
             int frames = full.Frames;
@@ -750,6 +752,7 @@ namespace VRShootingGallery.AnimalOrchestra
             var keys = new List<Note>();
             var arp = new List<Note>();
             var vocal = new List<Note>();
+            var roar = new List<Note>();
 
             bool highTom = true;
             double lastSub = double.NegativeInfinity;
@@ -782,6 +785,7 @@ namespace VRShootingGallery.AnimalOrchestra
                         // that came off a snare gets a kick of its own (below).
                         hat.Add(new Note(t, 0.5, GmDrum.OpenHat, 1f));
                         texture.Add(new Note(t, 0.3, 96, 1f));
+                        roar.Add(new Note(t, 1.5, 49, 1f));
                         break;
                     case RigLane.Bass when pc >= 0:
                         bass.Add(new Note(t, 0.0, 36 + pc, velocity));
@@ -843,6 +847,7 @@ namespace VRShootingGallery.AnimalOrchestra
             Set(song, Part.Vocal, vocal);
             Set(song, Part.Pads, pads);
             Set(song, Part.Choir, choir);
+            Set(song, Part.Roar, roar);
         }
 
         static void Set(SongData song, Part part, List<Note> notes) => song.Tracks[(int)part] = new NoteTrack(notes);

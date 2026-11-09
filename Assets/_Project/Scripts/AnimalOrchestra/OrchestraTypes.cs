@@ -32,7 +32,10 @@ namespace VRShootingGallery.AnimalOrchestra
         /// <summary>Fireflies, every free surface: the high band sets blink rate and density. Also the idle state.</summary>
         Texture,
 
-        /// <summary>Parrot, eye level nearest the front wall: beak and crest from amplitude, wings on held notes.</summary>
+        /// <summary>
+        /// The lead singers: the tiger cub on its rock, front and centre, and the parrot on its stand — mouths
+        /// from amplitude, heads back and paws or wings out on held notes.
+        /// </summary>
         Vocal,
 
         /// <summary>Bullfrog, waist height left of the viewer: throat sac from note velocity.</summary>
@@ -46,11 +49,17 @@ namespace VRShootingGallery.AnimalOrchestra
 
         /// <summary>Octopus, low centre on a pedestal: one arm per sounding voice.</summary>
         Keys,
+
+        /// <summary>
+        /// Tiger, on a crag beyond the right wall behind the wolves: a roar on each drop, the crash where a
+        /// song lifts into its chorus. Last, so adding it left every other part's saved number as it was.
+        /// </summary>
+        Roar,
     }
 
     public static class Parts
     {
-        public const int Count = 11;
+        public const int Count = 12;
 
         public static readonly Part[] All = (Part[])Enum.GetValues(typeof(Part));
     }

@@ -176,9 +176,10 @@ namespace VRShootingGallery.EditorTools
         }
 
         /// <summary>
-        /// The cast, in the plan's order: six outer, five in the volume. The three big wall animals stand
-        /// beyond their walls and are scaled up to make up for the distance: an animal a metre past the glass
-        /// looks smaller than one against it, and these still have to read from the open back.
+        /// The cast, in the plan's order — six outer, five in the volume — and the two tigers after them, for
+        /// Mizzou. The three big wall animals stand beyond their walls and are scaled up to make up for the
+        /// distance: an animal a metre past the glass looks smaller than one against it, and these still have
+        /// to read from the open back.
         /// </summary>
         static readonly Seat[] k_Cast =
         {
@@ -199,6 +200,14 @@ namespace VRShootingGallery.EditorTools
             new("Woodpecker", typeof(WoodpeckerPerformer), Part.HiHat, true, b => new Vector3(0.826f, 0f, 0.485f), Facing.Yaw, 144.545f),
             new("Jellyfish", typeof(JellyfishPerformer), Part.Pads, true, b => new Vector3(0.098f, 0f, 0.13f), Facing.Room),
             new("Octopus", typeof(OctopusPerformer), Part.Keys, true, b => new Vector3(0.888f, 0f, -0.575f), Facing.Yaw, -168.69f),
+
+            // The tigers. The adult roars on the drops from a crag beyond the right wall, further out than the
+            // wolves' ridge and between the back and middle wolves, its head above theirs; turned toward the
+            // moon, it turns its head to the viewer to roar. The cub sings lead with the parrot, front and
+            // centre on its own rock, facing the viewer, low enough to keep under the track list's panel.
+            new("Tiger", typeof(TigerPerformer), Part.Roar, false, b => new Vector3(b.RightX + 1.5f, 0f, -0.35f), Facing.Yaw, -50f,
+                Wall.Right, 1.1f),
+            new("Tiger_Cub", typeof(TigerCubPerformer), Part.Vocal, true, b => new Vector3(0.3f, 0f, 0.62f), Facing.Viewer),
         };
 
         // ================================================================== menus

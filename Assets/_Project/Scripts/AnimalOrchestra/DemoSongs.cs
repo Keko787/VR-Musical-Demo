@@ -32,6 +32,9 @@ namespace VRShootingGallery.AnimalOrchestra
         /// <summary>Silence kept after the last note, for releases and the reverb to ring out.</summary>
         const double k_Tail = 3.0;
 
+        /// <summary>General MIDI's crash cymbal, the note a drop's roar is written on.</summary>
+        const int k_Crash = 49;
+
         public static int Count => 3;
 
         public static SongData Compose(int index)
@@ -214,6 +217,7 @@ namespace VRShootingGallery.AnimalOrchestra
                 var choirVoices = new[] { Tonic + 3, Tonic + 7, Tonic + 12 };
 
                 int bar = 0;
+                float energyBefore = 0f;
                 foreach (var section in Sections)
                 {
                     for (int local = 0; local < section.Bars; local++, bar++)
@@ -221,6 +225,11 @@ namespace VRShootingGallery.AnimalOrchestra
                         double t0 = k_LeadIn + bar * BarLength;
                         bool last = local == section.Bars - 1;
                         var chord = Chord(bar);
+
+                        // The drop: a crash on the downbeat where the song lifts into a chorus, which the tiger
+                        // roars on. Twice a song, about — only where the energy jumps, not on every loud bar.
+                        if (local == 0 && section.Energy >= 0.9f && section.Energy - energyBefore >= 0.2f)
+                            Add(Part.Roar, t0, 1.5, k_Crash, 1f);
 
                         if (section.Has(Part.Kick)) Kick(section, t0, bar, last);
                         if (section.Has(Part.Snare)) Snare(section, t0, last);
@@ -244,6 +253,8 @@ namespace VRShootingGallery.AnimalOrchestra
                             Sing(t0, tune);
                         }
                     }
+
+                    energyBefore = section.Energy;
                 }
 
                 var song = new SongData

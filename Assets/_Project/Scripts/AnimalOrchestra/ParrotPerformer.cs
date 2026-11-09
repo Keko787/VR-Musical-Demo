@@ -5,17 +5,27 @@ using VRShootingGallery.TrackingDemo;
 namespace VRShootingGallery.AnimalOrchestra
 {
     /// <summary>
-    /// The lead vocalist: a macaw-like parrot on a tall perch at eye level, nearest the front wall, so the
-    /// vocals and the elephant behind it share one view. Its lower beak drops with the vocal stem's
-    /// loudness, its crest fans up with it, and on a held note it spreads its wings — the three things a
-    /// singer's face and arms do. Between phrases it bobs to the beat and watches the tracked viewer.
+    /// A lead vocalist, singing the vocal in a duet with the tiger cub (<see cref="TigerCubPerformer"/>): a
+    /// macaw-like parrot on a tall perch at eye level, nearest the front wall, so the vocals and the elephant
+    /// behind it share one view. It sings with its whole head: the beak gapes with
+    /// the vocal stem's loudness, showing a dark mouth and a pink tongue; the head tips back as it sings
+    /// out, further on a held note; the crest fans up. On a held note the body leans back, the chest puffs,
+    /// the beak and head quiver with vibrato and the wings spread. Between phrases the beak shuts, and it
+    /// bobs to the beat and watches the tracked viewer.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>Why the beak follows the stem, not the notes.</b> Lip sync is judged on the consonants and the
     /// breaths between words, which a melody's notes do not carry; the stem's smoothed envelope does, so
-    /// the beak closes on every gap the voice makes. The wings are the one note-driven part: a held note
-    /// is a musical fact the envelope cannot tell from a loud short one.
+    /// the beak closes on every gap the voice makes. A floor under the envelope (<see cref="m_VoiceFloor"/>)
+    /// shuts it fully between phrases even over the bleed of a mixed track, and above it the opening
+    /// eases up to its widest, so it reads as open or shut rather than always a little ajar. The held-note
+    /// moves are note-driven: a held note is a musical fact the envelope cannot tell from a loud short one.
+    /// </para>
+    /// <para>
+    /// <b>Why so much of it.</b> At first only the lower beak moved, a dark spike against the dark of the
+    /// head, 32° at most; from the back of the room it was hard to tell open from shut. A gape shows the
+    /// mouth's colours, and a head thrown back is a singer's silhouette, which reads from anywhere.
     /// </para>
     /// <para>
     /// <b>Why it looks at the viewer.</b> It is the one animal within arm's reach at eye height, and a
@@ -29,12 +39,31 @@ namespace VRShootingGallery.AnimalOrchestra
         static readonly float[] k_CrestSpread = { -20f, -10f, 0f, 10f, 20f };
 
         [Header("Voice")]
-        [SerializeField, Range(0f, 60f), Tooltip("How far the lower beak drops at full vocal level, degrees.")]
-        float m_BeakOpen = 32f;
+        [SerializeField, Range(0f, 70f), Tooltip("How far the lower beak drops at full voice, degrees.")]
+        float m_BeakOpen = 52f;
+
+        [SerializeField, Range(0f, 25f), Tooltip("How far the upper beak lifts at full voice, degrees: a gape, not just a dropped jaw.")]
+        float m_UpperBeakLift = 12f;
+
+        [SerializeField, Range(0f, 0.6f), Tooltip("Vocal level that counts as silence: the beak shuts fully below it, so it " +
+            "closes between phrases even over a mixed track's bleed.")]
+        float m_VoiceFloor = 0.15f;
 
         [SerializeField, Range(0.005f, 0.2f), Tooltip("Smoothing on the beak, seconds to halve the gap. Short, so " +
             "it closes on the gaps between words.")]
         float m_BeakHalfLife = 0.025f;
+
+        [SerializeField, Range(0f, 45f), Tooltip("How far the head tips back at full voice, degrees: singing up, not at the floor.")]
+        float m_HeadLift = 22f;
+
+        [SerializeField, Range(0f, 45f), Tooltip("How much further it tips back on a held note, degrees.")]
+        float m_HeldLift = 18f;
+
+        [SerializeField, Range(0f, 20f), Tooltip("How far the body leans back on a held note, chest out, degrees.")]
+        float m_HeldLean = 8f;
+
+        [SerializeField, Range(0f, 10f), Tooltip("Vibrato on a held note: how far the beak and the head quiver, degrees.")]
+        float m_Vibrato = 4f;
 
         [SerializeField, Range(0f, 1f), Tooltip("A note counts as held once it has sounded this long, seconds.")]
         float m_HeldAfter = 0.2f;
@@ -59,6 +88,7 @@ namespace VRShootingGallery.AnimalOrchestra
         [SerializeField] Transform m_Body;
         [SerializeField] Transform m_Head;
         [SerializeField] Transform m_Jaw;
+        [SerializeField] Transform m_UpperBeak;
         [SerializeField] Transform m_LeftWing;
         [SerializeField] Transform m_RightWing;
         [SerializeField] Transform m_Tail;
@@ -68,7 +98,7 @@ namespace VRShootingGallery.AnimalOrchestra
 
         readonly List<Note> m_Active = new();
 
-        float m_Live, m_Open, m_Raise, m_Flare, m_Yaw, m_Pitch;
+        float m_Live, m_Open, m_Raise, m_Flare, m_Lift, m_Lean, m_Held, m_Yaw, m_Pitch;
 
         // ================================================================== body
 
@@ -132,13 +162,20 @@ namespace VRShootingGallery.AnimalOrchestra
                 kit.Ball(m_Head, "Eye_Glint_" + side, new Vector3(0.051f * s, 0.050f, 0.057f), Vector3.one * 0.007f, Color.white);
             }
 
-            // Hooked upper beak, pale with a dark tip; the lower beak hangs from its own hinge.
-            kit.Spike(m_Head, "Beak_Upper", new Vector3(0f, 0.03f, 0.06f), new Vector3(0.045f, 0.07f, 0.04f), ivory,
+            // Hooked upper beak, pale with a dark tip, and the lower beak, each on its own hinge so the two
+            // part into a gape.
+            m_UpperBeak = kit.Node(m_Head, "Upper_Beak", new Vector3(0f, 0.03f, 0.055f));
+            kit.Spike(m_UpperBeak, "Beak_Upper", new Vector3(0f, 0f, 0.005f), new Vector3(0.045f, 0.07f, 0.04f), ivory,
                 new Vector3(118f, 0f, 0f));
-            kit.Spike(m_Head, "Beak_Hook", new Vector3(0f, 0.005f, 0.11f), new Vector3(0.02f, 0.03f, 0.02f), charcoal,
+            kit.Spike(m_UpperBeak, "Beak_Hook", new Vector3(0f, -0.025f, 0.055f), new Vector3(0.02f, 0.03f, 0.02f), charcoal,
                 new Vector3(170f, 0f, 0f));
             m_Jaw = kit.Node(m_Head, "Jaw", new Vector3(0f, 0.012f, 0.055f));
             kit.Spike(m_Jaw, "Beak_Lower", Vector3.zero, new Vector3(0.035f, 0.045f, 0.03f), charcoal, new Vector3(100f, 0f, 0f));
+
+            // Inside, hidden while the beak is shut: a dark mouth and a pink tongue riding the lower beak, so
+            // an open beak shows a gap in colours of its own rather than one dark spike moving against another.
+            kit.Ball(m_Head, "Mouth", new Vector3(0f, 0.016f, 0.066f), new Vector3(0.028f, 0.02f, 0.032f), new Color(0.30f, 0.05f, 0.09f));
+            kit.Ball(m_Jaw, "Tongue", new Vector3(0f, 0.007f, 0.016f), new Vector3(0.018f, 0.011f, 0.024f), new Color(0.93f, 0.45f, 0.55f));
 
             // Crest: five feathers on their own pivots, lying back until the voice lifts them.
             m_Crest = new Transform[k_CrestSpread.Length];
@@ -178,13 +215,23 @@ namespace VRShootingGallery.AnimalOrchestra
             float level = Mathf.Clamp01(Level());
             float idle = 1f - m_Live;
 
-            // Beak: the stem's envelope, plus a little idle chatter so a silent parrot is not a statue.
-            float openTarget = level * m_BeakOpen + idle * IdleChatter();
+            // How much it is singing, 0 to 1: nothing under the floor, then easing up to full a little under
+            // the stem's loud passages (which the analysis puts at 0.85).
+            float voice = Motion.Smooth01((level - m_VoiceFloor) / Mathf.Max(0.05f, 0.8f - m_VoiceFloor)) * m_Live;
+
+            // A held note: the beak quivers, the head tips further back, the body leans back, the chest puffs.
+            m_Held = Motion.Damp(m_Held, HeldNote() ? 1f : 0f, 0.12f, deltaTime);
+            float vibrato = m_Held * Motion.Wave(Clock, 5.5f);
+
+            // Beak: a gape with the voice, plus a little idle chatter so a silent parrot is not a statue.
+            float openTarget = voice * m_BeakOpen + idle * IdleChatter();
             m_Open = Motion.Damp(m_Open, openTarget, m_BeakHalfLife, deltaTime);
-            m_Jaw.localRotation = Quaternion.Euler(m_Open, 0f, 0f);
+            m_Jaw.localRotation = Quaternion.Euler(m_Open + m_Vibrato * vibrato * voice, 0f, 0f);
+            if (m_UpperBeak != null)
+                m_UpperBeak.localRotation = Quaternion.Euler(-m_UpperBeakLift * Mathf.Clamp01(m_Open / Mathf.Max(1f, m_BeakOpen)), 0f, 0f);
 
             // Crest: lifts and fans with the voice.
-            m_Raise = Motion.Damp(m_Raise, Mathf.Clamp01(level * 1.3f), 0.08f, deltaTime);
+            m_Raise = Motion.Damp(m_Raise, Mathf.Max(voice, Mathf.Clamp01(level * 1.3f) * 0.5f), 0.08f, deltaTime);
             for (int i = 0; i < m_Crest.Length; i++)
             {
                 float pitch = Mathf.Lerp(-65f, -18f, m_Raise);
@@ -200,19 +247,26 @@ namespace VRShootingGallery.AnimalOrchestra
             PoseWing(m_LeftWing, -1f, flutter);
             PoseWing(m_RightWing, 1f, flutter);
 
-            // Body: sways side to side over two beats; the tail answers it.
+            // Body: sways side to side over two beats, leans back on a held note; the tail answers it. The
+            // chest puffs with the voice.
             float beat = (float)(Beats - System.Math.Floor(Beats));
             float sway = Mathf.Lerp(1.2f, 4f, m_Live) * Mathf.Sin((float)(Beats * System.Math.PI));
-            float breathe = 1f + 0.015f * Motion.Wave(Clock, 0.4f);
-            m_Body.localRotation = Quaternion.Euler(0f, 0f, sway);
+            float breathe = 1f + 0.015f * Motion.Wave(Clock, 0.4f) + 0.05f * voice;
+            m_Lean = Motion.Damp(m_Lean, m_HeldLean * m_Held * m_Live, 0.15f, deltaTime);
+            m_Body.localRotation = Quaternion.Euler(-m_Lean, 0f, sway);
             m_Body.localScale = new Vector3(breathe, 1f, breathe);
-            m_Tail.localRotation = Quaternion.Euler(28f + 3f * level, 0f, -sway * 1.5f);
+            m_Tail.localRotation = Quaternion.Euler(28f + 3f * level + m_Lean, 0f, -sway * 1.5f);
 
-            // Head: looks at the viewer, nods on the beat, tilts curiously when idle.
+            // Head: looks at the viewer, nods on the beat, tilts curiously when idle — and tips back as it
+            // sings out, furthest on a held note, quivering with the vibrato. The beat's nod eases off while
+            // it does, so a belted note is held still rather than bobbed.
             Gaze(deltaTime, out float yaw, out float pitchToViewer);
-            float nod = Mathf.Lerp(1.5f, 5f, m_Live) * (0.5f - 0.5f * Mathf.Cos(beat * 2f * Mathf.PI));
-            float roll = 10f * Mathf.Sin(Clock * 0.37f) * (1f - 0.6f * m_Live) - sway;
-            m_Head.localRotation = Quaternion.Euler(pitchToViewer + nod, yaw, roll);
+            m_Lift = Motion.Damp(m_Lift, voice * m_HeadLift + m_Held * m_HeldLift * m_Live, 0.12f, deltaTime);
+            float nod = Mathf.Lerp(1.5f, 5f, m_Live) * (0.5f - 0.5f * Mathf.Cos(beat * 2f * Mathf.PI)) * (1f - 0.7f * m_Held);
+            float roll = 10f * Mathf.Sin(Clock * 0.37f) * (1f - 0.6f * m_Live) - sway + m_Vibrato * 0.5f * vibrato;
+            // The gaze is in the body's frame, so the body's lean back is already taken out of it.
+            float headPitch = Mathf.Max(-60f, pitchToViewer + nod - m_Lift);
+            m_Head.localRotation = Quaternion.Euler(headPitch, yaw * (1f - 0.4f * m_Held), roll);
         }
 
         /// <summary>True while the current vocal note is long and has already sounded long enough to count as held.</summary>

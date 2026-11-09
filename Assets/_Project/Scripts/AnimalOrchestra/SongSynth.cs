@@ -36,11 +36,12 @@ namespace VRShootingGallery.AnimalOrchestra
             (0.30f, 0.50f, 0.45f),   // Choir — wolves, right wall
             (0.36f, 0.00f, 0.35f),   // Arp — starlings, front
             (0.35f, -0.20f, 0.30f),  // Texture — fireflies, everywhere
-            (0.65f, 0.00f, 0.28f),   // Vocal — parrot, front centre
+            (0.65f, 0.00f, 0.28f),   // Vocal — the tiger cub and the parrot, front
             (0.95f, -0.25f, 0.05f),  // Bass — bullfrog, left of the viewer
             (0.45f, 0.30f, 0.08f),   // HiHat — woodpecker, right of the viewer
             (0.38f, 0.00f, 0.50f),   // Pads — jellyfish, overhead
             (0.59f, 0.05f, 0.30f),   // Keys — octopus, low centre
+            (0.55f, 0.55f, 0.35f),   // Roar — tiger, beyond the right wall: the crash on a drop
         };
 
         /// <summary>
@@ -143,6 +144,7 @@ namespace VRShootingGallery.AnimalOrchestra
                     case Part.Choir:
                         Sing(ref voice, ref noise, note.Pitch, Vowel.Oo, Vowel.Oo, 2, 0.15f, 4.6f, 0.15f, 0.45f);
                         break;
+                    case Part.Roar: Crash(ref voice, ref noise); break;
                 }
             }
         }
@@ -257,6 +259,35 @@ namespace VRShootingGallery.AnimalOrchestra
 
                 v.Output[v.Start + i] += (high - low2) * env * v.Velocity * 3.2f;
                 env *= i >= chokeAt ? choke : envK;
+            }
+        }
+
+        /// <summary>
+        /// A crash cymbal for the drop: the hat's six detuned squares pitched down a little, with more noise, a
+        /// lower cut and a long wash that dies over about two seconds.
+        /// </summary>
+        static void Crash(ref Voice v, ref Noise noise)
+        {
+            int n = v.Length(2.4f);
+            Span<float> phases = stackalloc float[6];
+            float env = 1f, envK = Decay(1.9f, v.Rate), swell = 1f / (0.003f * v.Rate);
+            float low1 = 0f, low2 = 0f, a = OnePole(3800f, v.Rate);
+            for (int i = 0; i < n; i++)
+            {
+                float metal = 0f;
+                for (int k = 0; k < 6; k++)
+                {
+                    phases[k] = Wrap(phases[k] + k_HatRatios[k] * 1.3f / v.Rate);
+                    metal += phases[k] < 0.5f ? 1f : -1f;
+                }
+
+                float x = metal * 0.1f + noise.Next() * 0.9f;
+                low1 += a * (x - low1);
+                float high = x - low1;
+                low2 += a * (high - low2);
+
+                v.Output[v.Start + i] += (high - low2 * 0.6f) * env * Math.Min(1f, i * swell) * v.Velocity * 1.6f;
+                env *= envK;
             }
         }
 
