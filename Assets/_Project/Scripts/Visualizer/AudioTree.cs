@@ -114,6 +114,14 @@ namespace VRShootingGallery.Visualizer
         /// </summary>
         public Vector3 Shift { get; set; }
 
+        /// <summary>
+        /// How much of a second tree shows, 0–1: the first's mirror image across the room's middle, swaying
+        /// and dropping leaves as its reflection. With the tree shifted to one side, the two stand either side
+        /// of the room, symmetrical; as this rises from 0 the second grows in where the first stands and the
+        /// two part as the shift opens.
+        /// </summary>
+        public float Twin { get; set; }
+
         static readonly int k_Color = Shader.PropertyToID("_Color");
 
         struct Branch
@@ -239,7 +247,7 @@ namespace VRShootingGallery.Visualizer
 
             m_NowStart = new Vector3[m_Branches.Count];
             m_NowTurn = new Quaternion[m_Branches.Count];
-            m_Particles = new ParticleSystem.Particle[m_Bark.Count + m_Leaves.Length];
+            m_Particles = new ParticleSystem.Particle[2 * (m_Bark.Count + m_Leaves.Length)];   // room for the twin
             for (int i = 0; i < m_Particles.Length; i++)
                 m_Particles[i].startLifetime = m_Particles[i].remainingLifetime = ManualParticles.Lifetime;
             ManualParticles.Reserve(m_System, m_Particles.Length);
@@ -379,6 +387,7 @@ namespace VRShootingGallery.Visualizer
             }
 
             Leaves(ref n, dt, time, playing);
+            n = Mirror(n);
 
             m_System.SetParticles(m_Particles, n);
 
@@ -541,6 +550,30 @@ namespace VRShootingGallery.Visualizer
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// The twin: every point of the tree, its falling and fallen leaves too, reflected across the room's
+        /// middle (x = 0 in the room's frame), and as bright as <see cref="Twin"/> says. Returns the count
+        /// with the twin's points in.
+        /// </summary>
+        int Mirror(int n)
+        {
+            float twin = Mathf.Clamp01(Twin);
+            if (twin <= 0.001f)
+                return n;
+
+            for (int i = 0; i < n; i++)
+            {
+                var particle = m_Particles[i];
+                var at = particle.position;
+                particle.position = new Vector3(-at.x, at.y, at.z);
+                var colour = (Color)particle.startColor;
+                particle.startColor = new Color(colour.r * twin, colour.g * twin, colour.b * twin, 1f);
+                m_Particles[n + i] = particle;
+            }
+
+            return 2 * n;
         }
 
         /// <summary>Holds a falling leaf inside the room: clear of the three walls, and no further back than the open back.</summary>

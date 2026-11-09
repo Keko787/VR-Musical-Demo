@@ -135,7 +135,8 @@ namespace VRShootingGallery.Visualizer
         Vector3 m_BodyBesideTree = new(0f, 0.3f, 0f);
 
         [SerializeField, Tooltip("How far the tree moves while Musica Universalis is on with it: to the left, its crown still about " +
-            "10 cm off the left wall as it sways, and back from the front wall.")]
+            "10 cm off the left wall as it sways, and back from the front wall. A second tree, its mirror image, stands as far " +
+            "to the right, so the two flank the astral body.")]
         Vector3 m_TreeBesideBody = new(-0.85f, 0f, -0.45f);
 
         [Header("Wand")]
@@ -466,12 +467,16 @@ namespace VRShootingGallery.Visualizer
             }
 
             // Musica Universalis and the tree on together would run into each other, so each moves aside,
-            // as it fades in, and back once the other has gone.
+            // as it fades in, and back once the other has gone: the astral body up, and the tree splits in
+            // two that part to either side of it, mirror images, for symmetry.
             float pair = Mathf.SmoothStep(0f, 1f, m_BlendPair);
             if (m_AstralBody != null)
                 m_AstralBody.transform.localPosition = m_BodyHome + m_BodyBesideTree * pair;
             if (m_Tree != null)
+            {
                 m_Tree.Shift = m_TreeBesideBody * pair;
+                m_Tree.Twin = pair;
+            }
 
             float lasers = Mathf.SmoothStep(0f, 1f, m_BlendLasers);
             bool showLasers = m_BlendLasers > 0f;

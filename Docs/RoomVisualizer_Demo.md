@@ -109,7 +109,8 @@ buttons, the auto-cycle and everything else in its Inspector survive a rebuild**
 screen, where the ribbons hang, the panel inset — are at the top of `RoomVisualizerBuilder.cs`; the
 look of each layer is on its own component.
 
-The builder also sets the main camera's clear colour to black. The panels cover all four screens,
+The builder also puts the CAVE's view modes on the thumbstick (`CaveViewSetup.BuildOnThumbstick`,
+on `CAVE_User_Room/CAVE_View`; see *Running it*), and sets the main camera's clear colour to black. The panels cover all four screens,
 so the only place the background could show is a seam, and a seam should be dark. MiddleVR clones
 the base camera's settings onto its CAVE cameras.
 
@@ -122,6 +123,14 @@ the base camera's settings onto its CAVE cameras.
 | 3 | **N** | Open or close the **tracks** on the front wall (**Shift+N** skips straight to the next track) |
 | 4 | **Space** | Play / pause. The room opens paused |
 | 0 (trigger) | **Enter** | In the menu: pick the row the wand points at, or the one selected. On a mode, twice quickly layers it with the others |
+| Stick up | **F2** | The CAVE's **2D** view: still head-tracked, one picture for both eyes, so no glasses needed |
+| Stick down | **F1** | The CAVE's **3D** (stereo) view, the default |
+
+The view is the CAVE's own (`CaveViewMode` on `CAVE_User_Room/CAVE_View`, the same as the haunted
+room and the pipe rig — see [CAVE_View_Modes.md](CAVE_View_Modes.md)): one view per push, the stick
+back to the middle before the next, and the stick is the menu's while the menu is open, so it changes
+the view only with the menu closed. The view's own wand buttons are off here, since the visualizer's
+use 1–4. 2D-Fixed is built but has no button or key in this room.
 
 The number-row keys stand in for wand buttons with the same digit, the way the other demos do it,
 and the keyboard stays on in builds (`m_KeyboardControl`) so the room's audio routing can be
@@ -421,9 +430,12 @@ fades in — the astral body up 0.3 m, centred as before (`m_BodyBesideTree` on 
 its top ring then reaches about 2.08 m, under the top of the walls), and the tree 0.85 m to the left
 and 0.45 m back from the front wall (`m_TreeBesideBody`; its crown stays about 10 cm off the left
 wall as it sways) — and both glide home when either is turned off. Leaves already falling or lying
-on the floor stay where they are. Measured in batch with a track playing: with the tree moved left
+on the floor stay where they are. For symmetry the tree is then two: a second, its mirror image
+across the room's middle, stands as far to the right and sways and drops leaves as its reflection
+(`AudioTree.Twin`). It grows in where the first stands as the pair forms, so the tree splits in two
+that part to either side of the rising astral body, and they merge back when the pair is undone. Measured in batch with a track playing: with the tree moved left
 but the astral body not raised, about a hundred of their points came within 5 cm of each other every
-frame; with both moves, none come within about 15 cm, and none leave the room. Raised, the outermost
+frame; with both moves and both trees, none come within about 13 cm, and none leave the room. Raised, the outermost
 (most tilted) sphere's top arc passes above the front wall's top edge as seen from the back of the
 room, where the CAVE has no ceiling to draw it, so that arc goes out of sight until it turns down
 again. A rise of 0.2 m also keeps the two apart (about 9 cm between them) with less of that.
@@ -540,6 +552,8 @@ Colour by band, amber for the bass through the classic yellow-green to a cool wh
 - **Untracked viewers.** The 2D table's modes are right for everyone. The 3D table's are right for
   the tracked user; the hit-spots on the walls and the wash are what carry the rest of the room,
   which is why they exist. For a large group, run 2D and leave 3D for when someone has the glasses on.
+  The CAVE's 2D view (stick up) is a different thing from the 2D table: it draws the whole scene, 3D
+  shows included, the same for both eyes, still from the tracked head.
 
 ## Where it stands
 

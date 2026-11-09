@@ -178,6 +178,10 @@ namespace VRShootingGallery.EditorTools
             BuildOverlays(root, visualizer, deck);
             DarkenCamera(scene);
 
+            // The CAVE's 3D and head-tracked 2D views, on the thumbstick as in the haunted room: the wand's
+            // buttons are all the visualizer's, and the stick is free while the menu is closed.
+            CaveViewSetup.BuildOnThumbstick(room, k_Tag);
+
             Undo.CollapseUndoOperations(group);
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeGameObject = root.gameObject;

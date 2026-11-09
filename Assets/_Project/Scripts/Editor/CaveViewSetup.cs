@@ -5,6 +5,7 @@ using System.Xml;
 using UnityEditor;
 using UnityEngine;
 using VRShootingGallery.CaveView;
+using VRShootingGallery.Visualizer;
 
 namespace VRShootingGallery.EditorTools
 {
@@ -75,6 +76,59 @@ namespace VRShootingGallery.EditorTools
                       $"overlay layer {layer} '{OverlayLayerName}'.", root);
             return true;
         }
+
+        /// <summary>
+        /// The CAVE's 3D and head-tracked 2D views for a room built on the standard screens (<see cref="CaveScreens"/>)
+        /// whose wand buttons are all its own: <see cref="Build"/>, then the views moved onto the thumbstick — up for 2D,
+        /// down for 3D — with their wand buttons off, and their desk keys moved from the digits, which in such a room
+        /// stand in for its buttons, to F1 (3D) and F2 (2D), as in the harp's scene. 2D-Fixed is built with them but
+        /// given no button or key: a room's menu and sign are not on the overlay layer it draws. Returns the view mode,
+        /// or null, having logged why. <paramref name="tag"/> heads the room's log lines.
+        /// </summary>
+        public static CaveViewMode BuildOnThumbstick(Transform room, string tag)
+        {
+            if (!Build(room, new Vector3(0f, CaveScreens.Height * 0.5f, 0f), ProjectedScreens()))
+                return null;
+
+            var view = room.Find(k_RootName);
+            if (view == null || !view.TryGetComponent<CaveViewMode>(out var mode))
+                return null;
+
+            var so = new SerializedObject(mode);
+            StringInstrumentBuilder.SetInt(tag, so, "m_Stereo3DButton", -1);
+            StringInstrumentBuilder.SetInt(tag, so, "m_Mono2DButton", -1);
+            StringInstrumentBuilder.SetInt(tag, so, "m_Fixed2DButton", -1);
+            StringInstrumentBuilder.SetBool(tag, so, "m_StickPicksView", true);
+            StringInstrumentBuilder.SetBool(tag, so, "m_KeyboardShortcuts", true);
+
+            var keys = so.FindProperty("m_Keys");
+            if (keys != null)
+            {
+                keys.arraySize = 2;
+                keys.GetArrayElementAtIndex(0).intValue = (int)UnityEngine.InputSystem.Key.F1;
+                keys.GetArrayElementAtIndex(1).intValue = (int)UnityEngine.InputSystem.Key.F2;
+            }
+            else
+            {
+                Debug.LogWarning($"[{tag}] CaveViewMode has no 'm_Keys', so its desk keys stay 1-3, on top of the room's own.", mode);
+            }
+
+            so.ApplyModifiedProperties();
+            Debug.Log($"[{tag}] CAVE views on the thumbstick: up is 2D (head-tracked), down is 3D; F2 / F1 at the desk. " +
+                      "The view modes' wand buttons are off here.", view);
+            return mode;
+        }
+
+        /// <summary>The projected screens from the room model, for 2D-Fixed if <c>MVR.vrx</c> cannot be read.</summary>
+        static FixedEyeView.Screen[] ProjectedScreens() =>
+            CaveScreens.Projected.Select(screen => new FixedEyeView.Screen
+            {
+                Name = screen.Name,
+                Centre = screen.Centre,
+                Normal = screen.Normal,
+                Up = screen.Up,
+                Size = new Vector2(screen.Width, screen.Height),
+            }).ToArray();
 
         // ================================================================== screens
 
