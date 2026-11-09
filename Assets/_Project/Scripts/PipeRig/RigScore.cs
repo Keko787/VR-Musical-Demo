@@ -26,7 +26,20 @@ namespace VRShootingGallery.Pipes
         public int PitchClass;
         public float Strength;
 
+        /// <summary>Where it came from, for the record: the onset's rise in its band, dB; for a crash, how much louder the music got.</summary>
+        public float Rise;
+
+        /// <summary>How sure its pitch is, for the record: the strongest pitch class over the average one. 0 for a drum.</summary>
+        public float Clarity;
+
         public bool Pitched => Lane >= RigLane.Bass;
+    }
+
+    /// <summary>A note <see cref="RigScore"/> found and then dropped, and why. Kept only when asked for, to see what it hears.</summary>
+    public struct RigDrop
+    {
+        public RigNote Note;
+        public string Why;
     }
 
     /// <summary>
@@ -55,6 +68,12 @@ namespace VRShootingGallery.Pipes
     /// <para>
     /// Only clips that hand back their samples work: Decompress On Load, the default for a dropped-
     /// in MP3. A streamed or compressed-in-memory clip sets <see cref="Failed"/>.
+    /// </para>
+    /// <para>
+    /// Every note records the rise it came from and, if tuned, how sure its pitch is. Made to keep
+    /// them, a score also keeps the notes it finds and then drops, with why — no clear pitch, too weak,
+    /// a hi-hat that is a kick's or a tom's spill, a high note alone, wires with no drum body — so the
+    /// pipe rig's notes export can show what it hears.
     /// </para>
     /// </remarks>
     public class RigScore
@@ -87,6 +106,8 @@ namespace VRShootingGallery.Pipes
         readonly AutoResetEvent m_Signal = new(false);
         readonly object m_Lock = new();
         readonly List<RigNote> m_Notes = new();
+        readonly bool m_KeepDropped;
+        readonly List<RigDrop> m_Dropped = new();
 
         public AudioClip Clip => m_Clip;
         public bool Done => m_Done;
@@ -111,11 +132,13 @@ namespace VRShootingGallery.Pipes
 
         /// <summary>
         /// Starts on <paramref name="clip"/>: the reading is done by <see cref="Step"/>, the analysis by
-        /// a worker. One score per clip; a new clip gets a new score.
+        /// a worker. One score per clip; a new clip gets a new score. With <paramref name="keepDropped"/>
+        /// the notes it finds and then drops are kept too, with why, for <see cref="CopyDropped"/>.
         /// </summary>
-        public RigScore(AudioClip clip)
+        public RigScore(AudioClip clip, bool keepDropped = false)
         {
             m_Clip = clip;
+            m_KeepDropped = keepDropped;
             m_Length = clip != null ? clip.length : 0f;
 
             if (clip == null || clip.loadType == AudioClipLoadType.Streaming)
@@ -217,6 +240,13 @@ namespace VRShootingGallery.Pipes
             }
         }
 
+        /// <summary>Appends the notes dropped so far, with why, to <paramref name="into"/>: none unless the score was made to keep them.</summary>
+        public void CopyDropped(List<RigDrop> into)
+        {
+            lock (m_Lock)
+                into.AddRange(m_Dropped);
+        }
+
         /// <summary>Stops the worker, for a track abandoned before it was read.</summary>
         public void Cancel()
         {
@@ -237,6 +267,12 @@ namespace VRShootingGallery.Pipes
         {
             lock (m_Lock)
                 m_Notes.AddRange(notes);
+        }
+
+        void Record(RigNote note, string why)
+        {
+            lock (m_Lock)
+                m_Dropped.Add(new RigDrop { Note = note, Why = why });
         }
 
         // ================================================================== the worker
@@ -362,7 +398,11 @@ namespace VRShootingGallery.Pipes
             const int k_Average = 60;                // hops of history the threshold averages
             const float k_Gate = 40f;                // dB under the band's loudest below which it is silence
             const float k_Tonal = 2.2f;              // a pitch's chroma over the mean chroma for it to count as a note
-            const float k_Together = 0.025f;         // seconds within which a drum hit masks the bands round it
+            const float k_Together = 0.025f;         // seconds within which hits in two parts are one moment
+            const int k_KickHistory = 64;            // a kick has to be in the stronger half of the track's last this many
+            const int k_KickWarmUp = 16;             // kicks heard before their floor is used; until then, k_KickStrength
+            const float k_KickStrength = 0.9f;       // a kick weaker than this is more often another part's thump
+            const float k_TunedStrength = 0.5f;      // a tuned note weaker than this, more often a stray than a note
 
             readonly RigScore m_Score;
             readonly float m_Rate;
@@ -381,6 +421,9 @@ namespace VRShootingGallery.Pipes
             readonly Queue<int> m_CrashCandidates = new();
             int m_LastCandidate = -100000;
             int m_LastCrash = -100000;
+            readonly float[] m_Kicks = new float[k_KickHistory];      // the last kicks' strengths, a ring
+            readonly float[] m_KicksSorted = new float[k_KickHistory];
+            int m_KicksHeard;
 
             public Analysis(RigScore score, float rate)
             {
@@ -492,13 +535,14 @@ namespace VRShootingGallery.Pipes
                     band.Rise.Add(rise);
                 }
 
-                // A second's running loudness, for spotting a drop.
+                // A second's running loudness, for spotting a drop: the dB of its mean power. The mean of its
+                // hops' dB would let a few near-silent hops drag a second far down while the music is no quieter.
                 var broad = m_Bands[k_Broad].Level;
-                m_BroadSum += broad[n];
+                m_BroadSum += Power(broad[n]);
                 int window = Mathf.RoundToInt(1f / HopSeconds);
                 if (n >= window)
-                    m_BroadSum -= broad[n - window];
-                m_LongTerm.Add((float)(m_BroadSum / Mathf.Min(n + 1, window)));
+                    m_BroadSum -= Power(broad[n - window]);
+                m_LongTerm.Add(10f * Mathf.Log10((float)(Math.Max(0.0, m_BroadSum) / Mathf.Min(n + 1, window)) + 1e-12f));
 
                 int decide = n - k_After;
                 if (decide >= k_Average)
@@ -508,6 +552,9 @@ namespace VRShootingGallery.Pipes
                 while (m_CrashCandidates.Count > 0 && m_CrashCandidates.Peek() + window <= n)
                     JudgeCrash(m_CrashCandidates.Dequeue(), n);
             }
+
+            /// <summary>A hop's mean power from its level in dB.</summary>
+            static double Power(float level) => Math.Pow(10.0, level / 10.0);
 
             /// <summary>Decides whether hop <paramref name="m"/> is an onset in each band, now that the hops after it are in.</summary>
             void Pick(int m)
@@ -526,9 +573,15 @@ namespace VRShootingGallery.Pipes
                     for (int i = Mathf.Max(0, m - 2); i <= m + 2 && i < bodyRise.Count; i++)
                         body = Mathf.Max(body, bodyRise[i]);
                     if (body >= 2.5f)
+                    {
                         Add(m, body > crack + 4f ? RigLane.Tom : RigLane.Snare, crack, -1, k_Bands[k_Crack].Lag);
+                    }
                     else
+                    {
+                        if (m_Score.m_KeepDropped)
+                            m_Score.Record(Note(m, RigLane.Snare, crack, k_Bands[k_Crack].Lag, float.NaN), "wires but no drum body");
                         crack = 0f;
+                    }
                 }
 
                 if ((kick > 0f || crack > 0f) && m - m_LastCandidate >= Mathf.RoundToInt(1f / HopSeconds))
@@ -587,8 +640,11 @@ namespace VRShootingGallery.Pipes
 
             /// <summary>
             /// A crash on a kick or snare that lands as the music jumps up — a drop, or a chorus coming
-            /// in: the second after the hit is well louder than the quietest second of the three before it.
-            /// Its strength is how big that jump is, so the biggest drops can be told from the rest.
+            /// in: the second after the hit is well louder than the quietest second of the three before it,
+            /// each by its mean power. Its strength is how big that jump is, so the biggest drops can be told
+            /// from the rest. A jump up from silence is the music starting, not a drop: it measured 70–105 dB
+            /// at the top of nearly every track, rang the gong there and made every real drop look small
+            /// beside it.
             /// </summary>
             void JudgeCrash(int m, int now)
             {
@@ -599,6 +655,8 @@ namespace VRShootingGallery.Pipes
                 float quietest = float.PositiveInfinity;
                 for (int i = Mathf.Max(0, m - back); i < m; i++)
                     quietest = Mathf.Min(quietest, m_LongTerm[i]);
+                if (quietest < m_Bands[k_Broad].Peak - k_Gate)
+                    return;
 
                 // m_LongTerm[i] is the second up to i, so the second after the hit is read at m + 1 s.
                 int after = Mathf.Min(now, m + Mathf.RoundToInt(1f / HopSeconds));
@@ -608,24 +666,32 @@ namespace VRShootingGallery.Pipes
 
                 // Given as a rise of jump − 2 dB: the least drop, 6 dB, is a strength of 0.35, and 12.5 dB or more is 1.
                 m_LastCrash = m;
-                Add(m, RigLane.Crash, jump - 2f, -1, k_Bands[k_Kick].Lag);
+                Add(m, RigLane.Crash, jump - 2f, -1, k_Bands[k_Kick].Lag, jump);
             }
 
-            void Add(int m, RigLane lane, float rise, int pitchLane, int lag)
+            /// <summary>
+            /// A note found at hop <paramref name="m"/>, its strength from <paramref name="rise"/>; recorded as
+            /// coming from that rise, or from <paramref name="measured"/> when it is something else (a crash's jump).
+            /// </summary>
+            void Add(int m, RigLane lane, float rise, int pitchLane, int lag, float measured = float.NaN)
+            {
+                // The pitch is read from a window starting just after the attack's thump.
+                int start = pitchLane >= 0 ? (m + 1) * m_Hop : -1;
+                m_Pending.Add(new Pending { Note = Note(m, lane, rise, lag, measured), PitchStart = start, PitchLane = pitchLane });
+            }
+
+            RigNote Note(int m, RigLane lane, float rise, int lag, float measured)
             {
                 // The rise is measured over the lag before m and smoothed over three hops, so the attack
                 // itself is about half the lag earlier.
-                var note = new RigNote
+                return new RigNote
                 {
                     Time = Mathf.Max(0f, HopTime(m - 1 - lag / 2)),
                     Lane = lane,
                     PitchClass = -1,
                     Strength = Mathf.Clamp01(0.35f + (rise - 4f) / 10f),
+                    Rise = float.IsNaN(measured) ? rise : measured,
                 };
-
-                // The pitch is read from a window starting just after the attack's thump.
-                int start = pitchLane >= 0 ? (m + 1) * m_Hop : -1;
-                m_Pending.Add(new Pending { Note = note, PitchStart = start, PitchLane = pitchLane });
             }
 
             /// <summary>Reads the pitch of every pending tuned note whose window has come in.</summary>
@@ -647,14 +713,14 @@ namespace VRShootingGallery.Pipes
                         length = Mathf.Max(0, available - start);
                     }
 
-                    pending.Note.PitchClass = length >= 256 ? PitchClass(pcm, start, length, range.Low, range.High) : -2;
+                    pending.Note.PitchClass = length >= 256 ? PitchClass(pcm, start, length, range.Low, range.High, out pending.Note.Clarity) : -2;
                     pending.PitchStart = -1;
                     m_Pending[i] = pending;
                 }
             }
 
             /// <summary>The strongest pitch class in the window, by a chroma of Goertzel powers; −2 if nothing in it is clearly pitched.</summary>
-            int PitchClass(float[] pcm, int start, int length, int lowMidi, int highMidi)
+            int PitchClass(float[] pcm, int start, int length, int lowMidi, int highMidi, out float clarity)
             {
                 if (!m_Windows.TryGetValue(length, out var window))
                 {
@@ -692,13 +758,13 @@ namespace VRShootingGallery.Pipes
                         best = pc;
                 }
 
-                return total > 0f && m_Chroma[best] >= k_Tonal * total / 12f ? best : -2;
+                clarity = total > 0f ? m_Chroma[best] / (total / 12f) : 0f;
+                return clarity >= k_Tonal ? best : -2;
             }
 
             /// <summary>
-            /// Publishes, in time order, every resolved note older than <paramref name="before"/>.
-            /// Tuned notes with no clear pitch are dropped, and so is a note that is only the echo of a
-            /// drum hit in a neighbouring band (<see cref="Masks"/>).
+            /// Publishes, in time order, every resolved note older than <paramref name="before"/> that
+            /// <see cref="Dropped"/> keeps.
             /// </summary>
             void Release(float before)
             {
@@ -713,10 +779,15 @@ namespace VRShootingGallery.Pipes
                     var pending = m_Pending[taken];
                     if (pending.Note.Time >= before || pending.PitchStart >= 0)
                         break;
-                    if (pending.Note.Pitched && pending.Note.PitchClass < 0)
+
+                    string why = Dropped(taken);
+                    if (why != null)
+                    {
+                        if (m_Score.m_KeepDropped)
+                            m_Score.Record(pending.Note, why);
                         continue;
-                    if (Masked(taken))
-                        continue;
+                    }
+
                     m_Ready.Add(pending.Note);
                 }
 
@@ -728,8 +799,77 @@ namespace VRShootingGallery.Pipes
                     m_Score.Publish(m_Ready);
             }
 
-            /// <summary>Whether a drum hit within <see cref="k_Together"/> of pending note <paramref name="i"/> masks it.</summary>
-            bool Masked(int i)
+            /// <summary>
+            /// Why pending note <paramref name="i"/> is dropped, or null if it is played. The rules were set
+            /// by reading the notes against the music on a beat grid (see the pipe rig doc), and they turn
+            /// on what lands with a note:
+            /// <list type="bullet">
+            /// <item>A kick has to be among the track's stronger ones (<see cref="StrongKick"/>): the weaker
+            /// half are more often another part's thump, off the beat.</item>
+            /// <item>A bass or mid note has to be at least fairly strong, and is played whatever lands with
+            /// it. Dropping the ones that land with a drum, against spill, dropped most of the notes on the
+            /// beat, since that is where the bass and the chords play with the drums.</item>
+            /// <item>A hi-hat with a kick or a tom is their spill and is dropped; one with a snare is played.</item>
+            /// <item>A high note is played only if it lands with a drum or a mid note, and is fairly strong:
+            /// on its own, the top band follows nothing in time.</item>
+            /// </list>
+            /// </summary>
+            string Dropped(int i)
+            {
+                var note = m_Pending[i].Note;
+                if (note.Pitched && note.PitchClass < 0)
+                    return "no clear pitch";
+
+                RigLane other;
+                switch (note.Lane)
+                {
+                    case RigLane.Kick:
+                        return StrongKick(note.Strength) ? null : "weak kick";
+                    case RigLane.HiHat:
+                        if (!Together(i, out other) || other == RigLane.Snare)
+                            return null;
+                        return other == RigLane.Kick ? "spill from Kick" : "spill from Tom";
+                    case RigLane.Bass:
+                    case RigLane.Mid:
+                        return note.Strength >= k_TunedStrength ? null : "weak";
+                    case RigLane.High:
+                        if (!Together(i, out other) || other is not (RigLane.Kick or RigLane.Snare or RigLane.Mid))
+                            return "alone";
+                        return note.Strength >= k_TunedStrength ? null : "weak";
+                    default:
+                        return null;
+                }
+            }
+
+            /// <summary>
+            /// Whether a kick of <paramref name="strength"/> is in the stronger half of the track's last
+            /// <see cref="k_KickHistory"/> kicks, and remembers it among them; called once a kick, in time
+            /// order. A fixed floor starved the tracks whose kick sits soft in the mix, down to a kick every
+            /// few seconds; one from the track's own kicks keeps as many on the beat without that.
+            /// </summary>
+            bool StrongKick(float strength)
+            {
+                int heard = Mathf.Min(m_KicksHeard, k_KickHistory);
+                float floor = k_KickStrength;
+                if (heard >= k_KickWarmUp)
+                {
+                    Array.Copy(m_Kicks, m_KicksSorted, heard);
+                    Array.Sort(m_KicksSorted, 0, heard);
+                    float middle = (heard - 1) * 0.5f;
+                    int below = (int)middle;
+                    floor = Mathf.Lerp(m_KicksSorted[below], m_KicksSorted[Mathf.Min(below + 1, heard - 1)], middle - below);
+                }
+
+                m_Kicks[m_KicksHeard % k_KickHistory] = strength;
+                m_KicksHeard++;
+                return strength >= floor;
+            }
+
+            /// <summary>
+            /// Whether a hit in another part, of a kind <paramref name="i"/>'s band also hears, lands within
+            /// <see cref="k_Together"/> of pending note <paramref name="i"/>, and which part's.
+            /// </summary>
+            bool Together(int i, out RigLane with)
             {
                 var note = m_Pending[i].Note;
                 for (int step = -1; step <= 1; step += 2)
@@ -739,27 +879,29 @@ namespace VRShootingGallery.Pipes
                         var other = m_Pending[j].Note;
                         if (Mathf.Abs(other.Time - note.Time) > k_Together)
                             break;
-                        if (Masks(other.Lane, note.Lane))
+                        if (Spills(other.Lane, note.Lane))
+                        {
+                            with = other.Lane;
                             return true;
+                        }
                     }
                 }
 
+                with = note.Lane;
                 return false;
             }
 
             /// <summary>
-            /// A hit spills into the bands round it — a kick's thump into the bass, its click and a
-            /// snare's wires into the hats and the top, a mallet's overtones into the top — and would
-            /// otherwise play those instruments too. So at the same moment the kick wins over the bass
-            /// and the hats, the snare and tom over the hats, the bass and the middle, and any drum or
-            /// the middle over the top.
+            /// Whether a hit in <paramref name="from"/> also sounds in <paramref name="lane"/>'s band: a
+            /// kick's thump in the bass, its click and a snare's wires in the hats and the top, a mallet's
+            /// overtones in the top.
             /// </summary>
-            static bool Masks(RigLane over, RigLane lane) => lane switch
+            static bool Spills(RigLane from, RigLane lane) => lane switch
             {
-                RigLane.HiHat => over is RigLane.Kick or RigLane.Snare or RigLane.Tom,
-                RigLane.Bass => over is RigLane.Kick or RigLane.Snare or RigLane.Tom,
-                RigLane.Mid => over is RigLane.Snare or RigLane.Tom,
-                RigLane.High => over is RigLane.Kick or RigLane.Snare or RigLane.Tom or RigLane.HiHat or RigLane.Mid,
+                RigLane.HiHat => from is RigLane.Kick or RigLane.Snare or RigLane.Tom,
+                RigLane.Bass => from is RigLane.Kick or RigLane.Snare or RigLane.Tom,
+                RigLane.Mid => from is RigLane.Snare or RigLane.Tom,
+                RigLane.High => from is RigLane.Kick or RigLane.Snare or RigLane.Tom or RigLane.HiHat or RigLane.Mid,
                 _ => false,
             };
         }

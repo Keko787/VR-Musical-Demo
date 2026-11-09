@@ -21,6 +21,8 @@ It has two modes:
 | --- | --- |
 | **VR-Music-Demo ▸ Pipe Rig ▸ Create Pipe Rig Scene** | Copies the physics scene to `PipeRig MiddleVR.unity`, strips the tether demo and the gun out of it, and builds the rig |
 | **VR-Music-Demo ▸ Pipe Rig ▸ Rebuild Pipe Rig** | Rebuilds it in whatever scene is open, as long as it has a `CAVE_User_Room` |
+| **VR-Music-Demo ▸ Pipe Rig ▸ Export Track Notes** | Writes out the notes the rig finds in each track, and the ones it drops (see *Exporting what it hears*) |
+| **VR-Music-Demo ▸ Pipe Rig ▸ Export Track Notes and Audio** | The same, with each track as the mono WAV the notes are read from |
 
 Same flow as the other demos. It can also be built without opening the editor:
 
@@ -200,26 +202,108 @@ band's rise in dB (over 10–30 ms, longer for the bass) that stands clear of it
 the band's recent average, *and* comes within 15–20 dB of the band's recent loudest: a rise in dB
 alone would count a little spill into a quiet band as a hit.
 
-A hit spills into the bands round it, so at the same moment (within 25 ms) the kick wins over the
-bass and the hats, the snare and tom over the hats, the bass and the middle, and any drum or the
-middle over the top. A snare also needs a thump in its body band (a hi-hat's sizzle has none); a
-tom is a snare-band hit that is mostly body. A crash is a kick or snare where the next second is
-well louder than the quietest of the three before it — a drop. A crash's strength is how big that
-jump is: 6 dB is 0.35 and 12.5 dB or more is 1, which is what lets the gong take only the biggest.
+What is played of what is found turns on strength and on what lands with a note (within 25 ms),
+rules set by reading the notes against the music (see *Read against the music* below):
+
+- A **kick** has to be in the stronger half of the track's last 64 kicks (until 16 have been heard,
+  a strength of 0.9): the weaker ones are more often another part's thump, off the beat. The floor
+  comes from the track, not a fixed strength, so a mix that keeps its kick soft still has one.
+- A **bass** or **mid** note needs a strength of 0.5, and is played whatever lands with it.
+- A **hi-hat** that lands with a kick or a tom is their spill, and is dropped; one with a snare is played.
+- A **high** note is played only if it lands with a kick, a snare or a mid note, and has a strength
+  of 0.5: on its own the top band follows nothing in time.
+
+A snare also needs a thump in its body band (a hi-hat's sizzle has none); a tom is a snare-band hit
+that is mostly body. A crash is a kick or snare where the next second is well louder than the
+quietest of the three before it — a drop — unless that quietest second was silence: a jump up from
+silence is the music starting. A second's loudness is the dB of its mean power, so a few
+near-silent moments within it do not make it quiet. A crash's strength is how big the jump is: 6 dB is 0.35 and 12.5 dB
+or more is 1, which is what lets the gong take only the biggest.
 
 For the tuned bands, a Goertzel filter at every semitone in range just after the onset gives a
 chroma; its strongest pitch class picks the bar or string (the octave nearest the last note that
 group played, so a line moves like a line), and an onset with no clear pitch is dropped.
 
 Checked against a synthetic clip of the rig's own voices at known times, kicks and snares land
-within 4 ms of the truth and mallet-band pitches are right every time they are found; on the music
-folder's tracks it finds roughly 1.5–3 kicks, 0.5–3 snares, 0.5–1.5 hats, 1–1.7 bass notes, 1.5–2
-mallet notes and 0.2–0.5 string notes a second. Onset detection from a finished mix is a heuristic:
-it follows the rhythm and the register of the music, not every note of it.
+within 4 ms of the truth and mallet-band pitches are right every time they are found. Onset
+detection from a finished mix is a heuristic: it follows the rhythm and the register of the music,
+not every note of it.
+
+#### Read against the music
+
+The notes of all 25 tracks in the music folder were exported (*Exporting what it hears*) and read
+against an independent analysis of the same audio (short-window spectral flux, checked on a
+synthetic beat to within 2–4 ms; a fixed beat grid fitted to the strongest kick and snare onsets,
+which held on five tracks: *Faded*, *Hey, Soul Sister*, *Die With A Smile*, *Sentimental* and *The
+World's Greatest Game Show*). Under the rules before these:
+
+- Timing was right: every part's notes lay within about 5 ms of an onset in their band.
+- Snares and hats were real hits (91–92% on an onset in their band, against 39% by chance), and 90%
+  of snares fell on the 8ths.
+- 83–87% of tuned notes were in the track's key, against about 58% by chance.
+- Dropping a note that landed with a drum, against spill, dropped the notes on the beat: of hats,
+  bass, mid and high notes dropped that way, 92%, 78%, 88% and 79% fell on the 8ths, against 64%,
+  66%, 54% and 26% of those kept. The high lane's kept notes were at chance.
+- Only 51% of kicks fell on the 8ths, the weakest quarter at chance (30%), the strongest 71%.
+- 23 of the 25 tracks opened with a crash 0.3–1.2 s in, a 70–105 dB "drop" up from the silence
+  before the music, which took the gong and outweighed every real drop.
+
+Replayed on the five tracks, those rules with a fixed kick floor of 0.9 put 79% of notes on the
+8ths, against 60%, at 8.8 notes a second against 8.0; kicks go to 1.1 a second, 68% on the 8ths.
+
+Replayed on all 25 (from the export under the old rules, which lists every note found, kept or
+dropped), 84% of notes lie on an onset in their band, against 78% before and 50% by chance, at 8.9
+notes a second against 8.4. The high lane goes from 68% to 86%, bass from 69% to 78%, mid from 74%
+to 80%. The busiest tracks get busier (*Pipe Dream* from 10 to 17 notes a second, *Tusk* from 9 to
+13), but the notes they gain are on onsets more often than the ones they had.
+
+The fixed kick floor did not hold across tracks. Where the mix keeps the kick soft it starved the
+part: *Shelter* got one kick in 4.5 s, *Runaway* and *Happier* one in 3. The floor taken from the
+track's own kicks, which the rig now uses, is as good on the beat (81% on an onset, 66% on the 8ths
+against 68%) at 1.2 kicks a second, and leaves no track under 0.76.
+
+Exported again under these rules, every part of every track came within 0.06 notes a second of
+the replay, so the code does what the replay assumed. Read against the music: 84% of all notes on
+an onset in their band (78% before); on the five tracks' grid, 78% on the 8ths (60% before), with
+kicks 67%, snares 90%, hats 78%, bass 80%, mid 76% and high 81%. Tuned notes stay 83–84% in key.
+No track has a crash in its first two seconds any more, and the gong rings in every track.
+
+That export still showed a flaw in the crash. A second's loudness was then the mean of its hops'
+levels in dB, so a few near-silent hops pulled it far down while the music was no quieter.
+Re-running the crash rule on the exported audio, 41% of crashes followed a second whose power was
+not 6 dB under the one after. Among them were crashes, and gongs, 3.5–4.5 s into tracks whose first
+second holds a moment of silence (*Mimi's Delivery Service*, *Resonate*, *Owl City*, *Happier*,
+*Tried and True*): a 15–33 dB "jump" where the music is flat. The rig now measures the second's mean
+power instead. Exported again, the tracks have 151 crashes against 211 and 55 gong strokes against
+62, and nothing else moved. Those five tracks' first crash is now 6.8 s to 164 s in. The 12 crashes
+left in a track's first six seconds all land where the music gets louder: a band coming in after a
+quiet intro, or a hit after a break.
 
 Only clips that hand back their samples work: **Decompress On Load**, the default for a dropped-in
 MP3. Anything else shows "cannot read it ahead" on the status line. Scores are kept per clip, so a
 track played again is not read twice.
+
+### Exporting what it hears
+
+**Export Track Notes** reads each track with the same code the rig uses in the room and writes, to
+`Logs/PipeRigNotes` (which git ignores, as the tracks are commercial), one CSV a track and a
+`summary.csv`. It exports the clips selected in the Project window, or the whole music folder if
+none are. A track takes a few seconds to read.
+
+| Column | What it is |
+| --- | --- |
+| `time` | Seconds into the track; the moment a ball strikes for the note |
+| `lane` | The part it was found in: Kick, Snare, Tom, HiHat, Crash, Bass, Mid or High |
+| `instrument` | What the rig plays it on, the partner that may double it in brackets |
+| `kept`, `why` | 1 if it is played; 0 if it was found and dropped: *no clear pitch*, *weak kick* (in the weaker half of the track's recent kicks), *weak* (under the strength a tuned part needs), *spill from* a kick or a tom (a hi-hat), *alone* (a high note with no kick, snare or mid note with it), or *wires but no drum body* (a snare-band hit that is not a drum) |
+| `pitch`, `clarity` | For a tuned part, the pitch class, and how far it stands over the average one (2.2 is the least kept) |
+| `rise_db`, `strength` | The onset's rise in its band in dB (for a crash, how much louder the music got), and the strength it gives |
+
+`summary.csv` counts the kept and dropped notes in each part of each track, and the kept ones a
+second. **Export Track Notes and Audio** also writes each track as a 16-bit mono WAV at the rate the
+notes are read at (each pair of frames averaged, as the rig does), about 10 MB for four minutes,
+so the notes can be checked against the music with any tool that reads WAV. Onsets too weak for a
+part's thresholds are never notes at all, so they appear in neither list.
 
 ### The 2D layer
 
@@ -264,6 +348,7 @@ the balls rolling home along the floor lanes.
 | `Scripts/PipeRig/RigVoices.cs` | The synthesised sounds: plucked bass, guitar and strings, mallet and glockenspiel bars, chimes, gong, kick, three toms, snare, hi-hat, crash |
 | `Scripts/PipeRig/PipeRigMenu.cs` | The front-wall menu: the two modes and the tracks |
 | `Scripts/Editor/PipeRigBuilder.cs` | Builds the scene; checks every path |
+| `Scripts/Editor/PipeRigNotesExport.cs` | Writes out the notes it finds in each track, and the ones it drops, and optionally the tracks as WAV |
 | `Art/Shaders/PipeRigShadow.shader` | The balls' soft floor shadows |
 
 ## Tuning
@@ -282,3 +367,6 @@ makes tom hits a fill (0.6 s), and the gong's share of the biggest drop (0.85) a
 - A track can also be scored exactly from a MIDI file instead of from its audio; not done.
 - The partners' accent margin, the tom fill gap and the gong's share of the biggest drop are first
   guesses; tune them against the music folder once they have been heard and seen with real tracks.
+- A hat or high note whose partner (the kick, snare or mid note landing with it) was published in
+  the batch before is judged alone, so two reads of a track can differ by up to 0.04 notes a second
+  in those parts.

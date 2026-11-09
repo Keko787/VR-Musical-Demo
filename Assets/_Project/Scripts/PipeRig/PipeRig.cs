@@ -447,11 +447,7 @@ namespace VRShootingGallery.Pipes
             m_Mode = mode;
             m_Balls?.Clear();
             StopScheduledVoices();
-            for (int i = 0; i < m_PipeLast.Length; i++)
-                m_PipeLast[i] = double.NegativeInfinity;
-            for (int i = 0; i < m_TargetLast.Length; i++)
-                m_TargetLast[i] = double.NegativeInfinity;
-            ResetParts();
+            ForgetThrows();
             m_ClockValid = false;
             SetHover(null);
 
@@ -563,9 +559,7 @@ namespace VRShootingGallery.Pipes
                 StopScheduledVoices();
                 m_ClockValid = false;
                 m_NextNote = NoteAfter(truth);
-                for (int i = 0; i < m_TargetLast.Length; i++)
-                    m_TargetLast[i] = double.NegativeInfinity;
-                ResetParts();
+                ForgetThrows();
             }
 
             Advance(truth, dt, running);
@@ -582,7 +576,10 @@ namespace VRShootingGallery.Pipes
             m_NotesCopied = 0;
             m_NextNote = 0;
             m_BiggestDrop = 0f;
-            ResetParts();
+
+            // The last throws were timed on the old track's clock; kept, they would hold back every throw at the new one
+            // until it reached the same moment.
+            ForgetThrows();
             m_ClockValid = false;
 
             if (clip == null)
@@ -760,7 +757,20 @@ namespace VRShootingGallery.Pipes
             return m_DrumTarget[(int)RigDrum.Crash];
         }
 
-        /// <summary>Forgets the accents, fills and gong strikes of what played before: for a new track, a jump in it, or a change of mode.</summary>
+        /// <summary>
+        /// Forgets when each pipe and target was last thrown at, and the accents, fills and gong strikes:
+        /// for a new track, a jump in it, or a change of mode, when the clock those times were on is gone.
+        /// </summary>
+        void ForgetThrows()
+        {
+            for (int i = 0; i < m_PipeLast.Length; i++)
+                m_PipeLast[i] = double.NegativeInfinity;
+            for (int i = 0; i < m_TargetLast.Length; i++)
+                m_TargetLast[i] = double.NegativeInfinity;
+            ResetParts();
+        }
+
+        /// <summary>Forgets the accents, fills and gong strikes of what played before.</summary>
         void ResetParts()
         {
             for (int i = 0; i < m_PartAverage.Length; i++)
