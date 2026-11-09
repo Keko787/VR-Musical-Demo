@@ -8,7 +8,7 @@ namespace VRShootingGallery.AnimalOrchestra
     /// The music folder's tracks on the front wall, for the visualize mode. Up or down on the joystick
     /// brings it up, already a step along from the track the mode is on; up and down move through it,
     /// right or the trigger plays the one picked in the visualize mode, and left puts it away. The track
-    /// playing is marked in amber, as is one still being read before it plays.
+    /// playing is marked in amber, as is one still being read before it plays; either says so when paused.
     /// </summary>
     /// <remarks>
     /// The panel, the wand's ray, the joystick, the keys and the scrolling are the shared
@@ -81,7 +81,9 @@ namespace VRShootingGallery.AnimalOrchestra
             }
 
             text.Append(TrackIndicator.TitleOf(m_Conductor.MusicClip(entry)));
-            if (playing)
+            if ((playing || reading) && m_Conductor.Paused)
+                text.Append("   · paused");
+            else if (playing)
                 text.Append("   · playing");
             else if (reading)
                 text.Append("   · reading");

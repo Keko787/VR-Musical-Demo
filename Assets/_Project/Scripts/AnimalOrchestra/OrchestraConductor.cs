@@ -58,11 +58,19 @@ namespace VRShootingGallery.AnimalOrchestra
     /// The wand: the joystick <b>right</b> goes into the visualize mode and <b>left</b> comes back to the
     /// orchestra's own songs; <b>up</b> or <b>down</b> brings up the music folder's tracks on the front wall
     /// (<see cref="OrchestraTrackMenu"/>), already a step along, and right or the trigger plays the one
-    /// picked. <b>4</b> skips to the next song, in either mode, and <b>6</b> toggles low intensity mode
-    /// (dimmer glows, a lower flash cap — the photosensitivity setting). Buttons 1–3 are the CAVE's 3D / 2D /
-    /// 2D-Fixed views (<c>CaveViewMode</c>), which is why these two are not on 3 and 2 as in the other music
-    /// rooms. At the desk, the arrow keys do what the joystick does, <b>N</b> or <b>4</b> skips and <b>L</b>
-    /// or <b>6</b> toggles. Nothing is drawn on the screens but the track list, and that only while it is up.
+    /// picked. <b>4</b> pauses and plays on, as it does in the other music rooms; <b>7</b> skips to the next
+    /// song, in either mode, and <b>6</b> toggles low intensity mode (dimmer glows, a lower flash cap — the
+    /// photosensitivity setting). Buttons 1–3 are the CAVE's 3D / 2D / 2D-Fixed views (<c>CaveViewMode</c>),
+    /// which is why skip and intensity are not on 3 and 2 as in the other music rooms. At the desk, the arrow
+    /// keys do what the joystick does, <b>Space</b> or <b>4</b> pauses, <b>N</b> or <b>7</b> skips and
+    /// <b>L</b> or <b>6</b> toggles. Nothing is drawn on the screens but the track list, and that only while
+    /// it is up.
+    /// </para>
+    /// <para>
+    /// A pause stops the stems and holds the song time where it is, so the animals stop mid-gesture and wait.
+    /// Playing on starts every stem again from the sample it stopped at, all scheduled on one DSP time, so they
+    /// stay sample-aligned and the clock stays exact. Between songs, a pause holds the next one back. Skipping,
+    /// picking a track and changing mode all let go of a pause, because they all start something.
     /// </para>
     /// </remarks>
     [DefaultExecutionOrder(-40)]
@@ -118,9 +126,15 @@ namespace VRShootingGallery.AnimalOrchestra
         [SerializeField, Range(0.25f, 6f)] float m_LowIntensityMaxFlashHz = 1.5f;
 
         [Header("Wand and keys")]
-        [SerializeField, Min(0), Tooltip("Wand button that skips to the next song. Not 3, the other music rooms' " +
-            "next-track button: 1–3 are the view modes here. Indices are the .vrx's; MiddleVRWandButtonProbe lists them.")]
-        int m_NextSongButton = 4;
+        [SerializeField, Min(-1), Tooltip("Wand button that pauses the music and plays it on from where it stopped, as 4 " +
+            "does in the other music rooms; −1 for none. Indices are the .vrx's; MiddleVRWandButtonProbe lists them.")]
+        int m_PlayPauseButton = 4;
+
+        // A new field, not m_NextSongButton with a new default: scenes built before pause saved 4 there, and
+        // 4 is pause now. The builder sets both on every build anyway.
+        [SerializeField, Min(-1), Tooltip("Wand button that skips to the next song; −1 for none. Not 3, the other music " +
+            "rooms' next-track button, because 1–3 are the view modes here, and not 4, which is pause.")]
+        int m_SkipButton = 7;
 
         [SerializeField, Tooltip("Wand button that toggles low intensity mode; −1 for none. Not 2: 1–3 are the view modes.")]
         int m_LowIntensityButton = 6;
@@ -129,8 +143,9 @@ namespace VRShootingGallery.AnimalOrchestra
             "up the music folder's tracks.")]
         bool m_Joystick = true;
 
-        [SerializeField, Tooltip("N or the skip button's digit skips; L or the intensity button's digit toggles low " +
-            "intensity; the arrow keys are the joystick. Unity's keyboard, so the Editor or the build needs focus.")]
+        [SerializeField, Tooltip("Space or the pause button's digit pauses; N or the skip button's digit skips; L or the " +
+            "intensity button's digit toggles low intensity; the arrow keys are the joystick. Unity's keyboard, so the " +
+            "Editor or the build needs focus.")]
         bool m_KeyboardShortcuts = true;
 
         /// <summary>Most audio sources a song can need: one per stem.</summary>
@@ -180,10 +195,17 @@ namespace VRShootingGallery.AnimalOrchestra
         float m_NextStartAt;
         float m_Idleness = 1f;
 
+        bool m_Paused;
+        double m_PausedAt;    // where the sound stopped, seconds into the song before the visual offset; negative before it began
+        double m_HoldUntil;   // the DSP time a song played on sounds again: the song time waits for it
+
         // ================================================================== what the animals read
 
-        /// <summary>A song is playing (scheduled or sounding, until its tail has rung out).</summary>
+        /// <summary>A song is playing (scheduled or sounding, until its tail has rung out). Still true while it is paused.</summary>
         public bool IsPlaying => m_IsPlaying;
+
+        /// <summary>The music is held: the song stopped where it was, or, between songs, the next one held back.</summary>
+        public bool Paused => m_Paused;
 
         /// <summary>Seconds into the playing song on the audio clock, with the visual offset applied.</summary>
         public double SongTime => m_SongTime;
@@ -270,7 +292,8 @@ namespace VRShootingGallery.AnimalOrchestra
             Debug.Log($"[AnimalOrchestra] Playlist: {m_Playlist.Count} songs ({m_Playlist.FindAll(e => e.kind == Entry.Folder).Count} " +
                       $"from {SongFolder.Root}); {MusicTrackCount} tracks in the music folder for the visualize mode. " +
                       $"Joystick right / → visualizes them, left / ← comes back, up and down / ↑ ↓ list them; " +
-                      $"wand {m_NextSongButton} / N skips; wand {m_LowIntensityButton} / L is low intensity.", this);
+                      $"wand {m_PlayPauseButton} / Space pauses; wand {m_SkipButton} / N skips; wand {m_LowIntensityButton} / L " +
+                      $"is low intensity.", this);
 
             m_NextStartAt = Time.unscaledTime + m_FirstSongDelay;
             PrepareNext();
@@ -298,9 +321,17 @@ namespace VRShootingGallery.AnimalOrchestra
 
             if (m_IsPlaying)
             {
-                AdvanceClock();
-                if (m_SongTime >= m_Playing.Data.Length)
-                    SongEnded();
+                // Paused, or played on and not sounding yet: the song time holds where it stopped.
+                if (!m_Paused && AudioSettings.dspTime >= m_HoldUntil)
+                {
+                    AdvanceClock();
+                    if (m_SongTime >= m_Playing.Data.Length)
+                        SongEnded();
+                }
+            }
+            else if (m_Paused)
+            {
+                // Between songs: the next waits until it is played on.
             }
             else if (m_Mode == Mode.Visualize)
             {
@@ -403,6 +434,7 @@ namespace VRShootingGallery.AnimalOrchestra
             m_Mode = Mode.Visualize;
             m_MusicTrack = Wrap(track);
             m_Failures = 0;
+            m_Paused = false;
             Cut();
             Read(m_MusicTrack);
 
@@ -428,6 +460,7 @@ namespace VRShootingGallery.AnimalOrchestra
             m_Reading?.Cancel();
             m_Reading = null;
             m_ReadingTrack = -1;
+            m_Paused = false;
             Cut();
             PrepareNext();
 
@@ -602,6 +635,7 @@ namespace VRShootingGallery.AnimalOrchestra
             m_LastDsp = AudioSettings.dspTime;
             m_LastDspAt = Time.unscaledTimeAsDouble;
             m_SongTime = m_LastDsp - m_DspStart + m_VisualOffsetMs * 0.001;
+            m_HoldUntil = 0.0;
             m_IsPlaying = true;
             SongSerial++;
 
@@ -623,9 +657,13 @@ namespace VRShootingGallery.AnimalOrchestra
             SongSerial++;
         }
 
-        /// <summary>Skips to the next song after a short pause, whatever is happening now: the next track in the visualize mode.</summary>
+        /// <summary>
+        /// Skips to the next song after a moment's quiet, whatever is happening now: the next track in the visualize
+        /// mode. A pause is let go, because the point of skipping is to hear the next one.
+        /// </summary>
         public void Skip()
         {
+            m_Paused = false;
             if (m_Mode == Mode.Visualize)
             {
                 Visualize(m_MusicTrack + 1);
@@ -636,6 +674,83 @@ namespace VRShootingGallery.AnimalOrchestra
                 EndSong(1f);
             else
                 m_NextStartAt = Time.unscaledTime;
+
+            Changed?.Invoke();
+        }
+
+        /// <summary>Pauses the music, or plays it on from where it stopped.</summary>
+        public void PlayPause()
+        {
+            if (m_Paused)
+                Resume();
+            else
+                Pause();
+
+            Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Stops every stem and holds the song time. Stopped rather than <see cref="AudioSource.Pause"/>d, because a
+        /// stem still waiting on its scheduled start may not keep the wait; where the song had got to is kept here.
+        /// </summary>
+        void Pause()
+        {
+            m_Paused = true;
+            if (!m_IsPlaying)
+            {
+                Debug.Log("[AnimalOrchestra] Paused: the next song waits.", this);
+                return;
+            }
+
+            // Paused again before a play-on had sounded: the song has not moved since the last pause.
+            double dsp = AudioSettings.dspTime;
+            if (dsp >= m_HoldUntil)
+                m_PausedAt = dsp - m_DspStart;
+
+            foreach (var source in m_Sources)
+                source.Stop();
+
+            Debug.Log($"[AnimalOrchestra] Paused '{m_Playing.Data.Title}' at {Math.Max(0.0, m_PausedAt):0.0} s.", this);
+        }
+
+        /// <summary>
+        /// Plays on: every stem from the sample it stopped at, all on one DSP time a schedule lead from now, so they
+        /// stay together and the song time picks up where it was held. One paused before the song began waits out
+        /// what was left of its lead. Between songs the next starts after a moment's quiet.
+        /// </summary>
+        void Resume()
+        {
+            m_Paused = false;
+            if (!m_IsPlaying)
+            {
+                m_NextStartAt = Mathf.Min(m_NextStartAt, Time.unscaledTime + k_CutGap);
+                Debug.Log("[AnimalOrchestra] Playing on.", this);
+                return;
+            }
+
+            double resumeAt = AudioSettings.dspTime + k_ScheduleLead;
+            double from = Math.Max(0.0, m_PausedAt);
+            m_DspStart = resumeAt - m_PausedAt;
+            double start = Math.Max(resumeAt, m_DspStart);
+
+            foreach (var source in m_Sources)
+            {
+                var clip = source.clip;
+                if (clip == null)
+                    continue;
+
+                // A stem shorter than the song may already have ended; it stays quiet.
+                int sample = (int)(from * clip.frequency);
+                if (sample >= clip.samples)
+                    continue;
+
+                source.Stop();
+                source.timeSamples = sample;
+                source.PlayScheduled(start);
+            }
+
+            m_HoldUntil = resumeAt;
+            Debug.Log($"[AnimalOrchestra] Playing '{m_Playing.Data.Title}' on from {from:0.0} s.", this);
         }
 
         /// <summary>
@@ -687,14 +802,16 @@ namespace VRShootingGallery.AnimalOrchestra
 
         void ReadInput()
         {
-            bool next = MiddleVRWand.PressedThisFrame(m_NextSongButton);
+            bool pause = m_PlayPauseButton >= 0 && MiddleVRWand.PressedThisFrame(m_PlayPauseButton);
+            bool next = m_SkipButton >= 0 && MiddleVRWand.PressedThisFrame(m_SkipButton);
             bool low = m_LowIntensityButton >= 0 && MiddleVRWand.PressedThisFrame(m_LowIntensityButton);
             var stick = m_Joystick ? ReadStick() : Stick.None;
 
             var keyboard = Keyboard.current;
             if (m_KeyboardShortcuts && keyboard != null)
             {
-                next |= keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_NextSongButton);
+                pause |= keyboard.spaceKey.wasPressedThisFrame || DigitPressed(keyboard, m_PlayPauseButton);
+                next |= keyboard.nKey.wasPressedThisFrame || DigitPressed(keyboard, m_SkipButton);
                 low |= keyboard.lKey.wasPressedThisFrame || DigitPressed(keyboard, m_LowIntensityButton);
 
                 if (stick == Stick.None)
@@ -707,6 +824,8 @@ namespace VRShootingGallery.AnimalOrchestra
 
             if (next)
                 Skip();
+            else if (pause)
+                PlayPause();
 
             if (low)
                 LowIntensity = !LowIntensity;

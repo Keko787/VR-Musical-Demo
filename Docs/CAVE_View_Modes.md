@@ -26,7 +26,7 @@ logged: `[CaveView] View: 2D-Fixed`.
 Here the Animal Orchestra has it ([AnimalOrchestra_Demo.md](AnimalOrchestra_Demo.md)); its builder
 calls `CaveViewSetup.Build`, and any other room's builder can do the same with one line. In the other
 music rooms buttons 1–3 do other things (world, low intensity, next track), so a room that takes the
-views moves those, as the orchestra does to 4 and 6.
+views moves those, as the orchestra does to 7 and 6 (keeping 4 for play/pause, like the other rooms).
 
 **Or the thumbstick**, for a room that keeps its buttons: tick **Stick Picks View** and set the
 buttons to −1 (none — a negative index is never read as the trigger). Then the stick pushed up picks

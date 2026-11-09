@@ -299,19 +299,29 @@ On the wand. Nothing is drawn on the screens but the track list, and that only w
 | Joystick left | ← | Back to the orchestra's own songs |
 | Joystick up / down | ↑ / ↓ | Bring up the music folder's tracks on the front wall, one up or down from the track playing |
 | *with the list up:* up / down, right or trigger, left | ↑ / ↓, → or Enter, ← or Esc | Move through it (held, it repeats); play the one selected in the visualize mode; put the list away |
-| 4 | N or 4 | Skip to the next song (the next track in the visualize mode) |
+| 4 | Space or 4 | Pause, and play on from where it stopped |
+| 7 | N or 7 | Skip to the next song (the next track in the visualize mode) |
 | 6 | L or 6 | Low intensity mode on/off |
 
 A joystick push counts once: holding it does nothing more, and the next push counts once the stick has
 come back to the middle. So the push right that picks a track doesn't also do anything once the list has
 closed.
 
-The views are on 1–3 as in Sit-Rep-CAVE and VR-Demo's bounded volumes, so skip and low intensity are
-not on 3 and 2 as in the other music rooms. Button indices are Inspector fields on the conductor and on
-`CAVE_View`, because they are the `.vrx`'s, not standardised; `MiddleVRWandButtonProbe` lists them. The
-skip, intensity and arrow keys go through Unity's keyboard, so the Editor or the build needs focus; the view
-keys also read MiddleVR's keyboard (`MiddleVRKeyboard`, brought over from VR-Demo with the views), which
-works without focus.
+**Pause** stops the music and holds the song where it is: the animals stop mid-gesture and wait, and a lit
+key or glow stays as it was, without flashing. Playing on starts every stem again from the sample it stopped
+at, all on one scheduled DSP time, so the stems stay together and the animals stay on the beat. Paused
+between songs, the next song waits. Skipping, picking a track or moving the joystick into or out of the
+visualize mode lets go of the pause, because each starts something. With the list up, the track paused is
+marked "· paused". Nothing else on the screens shows it: the silence and the still animals are the sign.
+
+Pause is on 4 as in the other music rooms (the visualizer, the haunted room, the glass room and the pipe
+rig). The views are on 1–3 as in Sit-Rep-CAVE and VR-Demo's bounded volumes, so skip and low intensity are
+not on 3 and 2 as in the other music rooms: they are on 7 and 6, two of the VisBox wand's spare buttons
+(it has 0–4, 6–8, 11 and 15). Which physical buttons 7 and 6 are is not written down yet: run
+`MiddleVRWandButtonProbe` in the room and note it here. Button indices are Inspector fields on the conductor
+and on `CAVE_View`, because they are the `.vrx`'s, not standardised. The pause, skip, intensity and arrow keys
+go through Unity's keyboard, so the Editor or the build needs focus; the view keys also read MiddleVR's
+keyboard (`MiddleVRKeyboard`, brought over from VR-Demo with the views), which works without focus.
 
 **Photosensitivity.** Nothing flashes faster than the conductor's **Max Flash Hz** (3 Hz). Each animal
 scales a per-note flash down when its notes come faster than that: the woodpecker's 16th-note hats
@@ -375,7 +385,9 @@ Press Play. Fireflies fill the room for a few seconds while the first song rende
 `Rendered 'Lagoon Lights'`, then `Now playing …` with the parts the song has. Then the sky glows
 orange behind the elephant, the elephant stomps and the water rings toward you, and the gorilla beats
 its chest on 2 and 4. Pads come in first, so the jellyfish pulse from the opening chord, and the
-wolves howl in the intro. Press **N** to skip and **L** for low intensity. Press **2** for 2D and
+wolves howl in the intro. Press **Space** to pause: the music stops and the animals hold still, and
+**Space** again plays on from the same spot (the Console logs `Paused '…' at 42.0 s`, then
+`Playing '…' on from 42.0 s`). Press **N** to skip and **L** for low intensity. Press **2** for 2D and
 **3** for 2D-Fixed: the stereo collapses, then every screen holds steady however the head moves; **1**
 brings 3D back.
 

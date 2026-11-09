@@ -95,8 +95,9 @@ namespace VRShootingGallery.EditorTools
 
         // The conductor's wand buttons, set on every build: a rebuild keeps the conductor component, and with
         // it whatever buttons an older build saved — 3 and 2 before the view modes took 1–3, which made wand 2
-        // switch to 2D and toggle low intensity at once.
-        const int k_NextSongButton = 4;
+        // switch to 2D and toggle low intensity at once. Pause is 4, as in the other music rooms, so skip is 7.
+        const int k_PlayPauseButton = 4;
+        const int k_SkipButton = 7;
         const int k_LowIntensityButton = 6;
 
         /// <summary>The track list's sorting order: after every other see-through thing in the room.</summary>
@@ -294,7 +295,8 @@ namespace VRShootingGallery.EditorTools
                 conductor = Undo.AddComponent<OrchestraConductor>(root.gameObject);
 
             var conductorSettings = new SerializedObject(conductor);
-            conductorSettings.FindProperty("m_NextSongButton").intValue = k_NextSongButton;
+            conductorSettings.FindProperty("m_PlayPauseButton").intValue = k_PlayPauseButton;
+            conductorSettings.FindProperty("m_SkipButton").intValue = k_SkipButton;
             conductorSettings.FindProperty("m_LowIntensityButton").intValue = k_LowIntensityButton;
 
             // The visualize mode's tracks: the music folder as it is now. Play in the editor reads it again,
